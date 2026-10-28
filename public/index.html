@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Đấm Nhau FPP</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-family: system-ui, sans-serif; }
+    #c { width: 100%; height: 100%; display: block; outline: none; }
+    #crosshair { position: fixed; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: rgba(255,255,255,.8); pointer-events: none; }
+    #crosshair { transition: transform .12s, background .12s; }
+    #crosshair.hit { background: #f33; transform: scale(2.4); }
+    #hud { position: fixed; left: 16px; bottom: 16px; color: #fff; pointer-events: none; }
+    #hpbar { width: 220px; height: 16px; background: rgba(0,0,0,.5); border: 2px solid #fff; border-radius: 4px; overflow: hidden; }
+    #hpfill { height: 100%; width: 100%; background: #3c3; transition: width .1s; }
+    #board { position: fixed; right: 16px; top: 16px; color: #fff; background: rgba(0,0,0,.4); padding: 8px 12px; border-radius: 6px; font-size: 14px; pointer-events: none; min-width: 140px; }
+    #flash { position: fixed; inset: 0; background: red; opacity: 0; pointer-events: none; transition: opacity .25s; }
+    #dead { position: fixed; left: 0; right: 0; top: 35%; text-align: center; color: #fff; font-size: 40px; font-weight: bold; text-shadow: 0 2px 8px #000; display: none; pointer-events: none; }
+
+    .screen { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0,0,0,.65); color: #fff; text-align: center; }
+    #pause { display: none; cursor: pointer; }
+    #menu h1 { margin: 0 0 12px; }
+    #menu .panel { background: rgba(20,24,32,.9); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 20px 24px; width: min(440px, 90vw); text-align: left; }
+    #name { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 16px; border-radius: 8px; border: 1px solid #556; background: #0d1117; color: #fff; margin-bottom: 14px; }
+    .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+    .row label { width: 88px; font-size: 14px; color: #bcc; flex: none; }
+    .opts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .sw { width: 26px; height: 26px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; box-shadow: 0 0 0 1px rgba(255,255,255,.3); }
+    .sw.on { border-color: #fff; box-shadow: 0 0 0 2px #4af; }
+    .pat { padding: 4px 9px; border-radius: 14px; border: 1px solid #667; background: transparent; color: #ddd; cursor: pointer; font-size: 13px; }
+    .pat.on { background: #4af; border-color: #4af; color: #002; }
+    .buttons { display: flex; gap: 10px; margin-top: 16px; }
+    .buttons button { flex: 1; padding: 11px; font-size: 16px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 600; }
+    #random { background: #334; color: #fff; }
+    #play { background: #3c3; color: #031; flex: 2; }
+    .help { font-size: 13px; color: #aab; margin: 14px 0 0; line-height: 1.5; text-align: center; }
+  </style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+  <div id="crosshair"></div>
+  <div id="flash"></div>
+  <div id="dead">Bạn bị hạ gục!</div>
+  <div id="hud"><div id="hpbar"><div id="hpfill"></div></div></div>
+  <div id="board"></div>
+
+  <div id="menu" class="screen">
+    <h1>Đấm Nhau FPP</h1>
+    <div class="panel">
+      <input id="name" maxlength="16" placeholder="Tên của bạn" autocomplete="off">
+      <div class="row"><label>Áo</label><div class="opts" id="opt-shirt"></div></div>
+      <div class="row"><label>Họa tiết áo</label><div class="opts" id="opt-pattern"></div></div>
+      <div class="row"><label>Quần</label><div class="opts" id="opt-pants"></div></div>
+      <div class="row"><label>Găng tay</label><div class="opts" id="opt-glove"></div></div>
+      <div class="row"><label>Màu da</label><div class="opts" id="opt-skin"></div></div>
+      <div class="row"><label>Tóc</label><div class="opts" id="opt-hair"></div></div>
+      <div class="buttons">
+        <button id="random">Ngẫu nhiên</button>
+        <button id="play">Vào chơi</button>
+      </div>
+      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải<br>M: tắt/bật tiếng · Esc: thả chuột</p>
+    </div>
+  </div>
+
+  <div id="pause" class="screen"><h1 id="pause-title">Đã tạm dừng</h1><p id="pause-text">Click để tiếp tục</p></div>
+
+  <script src="/babylon.js"></script>
+  <script src="/audio.js"></script>
+  <script src="/effects.js"></script>
+  <script src="/menu.js"></script>
+  <script src="/client.js"></script>
+</body>
+</html>
