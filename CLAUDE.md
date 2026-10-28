@@ -1,0 +1,126 @@
+# Punch Por Arena
+
+Game đấm nhau FPP nhiều người: Node (http + `ws`) làm server, Babylon.js làm client. Không có bundler.
+
+Chạy: `npm start` rồi mở `http://localhost:3000` (đổi cổng bằng biến `PORT`).
+
+## Cấu trúc (bắt buộc giữ khi thêm code)
+
+```
+server/                 CommonJS
+  index.js              entry, chỉ ghép các phần lại, không chứa logic
+  config.js             MỌI hằng số của server
+  http/                 phục vụ file tĩnh
+  net/                  WebSocket: connection.js (dispatch message), messaging.js (send/broadcast)
+  game/                 luật chơi: players, spawn, movement, Room, rooms, players, spawn, movement, combat, weapons, pickups, match, sanitize, snapshot
+  maps/                 dữ liệu map (1 file/map), terrain.js (sinh địa hình/sông/cầu), propTypes.js, wallKinds.js, layout.js (công cụ dựng bố cục)
+  utils/                hàm thuần dùng chung (math, geometry)
+public/
+  index.html            chỉ markup
+  css/style.css         mọi CSS
+  models/               model 3D .glb (kiếm sword_1, nhân vật char, mỗi vũ khí một file), phục vụ tại /models/
+  js/                   ES modules, entry là main.js
+    config.js           MỌI hằng số của client
+    state.js            trạng thái dùng chung (state, remotes, infos)
+    core/               scene/engine, keys, meshes (helper dựng mesh, material dùng chung), terrain (độ cao đất, cầu, nước)
+    world/              sân đấu: arena.js, ground.js (mặt đất), water.js, bridges.js, props.js (cây/bàn ghế/võ đài...), walls.js (tường, dây ring)
+    entities/           nhân vật, vũ khí, vật nhặt (Fist, Arm, avatar, character, remotePlayer, pickup, weapons/)
+    player/             người chơi cục bộ: localPlayer.js (di chuyển, camera, đấm), collision.js (va chạm)
+    net/                socket.js (kết nối), handlers.js (xử lý message)
+    ui/                 DOM: hud, weaponPanel (thanh chỉ số vũ khí), hotbar (các ô vũ khí), matchHud (đồng hồ, đếm ngược, bảng xếp hạng), lobbyHud (phòng chờ, 3-2-1, nhãn phòng), menu (tạo/vào phòng), lựa chọn ngoại hình
+    fx/                 hiệu ứng hình ảnh
+    audio/              âm thanh
+```
+
+## Quy tắc
+
+1. **Mỗi file một trách nhiệm.** Thêm tính năng thì thêm file vào đúng thư mục, không nhét thêm vào file đang có việc khác. File vượt ~150 dòng hoặc hàm vượt ~40 dòng thì tách.
+2. **Không dùng global** ngoài `BABYLON` (nạp bằng thẻ `<script>`). Dùng `import/export`, không dùng IIFE.
+3. **Hằng số** đặt trong `config.js` của đúng bên (server hoặc client), không rải số "ma thuật" trong code.
+4. **Trạng thái client dùng chung** nằm trong `state.js`. Module khác ghi qua `state.x = ...` (import không gán lại được).
+5. **Thêm message mạng:**
+   - Server: thêm handler vào `gameHandlers` trong `server/net/connection.js`. Logic đặt ở `server/game/`, không viết trong file connection.
+   - Client: thêm hàm vào `messageHandlers` trong `public/js/net/handlers.js`.
+6. **DOM chỉ được chạm trong `ui/`** (hoặc `input.js`). Các module khác gọi hàm của `ui/hud.js`.
+7. **Không import vòng.** Chiều phụ thuộc: `main` → `player`/`net`/`ui`/`fx` → `entities`/`world` → `core`/`state`/`config`. `entities` và `world` không import nhau; code dùng chung đặt ở `core`. `core` và `state` không import module nào khác của game.
+
+## Map và vật phẩm
+
+- Map là **dữ liệu**, server là nguồn duy nhất: `server/maps/<tên>.js` khai báo `size`, `ground` (bảng màu đất), `terrain`, `walls`, `props`. Server gửi cả map cho client trong `welcome`, client không có bản sao riêng.
+- **Thêm map:** tạo file trong `server/maps/`, đăng ký trong `maps/index.js`, chọn bằng biến môi trường `MAP`. Không sửa code game.
+- **Thêm loại vật phẩm:** (1) khai báo bán kính trong `server/maps/propTypes.js` (0 = trang trí, đi xuyên qua được); (2) thêm hàm dựng mesh cùng tên trong `public/js/world/props.js`. Vật phẩm có `r > 0` tự chặn người chơi (client đẩy ra) và tự tránh khi hồi sinh (server).
+- **Thêm loại tường:** khai báo trong `server/maps/wallKinds.js` (`blocksPunch` = chặn đòn hay không) và thêm hàm dựng mesh cùng tên trong `public/js/world/walls.js`. Tường là hình chữ nhật `{ x, z, w, d }` (tâm + kích thước), không xoay; muốn tường dọc thì đổi w và d.
+- Vật phẩm là hình tròn, tường là hình chữ nhật, cả hai chỉ trên mặt sân (2D). Chỉ tường có `blocksPunch` mới chặn đòn đấm (server kiểm tra trong `combat.js`).
+- Bố cục trong file map dùng `layout.js`: `mirror4` (nhân một góc phần tư ra 4 góc), `diningSet`, `crateCluster`, `scatter` (rải ngẫu nhiên theo seed, tránh tường và vùng cấm). Cùng seed thì cùng map.
+- Va chạm với vật phẩm và tường hiện chỉ client xử lý (server chỉ tránh chúng khi hồi sinh và khi tính đòn đấm).
+
+## Model 3D (.glb)
+
+- File đặt trong `public/models/`, nạp bằng `BABYLON.SceneLoader` (loader glTF2 lấy từ `babylonjs-loaders`, cùng phiên bản với `babylonjs`). Cần nạp bằng `LoadAssetContainerAsync` một lần rồi `instantiateModelsToScene` cho từng chỗ dùng, đừng nạp lại mỗi lần.
+- Đơn vị là mét. Khi vẽ: gốc ở tâm cán/điểm cầm, lưỡi hướng +Y, apply scale. Kích thước thật được đo lúc nạp và co giãn về độ dài đặt trong `config.js` (`SWORD.length`).
+- Material của model được tô lại trong code nếu file không có màu. Các instance dùng chung material nên **phải** gọi `Arm.drop()` trước khi `dispose(false, true)` nhân vật, nếu không material dùng chung bị huỷ theo.
+- **Nhân vật từ model:** `character.js` nạp `char.glb` cho từng scene (game, menu preview), co về `CHARACTER.height`, hạ chân chạm đất, rồi tô màu theo lựa chọn của người chơi. Tên khối → bộ phận nằm trong `CHARACTER.kinds` (config.js); khối không có tên riêng thì nhận theo **tên nhóm cha** trong `CHARACTER.groupKinds` (vd: mọi khối trong nhóm `hair` là tóc, tô theo `look.hair`); màu cố định (giày, mắt, con ngươi, miệng) nằm ở `CHARACTER.fixedColors`; khối đặt tên tiền tố `shirt_/pants_/glove_/skin_/hair_` thì tự nhận. Mọi chỗ tạo nhân vật dùng `createPlayerAvatar` (có model thì dùng, chưa nạp xong thì dùng nhân vật dựng bằng code). Nhân vật nào cũng phải có `root, upper, legs, fists, pose`. Hoạ tiết áo: UV trong file không dùng được (chỉ chiếm góc ảnh) nên `character.js` tự tính lại UV cho các khối trong `CHARACTER.patternMeshes`. Chân chỉ đưa qua lại khi đi (chưa có animation đi bộ), ngồi chưa có hiệu ứng.
+- **Hoạt ảnh của nhân vật model** (`entities/characterAnimator.js`): lấy từ các animation trong `char.glb` — "Left punch", "Right punch" và "Jump". Tên animation quyết định vai trò: chứa "jump" là nhảy, "right"/"left" là đấm tay nào. Mỗi animation xoay/dịch chuyển các nhóm `player` (gốc cả cơ thể), `upper`, `head`, `left_arm`, `right_arm`, hai `*_foream`, `left_L`, `right_L` (cả kênh xoay lẫn dịch chuyển). **Tư thế đứng yên của mọi nhân vật là khung đầu của hai cú đấm (thế thủ)**; nút chỉ có trong Jump lấy khung đầu Jump. Khung đầu của các animation đấm phải trùng nhau ở mọi nút chung, và khung đầu mỗi kênh dịch chuyển phải bằng vị trí gốc của nút (nếu không nhân vật sẽ bị lệch ngay khi đứng yên). **Tên nhóm trong file đặt theo phía người nhìn** (`left_arm` là tay phải của nhân vật) nên đấm trái là cú duỗi nhóm `right_arm`.
+- **Đấm:** chạy một lần từ khung đầu tới khung cuối rồi trộn mượt về tư thế đứng yên (khung cuối không cần trùng khung đầu); tốc độ tự tăng nếu cooldown của vũ khí ngắn hơn animation. Thiếu một bên thì tự soi gương bên kia (đổi nút trái↔phải; quaternion (x,y,z,w) → (x,-y,-z,w); vị trí (x,y,z) → (-x,y,z)).
+- **Nhảy:** người chơi khác bắt đầu hoạt ảnh nhảy khi `y` server báo cao hơn mặt đất (`groundAt`, tính cả mặt cầu) quá `AIRBORNE_HEIGHT` (`remotePlayer.js` gọi `setAirborne`). Tốc độ căn theo thời gian bay `JUMP_AIR_TIME` (animation 0.333s nên chạy chậm ~0.5×), **giữ tư thế cuối nếu còn trên không** (rơi dài), trả về thế thủ khi chạm đất. Đấm giữa không trung thì sau cú đấm quay lại tư thế nhảy. Khung đầu của Jump là tư thế tay rủ, khác thế thủ nên lúc bắt đầu nhảy tay hạ nhanh rồi mới giơ lên (do trộn 0.04s).
+- Ta tự nội suy khoá (không dùng bộ phát của Babylon); các animation group được dọn ngay sau khi lấy khoá. Thêm animation khác (đi bộ, ngồi...) thì mở rộng `CharacterAnimator` hoặc viết bộ điều khiển riêng, tránh hai bên cùng ghi một nhóm.
+- **Chân khi di chuyển:** phần xoay của chân do `pose()` ghi (animator chỉ giữ giá trị trong `rotationOf`, không ghi lên nút `driven`) = bước chân/chân nhảy của animation × đung đưa khi đi; đang bay thì tắt đung đưa. Kênh dịch chuyển thì animator ghi thẳng.
+- **Tay của mình ở góc nhìn thứ nhất** (`ensureViewmodel` trong `player/localPlayer.js`): dùng chính nhân vật model (`createModelAvatar(..., { viewmodel: true })`) nên cùng hoạt ảnh đấm, thế thủ và cách cầm vũ khí với người chơi khác. Chỉ hiện các khối trong `VIEWMODEL.meshes` (cẳng tay + bàn tay), còn lại ẩn bằng `isVisible = false`. **Đừng dùng `setEnabled(false)`**: tắt một khối là tắt luôn mọi khối con, mà `__root__` của file .glb là mesh rỗng chứa cả nhân vật nên hai tay cũng biến mất (lỗi thật từng gặp; test headless không bắt được vì `isEnabled(false)` bỏ qua tổ tiên, hãy dùng `isEnabled()` + `isVisible`). Model vẽ cho người nhìn từ ngoài: ở thế thủ hai bàn tay cách mắt ±0.7m và thấp 0.85m (ngoài tầm nhìn) nên phải co nhỏ (`VIEWMODEL.scale`) và đẩy ra trước (`VIEWMODEL.offset` = vị trí của mắt model trong hệ camera sau khi co); chỉnh hai thông số này để tay lên cao/xuống thấp, gần/xa. Tay được gắn vào camera và vẽ ở nhóm `VIEWMODEL.renderingGroup` (bộ đệm độ sâu xoá trước khi vẽ) để không xuyên tường; vũ khí cầm trên tay cũng vẽ ở nhóm đó. Hướng vũ khí do `firstPersonTilt` của từng vũ khí quyết định (chĩa theo (0, cos t, sin t) của camera) nhưng vẫn gắn chặt vào bàn tay nên đi theo khi vung. Lúc model chưa nạp xong dùng hai nắm đấm hình cầu (`Fist`) rồi tự chuyển sang tay model và cầm lại vũ khí đang có. `VIEWMODEL.enabled = false` để quay về nắm đấm hình cầu. Lưu ý: tay có thể ra ngoài màn hình nếu người chơi đặt FOV rất thấp (Cài đặt cho phép 40°–86°).
+- **Vũ khí cầm trên nhân vật model** gắn thẳng vào khối bàn tay (`createHandAnchor` trong `character.js`) nên đi theo tay khi vung; neo được tính một lần ở tư thế đứng yên bằng ma trận nghịch đảo để vũ khí đúng cỡ, không lật gương (cây model mang phép lật z) và kéo dài theo cẳng tay. Khi test chuyển động bằng NullEngine phải gọi `scene.incrementRenderId()` mỗi bước, nếu không Babylon dùng ma trận cũ của nút không bị đánh dấu bẩn (như neo vũ khí) và kết quả sai.
+
+## Vũ khí
+
+- **Server quyết định tất cả.** Bảng `WEAPONS` trong `server/game/weapons.js` giữ tên, các chỉ số (`damage` sát thương, `range` tầm đánh, `cooldown` ms giữa hai đòn) và độ hiếm khi rơi (`dropWeight`, 0 = không rơi). Client nhận tên và các chỉ số trong `welcome` để hiển thị và tính thời gian hồi, không có bản sao riêng.
+- **Nhặt:** vũ khí rơi theo lịch của trận (xem mục Trận đấu). Đi vào bán kính `PICKUP_RADIUS` là tự nhặt, thay vũ khí đang cầm. Chết thì về tay không (`fist`).
+- **Đồng bộ:** message `drop` (một đợt, gồm mảng `pickups`) và `pickup` (bị nhặt); vũ khí mỗi người nằm trong snapshot (`w`). Client dựa vào `w` để cầm đúng model cho mọi người.
+- **Thêm vũ khí mới:**
+  1. Thêm một dòng vào `WEAPONS` (`server/game/weapons.js`): tên, `damage`, `range`, `cooldown`, `dropWeight`.
+  2. Tạo `public/js/entities/weapons/<tên>.js` rồi đăng ký trong `weapons/index.js` (id phải trùng với server). Định nghĩa có `icon`, `firstPersonTilt` và một trong hai cách có hình:
+     - `build(side)`: dựng tạm bằng hình khối trong code (xem `dagger.js`, `gauntlet.js`). Gốc ở chỗ cầm, đầu vũ khí hướng +Y. Dùng `colorMaterial` (dùng chung) hoặc vật liệu dùng chung riêng, không tạo vật liệu mới cho mỗi bản.
+     - `url`: model `.glb` (xem `sword.js`: `length`, `gripKind`, `colors`, `kindOf`).
+     Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái với `side` = -1, `build` đặt chi tiết đối xứng theo `side`), `autoFire` (giữ chuột là tự đánh, luân phiên trái/phải theo `cooldown` của vũ khí), `swingSound` (tên âm thanh vung, có trong `kinds` của `audio/sfx.js`, mặc định `whoosh`).
+  3. Có `.glb` thật thay cho bản dựng tạm: đổi định nghĩa từ `build` sang `url` và xoá `build`, nơi khác không phải sửa. Gốc model đặt ở chỗ cầm, đầu vũ khí hướng +Y.
+  Chưa làm bước 2 thì vũ khí vẫn rơi và gây sát thương đúng, chỉ là chưa có hình (vòng sáng vẫn hiện, tay không cầm gì).
+
+- Server dùng `damage`, `range`, `cooldown` của vũ khí đang cầm trong `combat.js`. Thanh chỉ số (`ui/weaponPanel.js`) đọc đúng các trường này; thanh dài theo tỉ lệ so với vũ khí mạnh nhất về chỉ số đó nên vũ khí mới tự vừa. Thêm chỉ số mới: thêm trường vào `WEAPONS` + `weaponInfo()`, thêm một dòng vào `STATS` trong `weaponPanel.js`, và đọc nó trong `combat.js`.
+- **Thanh các ô vũ khí** (`ui/hotbar.js`, `HOTBAR_SLOTS` ô): đọc `state.inventory[i]` (id vũ khí hoặc null) và `state.activeSlot`. Hiện server mới cho cầm một vũ khí nên `net/handlers.js` tạm đặt nó vào ô 1; khi làm túi đồ nhiều ô (nhặt vào ô trống, phím 1–3 đổi ô, phím vứt) thì server giữ danh sách ô, gửi trong snapshot/welcome, và client chỉ việc điền `state.inventory`/`state.activeSlot` từ đó. Chuột bị khoá khi chơi nên thao tác dùng phím, không phải click.
+- Dùng `equipLoadout(hands, id, tilt)` để cầm vũ khí cho cả hai tay của một người (tự xử lý vũ khí hai tay) và `releaseWeapon(hand)` để bỏ. Các bản vũ khí dùng chung material nên phải `releaseWeapon` cả hai tay trước khi `dispose(false, true)` nhân vật. Hiệu ứng động của vũ khí (vd: tia điện của găng sấm sét) phải tự gỡ khi bị huỷ (`root.onDisposeObservable`); Babylon gỡ observer trễ một nhịp nên đừng kiểm tra ngay sau `dispose()`.
+
+## Trận đấu
+
+- **Mỗi phòng là một trận riêng** (`server/game/Room.js`): có người chơi, vũ khí trên sân và đồng hồ của riêng nó. Mọi hàm game nhận `room` làm tham số đầu (`handlePunch(room, p, hand)`, `randomFreePosition(room)`, `dropWave(room, n)`...); `broadcast(room, msg)` chỉ gửi cho người trong phòng đó. **Không dùng biến toàn cục chứa người chơi/vũ khí/đồng hồ.** Server là nguồn duy nhất của đồng hồ (`server/game/match.js`, `tickRoom`).
+- **Vòng đời một phòng:** `lobby` (phòng chờ: đi lại được, chưa đánh được) → `countdown` (3-2-1, `COUNTDOWN_MS`) → `playing` (`MATCH_DURATION_MS`, có các đợt vũ khí rơi) → `ended` (`MATCH_INTERMISSION_MS`, xem xếp hạng, không đánh được) → quay về `lobby` (phải bấm F lại, không tự mở trận mới). Từ `lobby` sang `countdown` khi phòng có ít nhất `MIN_PLAYERS_TO_START` người **và** ai cũng sẵn sàng; đang đếm ngược mà có người bỏ sẵn sàng / người mới vào / có người thoát làm thiếu người thì huỷ về `lobby`.
+- **Lịch rơi vũ khí:** mảng `WAVES` trong `server/config.js`, `at` là vị trí trong trận (0–1) nên đổi độ dài trận thì lịch co giãn theo. Mỗi đợt: `WAVE_WARNING_MS` trước giờ rơi server gửi `wave` (mọi client hiện đếm ngược), đến giờ gửi `drop`.
+- **Message:** `wave`, `drop`, `pickup`, `start`, `end`; snapshot có `mt` (mili giây còn lại) để client hiệu chỉnh đồng hồ; `welcome.match` cho người vào giữa chừng. Server gửi "còn bao lâu" chứ không gửi mốc giờ tuyệt đối, client tự đổi sang `performance.now()` (`state.match.endsAt`) nên không phụ thuộc đồng hồ máy.
+- **Client:** `ui/matchHud.js` chạy mỗi khung hình (đồng hồ, banner đếm ngược, bảng xếp hạng cuối trận, bíp theo giây); `net/handlers.js` xử lý message và phát âm thanh sự kiện. Vũ khí rơi có hoạt ảnh lao xuống từ `FALL_HEIGHT` (`entities/pickup.js`), chạm đất thì gọi `onLand` (tiếng đập + tia lửa).
+- **Âm thanh** (`audio/sfx.js`) đều tổng hợp bằng Web Audio, không dùng file. Thêm âm mới: viết hàm dùng `note({ freq, slideTo, type, delay, dur, peak, ... })`; muốn nghe theo vị trí thì thêm vào bảng `kinds` để dùng với `Sfx.at`.
+
+## Địa hình, sông, cầu
+
+- **Lưới độ cao là nguồn duy nhất:** `server/maps/terrain.js` (`buildTerrain(spec)`) sinh lưới độ cao (cm, số nguyên, mỗi `step` mét) từ mô tả trong file map: đồi nhiễu + gò (`bumps`), mặt bằng phẳng quanh võ đài (`plateau`), một con sông uốn lượn quanh tâm sân (`river`) và các cầu (`bridges`). Server gửi nguyên lưới cho client; cả hai nội suy bằng **cùng một hàm** (`interpolate` trong `server/maps/terrain.js` và `public/js/core/terrain.js`, phải khớp từng chữ, mỗi ô chia hai tam giác theo đường chéo (i+1,j)–(i,j+1), đúng như mặt đất được vẽ). Sửa một bên là phải sửa bên kia.
+- **Độ cao chân `y` là tuyệt đối** (không phải "cao hơn mặt đất"). Mặt đất tại chỗ đứng: `groundAt(x, z, feetY)` (client: `core/terrain.js`, server: `terrain.groundAt`): mặt cầu nếu chân đã đủ cao để bước lên (`deckY − 0.5`), ngược lại là đất. Đi dưới gầm cầu thì ở đáy sông.
+- **Đặt vật thể:** mọi thứ đứng trên đất phải lấy `heightAt(x, z)` làm độ cao gốc (`world/props.js`, `entities/pickup.js`); tường dùng `footprintHeights` để chân chôn xuống và đỉnh vượt đất dốc. Sinh vật phẩm/hồi sinh phải tránh nước: `terrain.isDry(x, z)`; rải ngẫu nhiên thì truyền `reject` cho `scatter`.
+- **Sông:** lội được nhưng chậm (`WATER_SPEED_MULT`), có tiếng lõm bõm khi vào/ra; cầu là mặt phẳng nhẹ nhàng đi qua. Mặt nước là một mesh chỉ phủ các ô có chỗ thấp hơn mực nước, độ đục theo độ sâu (alpha từng đỉnh); hoạ tiết gợn sóng trôi bằng `updateWater(dt)` mỗi khung hình.
+- **Va chạm vẫn 2D** (tường, vật cản, người chơi). Chỉ đòn đấm có thêm giới hạn chênh độ cao `PUNCH_VERTICAL` (server). Server kẹp `y` client báo vào khoảng [đất − 0.5, đất + 4].
+- **Thêm cầu/đồi/đoạn sông:** sửa spec `terrain` trong file map (`bridges.angles`, `bumps`, `river`); client tự dựng hình, không cần sửa code. Cầu nằm dọc trục x hoặc z (trùng đại lộ); đổi hình dạng sông thì kiểm tra lại tường và vật cản không chạm nước.
+
+## Phòng, mã phòng, link mời
+
+- **Mã phòng 3 chữ số (100–999)** do server cấp ngẫu nhiên, không trùng phòng đang có (`server/game/rooms.js`: `createRoom`, `getRoom`, `removeIfEmpty`). Phòng trống thì xoá và mã được dùng lại. Tối đa `ROOM_MAX_PLAYERS` người mỗi phòng.
+- **Vào phòng:** client gửi `join` kèm `{ create: true }` (tạo mới) hoặc `{ room: '427' }`. Sai thì server trả `{ t: 'error', reason }` (`bad_code`, `room_not_found`, `room_full`, `server_full`) và **giữ kết nối** để thử lại; đúng thì trả `welcome` kèm `room: { code, max, minPlayers, created }`. Thêm lý do lỗi mới: thêm vào `ERRORS` trong `ui/menu.js`.
+- **Link mời** là `/?room=<mã>`: menu đọc tham số này để điền sẵn mã; sau khi vào, client đổi thanh địa chỉ thành link đó. Phím **L** (`copyRoomLink` trong `ui/lobbyHud.js`) sao chép link; người tạo phòng được sao chép tự động.
+- **Sẵn sàng:** phím **F** gửi `{ t: 'ready', ready }` (chỉ có tác dụng ở `lobby`/`countdown`); cờ `r` của từng người nằm trong snapshot, pha phòng ở `ph`, thời gian còn lại của pha ở `mt`. Client dựng bảng phòng chờ từ `infos` (danh sách người) + `state.readyIds`.
+- **Message theo phòng:** `lobby` (về phòng chờ, `cancelled: true` nếu chỉ là huỷ đếm ngược), `countdown`, `start`, `end`, `wave`, `drop`, `pickup`, `join`, `leave`.
+- **Chạy thử:** `npm run dev:solo` hạ ngưỡng xuống 1 người để thử một mình. Tham số: `--min-players=N`, `--match-seconds=S` (hoặc biến môi trường `MIN_PLAYERS`, `MATCH_SECONDS`).
+
+## Bảo mật và đồng bộ
+
+- Mọi dữ liệu từ client là không tin cậy: kiểm tra trong `server/game/sanitize.js` hoặc `movement.js` trước khi dùng.
+- Hiển thị tên người chơi bằng `textContent`, không bao giờ `innerHTML`.
+- `MIN_DIST` có ở cả `server/config.js` và `public/js/config.js`, hai giá trị phải khớp nhau. Đổi một bên thì đổi bên kia.
+- Static server chỉ phục vụ trong `public/` (cộng các file trong `VENDOR_FILES` của `server/config.js`: Babylon và loader glTF). Giữ kiểm tra path traversal.
+
+## Quy ước
+
+- Comment và chuỗi giao diện bằng tiếng Việt, comment giải thích "vì sao", không lặp lại code.
+- Không có test tự động. Sau khi sửa phải chạy `npm start` và thử bằng 2 tab trình duyệt.
