@@ -24,6 +24,8 @@ function createPlayer(ws) {
     dead: false,
     kills: 0,
     streak: 0, // số lần hạ gục liên tiếp từ lần chết gần nhất (đủ RADIO_STREAK_KILLS thì gọi được máy bay thả radio)
+    score: 0,
+    dog: false, // đang hoá chó trong sự kiện: không vũ khí, không đánh / nhặt được (xem dogEvent.js)
     lastAttack: 0, // mốc Date.now() của đòn đánh / phát bắn gần nhất (tính hồi chiêu)
     slots: startingSlots(), // túi đồ, xem inventory.js
     activeSlot: FIST_SLOT,

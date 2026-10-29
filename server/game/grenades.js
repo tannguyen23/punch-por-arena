@@ -8,6 +8,7 @@ const { moveGrenade } = require('./grenadePhysics');
 const { blast } = require('./explosion');
 const { flashTargets } = require('./flashbang');
 const { freezeGround } = require('./ice');
+const { cantAct } = require('./restrictions');
 
 // Lựu đạn: ném theo cung từ mắt người ném, server mô phỏng đường bay (grenadePhysics.js), hết ngòi thì nổ.
 // Vị trí từng quả đi trong snapshot (`gr`), client chỉ vẽ theo. Không require match.js (match.js require file này).
@@ -19,7 +20,7 @@ function handleThrow(room, p, m) {
   if (!Number.isFinite(m.yaw) || !Number.isFinite(m.pitch)) return;
   const weapon = WEAPONS[p.weapon];
   const now = Date.now();
-  if (weapon.kind !== 'throwable' || room.phase !== 'playing' || p.dead || !hasAmmo(p)) return;
+  if (weapon.kind !== 'throwable' || room.phase !== 'playing' || p.dead || cantAct(room, p) || !hasAmmo(p)) return;
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw;

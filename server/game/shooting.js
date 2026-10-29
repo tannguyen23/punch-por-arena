@@ -4,6 +4,7 @@ const { broadcast } = require('../net/messaging');
 const { WEAPONS } = require('./weapons');
 const { useAmmo, hasAmmo } = require('./inventory');
 const { isPlaying } = require('./match');
+const { cantAct } = require('./restrictions');
 const { applyDamage } = require('./damage');
 const { eyeOf, pointAt, aimDirection, obstacleDistance, firstBodyHit } = require('./raycast');
 const { launchRocket } = require('./rockets');
@@ -31,7 +32,7 @@ function handleFire(room, p, m) {
   if (!Number.isFinite(m.yaw) || !Number.isFinite(m.pitch)) return;
   const weapon = WEAPONS[p.weapon];
   const now = Date.now();
-  if (!FIRE_KINDS.has(weapon.kind) || !isPlaying(room) || p.dead || !hasAmmo(p)) return;
+  if (!FIRE_KINDS.has(weapon.kind) || !isPlaying(room) || p.dead || cantAct(room, p) || !hasAmmo(p)) return;
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất

@@ -79,7 +79,7 @@ export function updateViewmodel(dt) {
   state.recoil *= Math.exp(-RECOIL_RECOVER * dt);
   raise = Math.max(0, raise - dt / EQUIP_RAISE_TIME);
   const lift = raise * raise; // chậm dần khi gần tới chỗ
-  const showHands = state.alive && !isGun(equipped);
+  const showHands = state.alive && !state.dog && !isGun(equipped); // chó không có tay
   if (viewmodel) {
     viewmodel.root.setEnabled(showHands);
     viewmodel.setRunning(state.alive && state.sprinting);

@@ -28,10 +28,12 @@ export const state = {
     phase: 'lobby', // 'lobby' (phòng chờ) | 'countdown' (3-2-1) | 'playing' | 'ended' (xem bảng xếp hạng)
     endsAt: 0, // mốc performance.now() khi hết trận (hoặc hết giờ nghỉ)
     wave: null, // hòm tiếp tế sắp chạm đất: { at: mốc performance.now() }
-    ranking: [], // bảng xếp hạng khi hết trận: [{ id, name, kills }]
+    ranking: [], // bảng xếp hạng khi hết trận: [{ id, name, kills, score }]
     result: null, // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (server/game/match.js)
     showEndAt: 0, // mốc performance.now() từ đó mới hiện bảng kết quả (sau bom hạt nhân đợi xem xong vụ nổ)
   },
+  dog: false, // mình đang hoá chó (từ snapshot): chạy nhanh, không đánh / cầm vũ khí được
+  event: null, // sự kiện đang chạy: { kind, targetId, targetName, bounty, introEndsAt, endsAt } (mốc performance.now()), xem net/eventHandlers.js
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
   ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
   lastFireAt: 0, // mốc performance.now() lần bắn gần nhất (xem AMMO_SYNC_GRACE_MS)

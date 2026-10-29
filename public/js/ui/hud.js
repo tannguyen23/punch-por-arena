@@ -14,6 +14,7 @@ const hpBar = document.getElementById('hpbar');
 const damageNotice = document.getElementById('damage-notice');
 
 const HEAL_GLOW_MS = 600; // thanh máu sáng xanh ngần này sau mỗi lần máu tăng (đang tự hồi)
+const DAMAGE_REASONS = { cactus: 'Gai xương rồng', fall: 'Rơi khỏi đảo', lightning: 'Sét đánh' }; // `source` của message hit
 
 let lastHp = null;
 let healTimer = null;
@@ -45,7 +46,7 @@ export function flashDamage() {
 }
 
 export function showDamageNotice(damage, source) {
-  const reason = source === 'cactus' ? 'Gai xương rồng' : source === 'fall' ? 'Rơi khỏi đảo' : '';
+  const reason = DAMAGE_REASONS[source] ?? '';
   damageNotice.textContent = reason ? `${reason} -${damage} HP` : `-${damage} HP`;
   damageNotice.classList.remove('show');
   void damageNotice.offsetWidth;
@@ -93,13 +94,13 @@ export function updateHud(snapshotPlayers) {
 function updateScoreboard(list) {
   // Tên do người chơi tự nhập nên dùng textContent, không dùng innerHTML.
   const title = document.createElement('b');
-  title.textContent = 'Điểm hạ gục';
+  title.textContent = 'Điểm';
   const rows = list
     .slice()
-    .sort((a, b) => b.kills - a.kills)
+    .sort((a, b) => b.score - a.score)
     .map((p) => {
       const row = document.createElement('div');
-      row.textContent = `${p.id === state.myId ? '▶ ' : ''}${infos.get(p.id)?.name ?? '...'}: ${p.kills}`;
+      row.textContent = `${p.id === state.myId ? '▶ ' : ''}${infos.get(p.id)?.name ?? '...'}: ${p.score}`;
       return row;
     });
   board.replaceChildren(title, ...rows);

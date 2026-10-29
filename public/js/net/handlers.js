@@ -17,6 +17,7 @@ import { combatHandlers } from './combatHandlers.js';
 import { grenadeHandlers } from './grenadeHandlers.js';
 import { weatherHandlers } from './weatherHandlers.js';
 import { nukeHandlers } from './nukeHandlers.js';
+import { eventHandlers, applyEvent } from './eventHandlers.js';
 import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
 
@@ -52,6 +53,7 @@ const messageHandlers = {
   ...grenadeHandlers,
   ...weatherHandlers,
   ...nukeHandlers,
+  ...eventHandlers,
 
   welcome(m) {
     state.myId = m.id;
@@ -70,6 +72,7 @@ const messageHandlers = {
     if (m.room.created) copyRoomLink();
     applyMatch(m.match);
     setStorm(m.match.weather.storm); // vào giữa lúc đang bão thì mưa luôn, không chuyển dần
+    applyEvent(m.match.event);
     m.pickups.forEach(addPickup); // hòm đang rơi / đã nằm trên sân (máy bay có thể vẫn đang bay)
     m.ice.forEach(({ left, ...patch }) => spawnIce({ ...patch, life: left })); // vũng băng còn tồn tại
     if (m.nuke) startNuke(m.nuke); // bom hạt nhân đang tới: vào giữa chừng cũng nghe và thấy phần còn lại

@@ -28,6 +28,13 @@ function clearInventory(p) {
   syncHeld(p);
 }
 
+// Mất sạch vũ khí kể cả món khởi đầu (người hoá chó, xem dogEvent.js).
+function stripInventory(p) {
+  p.slots = emptySlots();
+  p.activeSlot = FIST_SLOT;
+  syncHeld(p);
+}
+
 // Nhặt vũ khí: đã có cùng loại thì cộng dồn đạn vào ô đó (lựu đạn tối đa `stack` quả), không thì vào ô trống đầu tiên;
 // xong thì cầm luôn. Trả về false khi túi đầy / ô lựu đạn đã đủ quả (phải bấm G vứt bớt) để hòm nằm lại trên sân.
 function addToInventory(p, weapon, ammo) {
@@ -84,4 +91,4 @@ const hasAmmo = (p) => p.ammo === null || p.ammo > 0;
 // Gửi trong snapshot: mỗi ô là [vũ khí, đạn] hoặc 0 (trống).
 const slotsView = (p) => p.slots.map((s) => (s ? [s.weapon, s.ammo] : 0));
 
-module.exports = { FIST_SLOT, emptySlots, startingSlots, clearInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };
+module.exports = { FIST_SLOT, emptySlots, startingSlots, clearInventory, stripInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };

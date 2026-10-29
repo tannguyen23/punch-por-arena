@@ -8,9 +8,10 @@ import { updateViewmodel } from './viewmodel.js';
 import { updateSprint } from './sprint.js';
 import { slideVelocity, settleSlide, resetSlide } from './iceSlide.js';
 import { groundAt, waterLevel } from '../core/terrain.js';
+import { isFrozen } from '../core/freeze.js';
 import * as Sfx from '../audio/sfx.js';
 import {
-  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT,
+  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT, DOG,
 } from '../config.js';
 
 export function look(movementX, movementY, sensitivity) {
@@ -26,9 +27,10 @@ function applyMovement(dt) {
   const sin = Math.sin(state.yaw);
   const cos = Math.cos(state.yaw);
 
-  state.crouching = keys.has('KeyC');
+  state.crouching = keys.has('KeyC') && !state.dog; // chó không ngồi
   updateSprint(moving && !state.crouching && (keys.has('ShiftLeft') || keys.has('ShiftRight')), dt);
-  const speed = MOVE_SPEED * (state.sprinting ? SPRINT_MULT : state.crouching ? CROUCH_MULT : 1) * (isWading() ? WATER_SPEED_MULT : 1);
+  const speed = MOVE_SPEED * (state.sprinting ? SPRINT_MULT : state.crouching ? CROUCH_MULT : 1) * (isWading() ? WATER_SPEED_MULT : 1)
+    * (state.dog ? DOG.speedMult : 1);
   const scale = moving ? speed / len : 0;
   const { x, z } = slideVelocity((sin * fwd + cos * strafe) * scale, (cos * fwd - sin * strafe) * scale, dt);
   state.me.x += x * dt;
@@ -54,7 +56,7 @@ function applyVertical(dt) {
   if (me.y <= ground + GROUND_STICK && state.vy <= 0) {
     me.y = ground;
     state.vy = 0;
-    if (keys.has('Space') && !state.crouching) state.vy = JUMP_SPEED;
+    if (keys.has('Space') && !state.crouching && !isFrozen()) state.vy = JUMP_SPEED;
   }
   state.vy -= GRAVITY * dt;
   me.y += state.vy * dt;
@@ -87,7 +89,7 @@ export function updateLocalPlayer(dt) {
 
   if (state.alive && state.myId !== null) {
     const { x, z } = state.me;
-    applyMovement(dt);
+    if (!isFrozen()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật
     applyVertical(dt);
     updateWading();
     resolveCollisions();
