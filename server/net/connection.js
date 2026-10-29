@@ -6,6 +6,7 @@ const { randomFreePosition } = require('../game/spawn');
 const { applyClientState } = require('../game/movement');
 const { handlePunch } = require('../game/combat');
 const { handleFire } = require('../game/shooting');
+const { handleThrow } = require('../game/grenades');
 const { pickupView } = require('../game/pickups');
 const { handleDrop } = require('../game/drops');
 const { selectSlot } = require('../game/inventory');
@@ -67,6 +68,7 @@ const gameHandlers = {
   state: (p, m) => applyClientState(p.room, p, m),
   punch: (p, m) => (m.hand === 'L' || m.hand === 'R') && handlePunch(p.room, p, m.hand),
   fire: (p, m) => handleFire(p.room, p, m),
+  throw: (p, m) => handleThrow(p.room, p, m),
   ready: (p, m) => setReady(p.room, p, m.ready),
   slot: (p, m) => selectSlot(p, m.slot), // selectSlot tự kiểm tra chỉ số ô
   drop: (p) => handleDrop(p.room, p),

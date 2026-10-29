@@ -5,6 +5,8 @@ const {
 const { broadcast } = require('../net/messaging');
 const { AIRDROP_LEAD_MS, clearPickups, launchAirdrop } = require('./pickups');
 const { clearRockets } = require('./rockets');
+const { clearGrenades } = require('./grenades');
+const { startWeather, stopWeather, tickWeather, weatherView } = require('./weather');
 const { regenerate } = require('./regen');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
@@ -12,6 +14,13 @@ const { clearInventory } = require('./inventory');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
+
+// Bỏ mọi thứ đang bay / chờ nổ trên sân khi đổi pha (tên lửa, lựu đạn, sét đã báo) và cho trời tạnh.
+function clearProjectiles(room) {
+  clearRockets(room);
+  clearGrenades(room);
+  stopWeather(room);
+}
 
 const isPlaying = (room) => room.phase === 'playing';
 const timeLeft = (room) => (room.phase === 'lobby' ? 0 : Math.max(0, room.endsAt - Date.now()));
@@ -48,16 +57,17 @@ function startMatch(room) {
   const now = Date.now();
   resetPlayers(room);
   clearPickups(room);
-  clearRockets(room);
+  clearProjectiles(room);
   room.phase = 'playing';
   room.endsAt = now + MATCH_DURATION_MS;
   room.ranking = [];
   room.nextAirdropAt = now + AIRDROP_FIRST_MS;
+  startWeather(room, now);
   broadcast(room, { t: 'start', duration: MATCH_DURATION_MS });
 }
 
 function endMatch(room) {
-  clearRockets(room);
+  clearProjectiles(room);
   room.phase = 'ended';
   room.endsAt = Date.now() + MATCH_INTERMISSION_MS;
   room.ranking = [...room.players.values()]
@@ -70,7 +80,7 @@ function endMatch(room) {
 function returnToLobby(room) {
   resetPlayers(room);
   clearPickups(room);
-  clearRockets(room);
+  clearProjectiles(room);
   room.ranking = [];
   enterLobby(room);
 }
@@ -105,6 +115,7 @@ function tickRoom(room) {
       } else {
         runAirdrops(room, now);
         regenerate(room, now);
+        tickWeather(room, now);
       }
       break;
     case 'ended':
@@ -113,9 +124,10 @@ function tickRoom(room) {
   }
 }
 
-// Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ (hòm tiếp tế nằm trong 'pickups').
+// Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ, đang bão không
+// (hòm tiếp tế nằm trong 'pickups').
 function matchInfo(room) {
-  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking };
+  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, weather: weatherView(room) };
 }
 
 function startMatchLoop() {

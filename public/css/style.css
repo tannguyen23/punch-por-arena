@@ -12,7 +12,8 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
   linear-gradient(var(--ch), var(--ch)) center top / 2px 7px no-repeat,
   linear-gradient(var(--ch), var(--ch)) center bottom / 2px 7px no-repeat; }
 #crosshair.rocket { width: 30px; height: 30px; margin: -15px 0 0 -15px; box-sizing: border-box; border: 2px solid var(--ch); background: radial-gradient(circle, var(--ch) 0 2px, transparent 3px); }
-#crosshair.gun.hit, #crosshair.rocket.hit { transform: scale(1.35); }
+#crosshair.throw { width: 20px; height: 20px; margin: -10px 0 0 -10px; box-sizing: border-box; border: 2px dashed var(--ch); background: radial-gradient(circle, var(--ch) 0 1.5px, transparent 2.5px); }
+#crosshair.gun.hit, #crosshair.rocket.hit, #crosshair.throw.hit { transform: scale(1.35); }
 .weapon-icon { width: 1.6em; height: 1em; fill: currentColor; vertical-align: -0.1em; }
 .slot-icon .weapon-icon { width: 42px; height: 26px; fill: #eee; }
 .weapon-name .weapon-icon { margin-right: 6px; fill: #fd3; }
@@ -65,6 +66,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #hpbar.healing { border-color: #8f8; box-shadow: 0 0 10px 2px rgba(110,255,110,.75); }
 #board { position: fixed; right: 16px; top: 16px; color: #fff; background: rgba(0,0,0,.4); padding: 8px 12px; border-radius: 6px; font-size: 14px; pointer-events: none; min-width: 140px; }
 #flash { position: fixed; inset: 0; background: red; opacity: 0; pointer-events: none; transition: opacity .25s; }
+#blind { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #dead { position: fixed; left: 0; right: 0; top: 35%; text-align: center; color: #fff; font-size: 40px; font-weight: bold; text-shadow: 0 2px 8px #000; display: none; pointer-events: none; }
 
 /* ---------- Màn hình phủ (menu, tạm dừng) ---------- */
@@ -85,7 +87,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #menu h1 { margin: 0 0 12px; }
 #menu .panel { background: rgba(20,24,32,.9); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 20px 24px; width: min(440px, 90vw); text-align: left; max-height: calc(100vh - 110px); overflow-y: auto; }
 #preview { display: block; width: 100%; height: 190px; margin-bottom: 14px; border-radius: 8px; background: radial-gradient(circle at 50% 32%, #33415c, #11151d 72%); }
-#name { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 16px; border-radius: 8px; border: 1px solid #556; background: #0d1117; color: #fff; margin-bottom: 14px; }
+#name { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 16px; border-radius: 8px; border: 1px solid #556; background: #0d1117; color: #fff; margin-bottom: 4px; }
 .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .row label { width: 88px; font-size: 14px; color: #bcc; flex: none; }
 .opts { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -95,8 +97,15 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 .pat.on { background: #4af; border-color: #4af; color: #002; }
 .buttons { display: flex; gap: 10px; margin-top: 16px; }
 .buttons button { flex: 1; padding: 11px; font-size: 16px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 600; }
-#random { background: #334; color: #fff; }
-#create { background: #3c3; color: #031; flex: 2; }
+#menu .panel[hidden] { display: none; }
+#menu h2 { margin: 0 0 14px; font-size: 20px; }
+.menu-main { display: block; width: 100%; margin-top: 12px; padding: 13px; font-size: 18px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 700; background: #3c3; color: #031; }
+.menu-main:hover { background: #4d4; }
+.menu-main.invited { box-shadow: 0 0 0 3px #fd3; }
+.menu-second { display: block; width: 100%; margin-top: 10px; padding: 11px; font-size: 16px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 600; background: #4af; color: #002; }
+.menu-second:hover { background: #6bf; }
+#random, #look-default { background: #334; color: #fff; }
+#customize-done { background: #3c3; color: #031; flex: 1.4; }
 .menu-settings { width: 100%; margin-top: 10px; padding: 9px; border: 0; border-radius: 8px; background: rgba(255,255,255,.08); color: #dde; font-size: 14px; font-weight: 600; cursor: pointer; }
 .menu-settings:hover { background: rgba(255,255,255,.15); }
 .join-row { display: flex; gap: 10px; margin-top: 10px; }
@@ -104,7 +113,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #join { flex: 1; padding: 11px; font-size: 16px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 600; background: #4af; color: #002; }
 #join.invited { box-shadow: 0 0 0 3px #fd3; }
 #menu-invite { margin: 10px 0 0; color: #fd3; font-weight: 600; text-align: center; }
-#menu-error { margin: 6px 0 0; min-height: 1.2em; color: #f66; font-weight: 600; text-align: center; }
+.menu-error { margin: 6px 0 0; min-height: 1.2em; color: #f66; font-weight: 600; text-align: center; }
 #room-badge { position: fixed; top: 12px; left: 12px; color: #fff; font-size: 13px; font-weight: 600; background: rgba(0,0,0,.45); padding: 4px 10px; border-radius: 6px; pointer-events: none; }
 #room-badge:empty { display: none; }
 #lobby { display: none; position: fixed; top: 14%; left: 50%; transform: translateX(-50%); min-width: 320px; max-width: 90vw; box-sizing: border-box; padding: 14px 20px; text-align: center; color: #fff; background: rgba(0,0,0,.62); border-radius: 12px; pointer-events: none; }

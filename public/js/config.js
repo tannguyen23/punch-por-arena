@@ -71,6 +71,8 @@ export const GUN_FX = {
   explosionLife: 0.5,
   smokeEvery: 0.03, // tên lửa nhả khói mỗi chừng này giây
   rocketMaxAge: 5, // phòng khi mất tin nhắn 'boom'
+  flashBurstLife: 0.25, // lựu đạn choáng loé sáng trong ngần này giây
+  flashBurstSize: 3, // quả cầu sáng phình tới đường kính này (mét)
 };
 
 // Máy bay và hòm tiếp tế (thời điểm, vị trí, tốc độ do server gửi; ở đây chỉ là phần hình).
@@ -156,4 +158,57 @@ export const PREVIEW = {
   targetY: 1,
   fov: 0.8,
   rotateSpeed: 0.6,
+};
+
+// Ngoại hình mặc định khi người chơi chưa tuỳ chỉnh (khớp LOOK_DEFAULT ở server/config.js; hoạ tiết 0 = trơn).
+export const DEFAULT_LOOK = { shirt: '#e53935', pants: '#1a237e', glove: '#1e88e5', skin: '#f5c7a3', hair: '#1a120d', pattern: 0 };
+
+// Lựu đạn đang bay / nằm chờ nổ (fx/grenades.js). Vị trí thật do snapshot gửi; giữa hai snapshot client tự đoán bằng trọng lực.
+export const GRENADE_FX = {
+  gravity: 20, // khớp GRENADE.gravity ở server/config.js
+  radius: 0.1, // khớp GRENADE.radius
+  spin: 9, // quả lựu đạn xoay khi bay (radian/giây)
+  correct: 12, // kéo vị trí đang vẽ về vị trí snapshot nhanh cỡ này (càng lớn càng sát)
+  maxAge: 6, // giây; phòng khi mất tin nhắn 'detonate'
+};
+
+// Lựu đạn choáng: server báo mức độ theo khoảng cách (đã trừ người bị che), client nhân thêm theo hướng nhìn.
+export const FLASHBANG = {
+  maxMs: 3000, // choáng lâu nhất (đứng sát, nhìn thẳng vào)
+  holdFraction: 0.35, // trắng xoá trong phần đầu này rồi mới mờ dần
+  facingFull: 0.5, // cos góc giữa hướng nhìn và quả nổ: lớn hơn ngần này là nhìn thẳng, choáng đủ
+  behind: 0.3, // quay lưng lại vẫn choáng ngần này phần (ánh sáng phản chiếu, tiếng nổ)
+  minStrength: 0.08, // yếu hơn ngần này thì bỏ qua
+  muffleFreq: 500, // âm thanh nghẹt lại (lọc thấp tới tần số này) trong lúc choáng
+};
+
+// Bão (fx/weather.js, fx/rain.js, fx/lightning.js). Thời điểm và chỗ sét đánh do server quyết định.
+export const WEATHER = {
+  skyStorm: [0.3, 0.34, 0.4], // màu trời khi bão (màu trời quang lấy từ core/scene.js)
+  lightMult: 0.55, // ánh sáng còn ngần này lần khi bão
+  fogDensity: 0.012, // sương mù khi mưa to
+  rain: {
+    capacity: 4000,
+    rate: 2600, // giọt mỗi giây khi mưa to nhất
+    area: 30, // mưa rơi trong hình vuông cạnh ngần này (mét) quanh camera
+    height: 14, // giọt bắt đầu rơi cao hơn camera ngần này
+    speed: 28, // m/giây
+    life: 0.6,
+    size: [0.03, 0.05],
+    stretch: 10, // giọt kéo dài thành vệt
+    color: [0.75, 0.8, 0.9, 0.45],
+  },
+  rainVolume: 0.5,
+};
+export const LIGHTNING_FX = {
+  boltLife: 0.25, // giây tia sét còn hiện
+  boltHeight: 60, // tia sét bắt đầu từ độ cao này trên mặt đất
+  boltSegments: 14, // số khúc gấp của tia sét
+  boltJitter: 2.2, // mỗi khúc lệch ngang tối đa ngần này (mét)
+  boltRadius: 0.12,
+  skyFlash: 1.6, // ánh sáng tăng thêm ngần này lúc sét đánh rồi tắt dần
+  skyFlashLife: 0.35,
+  speedOfSound: 343, // tiếng sấm tới trễ theo khoảng cách (m/giây)
+  shakeRange: 12, // đứng gần hơn ngần này (mét) thì rung camera
+  shake: 0.25,
 };

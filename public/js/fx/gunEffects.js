@@ -60,6 +60,25 @@ export function bulletImpact([x, y, z]) {
   Fx.burst(x, y, z, 5, 0.6);
 }
 
+// Lựu đạn choáng nổ: quả cầu trắng loé rất sáng rồi tắt nhanh (không có lửa).
+export function flashBurst([x, y, z]) {
+  const mat = glowMaterial('flashBurst', new Color3(1, 1, 1), 1);
+  const ball = MeshBuilder.CreateSphere('flashBurst', { diameter: 1, segments: 10 }, scene);
+  ball.material = mat;
+  ball.position.set(x, y, z);
+  Fx.track({
+    mesh: ball,
+    ownMaterial: true,
+    life: GUN_FX.flashBurstLife,
+    max: GUN_FX.flashBurstLife,
+    step(dt, k) {
+      ball.scaling.setAll(Math.max(GUN_FX.flashBurstSize * Math.sqrt(k), 0.001));
+      mat.alpha = 1 - k;
+    },
+  });
+  Fx.burst(x, y, z, 10, 1.2);
+}
+
 // Vụ nổ bán kính `radius`: quả cầu lửa phình ra rồi mờ đi, kèm tia lửa và ngôi sao.
 export function explosion([x, y, z], radius) {
   const mat = glowMaterial('boom', new Color3(1, 0.55, 0.15), 0.85);

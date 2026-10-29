@@ -29,7 +29,7 @@ function handleFire(room, p, m) {
   if (!Number.isFinite(m.yaw) || !Number.isFinite(m.pitch)) return;
   const weapon = WEAPONS[p.weapon];
   const now = Date.now();
-  if (weapon.kind === 'melee' || !isPlaying(room) || p.dead || !hasAmmo(p)) return;
+  if ((weapon.kind !== 'gun' && weapon.kind !== 'rocket') || !isPlaying(room) || p.dead || !hasAmmo(p)) return;
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất

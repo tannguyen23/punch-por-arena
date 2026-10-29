@@ -3,12 +3,17 @@ import { buildArena } from '../world/arena.js';
 import { disposeRemote } from '../entities/remotePlayer.js';
 import { groundAt } from '../core/terrain.js';
 import { clearRockets } from '../fx/rockets.js';
+import { clearGrenades, syncGrenades } from '../fx/grenades.js';
+import { clearStrikes } from '../fx/lightning.js';
+import { setStorm } from '../fx/weather.js';
 import { setPauseVisible } from '../ui/hud.js';
 import { hideMenu, showMenuError } from '../ui/menu.js';
 import { copyRoomLink } from '../ui/lobbyHud.js';
 import { announce } from '../ui/matchHud.js';
 import { pickupHandlers, addPickup, clearPickups } from './pickupHandlers.js';
 import { combatHandlers } from './combatHandlers.js';
+import { grenadeHandlers } from './grenadeHandlers.js';
+import { weatherHandlers } from './weatherHandlers.js';
 import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
 
@@ -19,15 +24,24 @@ function applyMatch({ phase, timeLeft, ranking }) {
   state.match.ranking = ranking;
 }
 
-// Sang trận mới / về phòng chờ: dọn hòm tiếp tế và tên lửa còn sót.
+// Bỏ những thứ đang bay / chờ nổ (server cũng bỏ khi đổi pha).
+function clearProjectiles() {
+  clearRockets();
+  clearGrenades();
+  clearStrikes();
+}
+
+// Sang trận mới / về phòng chờ: dọn hòm tiếp tế, tên lửa, lựu đạn, sét còn sót.
 function clearField() {
   clearPickups();
-  clearRockets();
+  clearProjectiles();
 }
 
 const messageHandlers = {
   ...pickupHandlers,
   ...combatHandlers,
+  ...grenadeHandlers,
+  ...weatherHandlers,
 
   welcome(m) {
     state.myId = m.id;
@@ -45,6 +59,7 @@ const messageHandlers = {
     } catch {}
     if (m.room.created) copyRoomLink();
     applyMatch(m.match);
+    setStorm(m.match.weather.storm); // vào giữa lúc đang bão thì mưa luôn, không chuyển dần
     m.pickups.forEach(addPickup); // hòm đang rơi / đã nằm trên sân (máy bay có thể vẫn đang bay)
   },
 
@@ -82,7 +97,7 @@ const messageHandlers = {
   },
 
   end(m) {
-    clearRockets();
+    clearProjectiles();
     state.match.phase = 'ended';
     state.match.endsAt = performance.now() + m.intermission;
     state.match.ranking = m.ranking;
@@ -104,6 +119,7 @@ const messageHandlers = {
     state.match.endsAt = performance.now() + m.mt; // server hiệu chỉnh đồng hồ mỗi lần gửi snapshot
     state.match.phase = m.ph;
     applySnapshot(m.players);
+    syncGrenades(m.gr);
   },
 
   leave(m) {

@@ -18,6 +18,9 @@ import { loadSettings } from './settings.js';
 import { initSettings } from './ui/settingsPanel.js';
 import * as Fx from './fx/effects.js';
 import { updateRockets } from './fx/rockets.js';
+import { updateGrenades } from './fx/grenades.js';
+import { updateWeather } from './fx/weather.js';
+import { updateLightning } from './fx/lightning.js';
 import { updateSprintEffects } from './fx/sprintEffects.js';
 import * as Sfx from './audio/sfx.js';
 
@@ -47,6 +50,9 @@ scene.onBeforeRenderObservable.add(() => {
   updateLobbyHud();
   updateWater(dt);
   updateRockets(dt);
+  updateGrenades(dt);
+  updateWeather(dt);
+  updateLightning(dt);
   Fx.update(dt);
 });
 

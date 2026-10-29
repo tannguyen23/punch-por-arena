@@ -3,6 +3,7 @@ import { state } from '../state.js';
 const el = document.getElementById('ammo');
 
 const LOW_AMMO = 3; // còn ngần này viên thì số chuyển đỏ nhấp nháy
+const LABELS = { melee: 'ĐỘ BỀN', throwable: 'QUẢ' };
 
 let drawn = null;
 
@@ -20,7 +21,7 @@ export function updateAmmo() {
   count.textContent = `${state.ammo}`;
   const label = document.createElement('div');
   label.className = 'ammo-label';
-  label.textContent = state.weaponTypes[state.weapon]?.kind === 'melee' ? 'ĐỘ BỀN' : 'ĐẠN';
+  label.textContent = LABELS[state.weaponTypes[state.weapon]?.kind] ?? 'ĐẠN';
   el.replaceChildren(count, label);
-  el.classList.toggle('low', state.ammo <= LOW_AMMO);
+  el.classList.toggle('low', state.ammo <= LOW_AMMO && state.weaponTypes[state.weapon]?.kind !== 'throwable'); // lựu đạn vốn ít quả
 }

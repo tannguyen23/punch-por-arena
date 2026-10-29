@@ -6,7 +6,7 @@ import { swingHand } from './viewmodel.js';
 import { muzzlePosition } from './aim.js';
 import { announce } from '../ui/matchHud.js';
 import * as Sfx from '../audio/sfx.js';
-import { PUNCH_COOLDOWN, PITCH_LIMIT } from '../config.js';
+import { PUNCH_COOLDOWN, PITCH_LIMIT, FIST_SLOT } from '../config.js';
 
 const DRY_FIRE_COOLDOWN = 0.3; // giây giữa hai tiếng "cạch" khi bóp cò lúc hết đạn
 const DROP_HINT = 'BẤM G ĐỂ VỨT';
@@ -61,12 +61,30 @@ function fire() {
   state.pitch = Math.max(-PITCH_LIMIT, state.pitch - (def?.recoil ?? 0.02)); // nòng hếch lên
 }
 
-// button: 0 = chuột trái, 2 = chuột phải. Cận chiến: tay trái / tay phải; súng: nút nào cũng bắn. Trả về true nếu đã đánh.
+// Lựu đạn: chuột trái ném mạnh, chuột phải tung nhẹ; server mô phỏng đường bay. Ném quả cuối thì ô trống và về tay không
+// ngay trên máy mình (server làm y hệt trong useAmmo), không nhắc "bấm G" như vũ khí hết đạn.
+function throwGrenade(button) {
+  state.cooldown = cooldownOf(state.weapon);
+  swingHand('R', state.cooldown);
+  Sfx.at('whoosh', 0, 0, 0, 0, 0);
+  send({ t: 'throw', yaw: state.yaw, pitch: state.pitch, soft: button === 2 });
+  state.ammo = Math.max(0, state.ammo - 1);
+  state.lastFireAt = performance.now();
+  if (state.ammo > 0) return;
+  state.inventory[state.activeSlot] = null;
+  state.activeSlot = FIST_SLOT;
+  state.weapon = 'fist';
+  state.ammo = null;
+  state.slotChangedAt = performance.now();
+}
+
+// button: 0 = chuột trái, 2 = chuột phải. Cận chiến: tay trái / tay phải; súng: nút nào cũng bắn; lựu đạn: ném mạnh / nhẹ. Trả về true nếu đã đánh.
 export function attack(button) {
   if (!state.alive || state.cooldown > 0 || state.match.phase !== 'playing') return false;
   if (button !== 0 && button !== 2) return false;
   if (state.ammo === 0) dryAttack();
   else if (kindOf(state.weapon) === 'melee') punch(button);
+  else if (kindOf(state.weapon) === 'throwable') throwGrenade(button);
   else fire();
   return true;
 }

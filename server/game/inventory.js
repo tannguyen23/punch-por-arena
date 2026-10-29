@@ -1,5 +1,5 @@
 const { INVENTORY_SLOTS } = require('../config');
-const { DEFAULT_WEAPON } = require('./weapons');
+const { WEAPONS, DEFAULT_WEAPON } = require('./weapons');
 
 // Túi đồ: `p.slots` có INVENTORY_SLOTS ô vũ khí ({ weapon, ammo } hoặc null), cộng một ô tay không cố định ở cuối (FIST_SLOT).
 // `p.activeSlot` là ô đang cầm. `p.weapon` / `p.ammo` luôn là bản sao của ô đang cầm để combat / shooting / rockets
@@ -21,13 +21,15 @@ function clearInventory(p) {
   syncHeld(p);
 }
 
-// Nhặt vũ khí: đã có cùng loại thì cộng dồn đạn vào ô đó, không thì vào ô trống đầu tiên; xong thì cầm luôn.
-// Trả về false khi túi đầy (phải bấm G vứt bớt) để hòm nằm lại trên sân.
+// Nhặt vũ khí: đã có cùng loại thì cộng dồn đạn vào ô đó (lựu đạn tối đa `stack` quả), không thì vào ô trống đầu tiên;
+// xong thì cầm luôn. Trả về false khi túi đầy / ô lựu đạn đã đủ quả (phải bấm G vứt bớt) để hòm nằm lại trên sân.
 function addToInventory(p, weapon, ammo) {
+  const stack = WEAPONS[weapon]?.stack ?? Infinity;
   let index = p.slots.findIndex((s) => s?.weapon === weapon);
   if (index >= 0) {
     const slot = p.slots[index];
-    if (slot.ammo !== null && ammo !== null) slot.ammo += ammo;
+    if (slot.ammo >= stack) return false;
+    if (slot.ammo !== null && ammo !== null) slot.ammo = Math.min(stack, slot.ammo + ammo);
   } else {
     index = p.slots.indexOf(null);
     if (index < 0) return false;
@@ -56,11 +58,16 @@ function takeActive(p) {
   return slot;
 }
 
-// Dùng một viên đạn (một lần chém với dao). Hết đạn thì vũ khí vẫn nằm trong ô, người chơi tự bấm G để vứt.
+// Dùng một viên đạn (một lần chém với dao, một quả lựu đạn). Hết đạn thì vũ khí vẫn nằm trong ô, người chơi tự bấm G để vứt;
+// riêng lựu đạn ném quả cuối là hết, ô trống luôn và về tay không (client làm y hệt trong player/attack.js).
 function useAmmo(p) {
   const slot = p.slots[p.activeSlot];
   if (!slot || slot.ammo === null) return;
   slot.ammo = Math.max(0, slot.ammo - 1);
+  if (slot.ammo === 0 && WEAPONS[slot.weapon].kind === 'throwable') {
+    p.slots[p.activeSlot] = null;
+    p.activeSlot = FIST_SLOT;
+  }
   syncHeld(p);
 }
 

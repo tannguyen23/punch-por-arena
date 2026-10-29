@@ -1,8 +1,6 @@
-const { ROCKET_TICK_MS, SELF_SPLASH_MULT } = require('../config');
 const { broadcast } = require('../net/messaging');
-const { applyDamage } = require('./damage');
-const { allRooms } = require('./rooms');
-const { eyeOf, pointAt, obstacleDistance, firstBodyHit, wallBetween, distanceToBody } = require('./raycast');
+const { blast } = require('./explosion');
+const { eyeOf, pointAt, obstacleDistance, firstBodyHit } = require('./raycast');
 
 const BACK_OFF = 0.2; // nổ lùi lại một chút trước mặt tường/đất, để đoạn từ tâm nổ tới người đứng cùng phía không bị tính là xuyên tường
 
@@ -15,17 +13,10 @@ function launchRocket(room, p, weapon, dir) {
   broadcast(room, { t: 'rocket', id: rocket.id, by: p.id, w: p.weapon, from: pack(rocket.pos), dir: pack(dir, 4), speed: weapon.speed });
 }
 
-// Sức nổ giảm dần theo khoảng cách tới thân người, không xuyên tường. Người bắn tự dính thì chỉ mất một phần.
 function explode(room, rocket, at) {
   const { damage, splash } = rocket.weapon;
-  const owner = room.players.get(rocket.ownerId) ?? null; // người bắn có thể đã thoát
   broadcast(room, { t: 'boom', id: rocket.id, at: pack(at), r: splash });
-  for (const o of room.players.values()) {
-    if (o.dead) continue;
-    const dist = distanceToBody(o, at);
-    if (dist >= splash || wallBetween(at, o)) continue;
-    applyDamage(room, owner, o, damage * (1 - dist / splash) * (o === owner ? SELF_SPLASH_MULT : 1));
-  }
+  blast(room, room.players.get(rocket.ownerId) ?? null, at, damage, splash); // người bắn có thể đã thoát
 }
 
 // Bay thêm một đoạn; chạm người (trừ người bắn), tường, đất hoặc hết tầm thì nổ. Trả về false khi đã nổ.
@@ -50,16 +41,9 @@ function clearRockets(room) {
   room.rockets = [];
 }
 
-function startRocketLoop() {
-  let last = Date.now();
-  return setInterval(() => {
-    const now = Date.now();
-    const dt = (now - last) / 1000;
-    last = now;
-    for (const room of allRooms()) {
-      if (room.rockets.length > 0) room.rockets = room.rockets.filter((rocket) => stepRocket(room, rocket, dt));
-    }
-  }, ROCKET_TICK_MS);
+// Gọi mỗi nhịp của vòng lặp vật thể bay (projectiles.js).
+function stepRockets(room, dt) {
+  if (room.rockets.length > 0) room.rockets = room.rockets.filter((rocket) => stepRocket(room, rocket, dt));
 }
 
-module.exports = { launchRocket, clearRockets, startRocketLoop };
+module.exports = { launchRocket, clearRockets, stepRockets };

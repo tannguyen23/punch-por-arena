@@ -1,10 +1,9 @@
-const { MAX_HP, SPAWN_CLEARANCE } = require('../config');
+const { MAX_HP, SPAWN_CLEARANCE, MAP_MARGIN } = require('../config');
 const { currentMap, terrain } = require('../maps');
 const { send } = require('../net/messaging');
 const { distToRect } = require('../utils/geometry');
 
 const PLAYER_RADIUS = 0.5;
-const SPAWN_MARGIN = 3; // cách tường tối thiểu
 
 // Vị trí khô ráo, không đè lên vật phẩm, tường nào và không sát người chơi còn sống trong phòng.
 function isFree(room, pos) {
@@ -17,7 +16,7 @@ function isFree(room, pos) {
 
 // Vị trí ngẫu nhiên trong sân, tránh vật phẩm, tường và người chơi. Dùng cho chỗ hồi sinh và chỗ vũ khí rơi.
 function randomFreePosition(room) {
-  const range = currentMap.size - SPAWN_MARGIN;
+  const range = currentMap.size - MAP_MARGIN;
   let pos;
   for (let i = 0; i < 20; i++) {
     pos = { x: (Math.random() * 2 - 1) * range, z: (Math.random() * 2 - 1) * range };

@@ -9,19 +9,22 @@ import { knife } from './knife.js';
 import { pistol } from './pistol.js';
 import { ak47 } from './ak47.js';
 import { rocket } from './rocket.js';
+import { frag } from './frag.js';
+import { flashbang } from './flashbang.js';
 
 // Hình dạng và cách cầm của từng vũ khí. Id phải khớp bảng WEAPONS ở server/game/weapons.js ('fist' không có hình).
 // Mỗi định nghĩa có `icon`, `firstPersonTilt` và MỘT trong hai cách có hình:
 //   - `url` (+ length, gripKind, colors, kindOf): nạp model .glb, xem sword.js
 //   - `build(side)`: dựng tạm bằng hình khối trong code, trả về node có gốc ở chỗ cầm và đầu vũ khí hướng +Y
 // Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1), `autoFire` (giữ chuột là tự đánh / tự bắn), `swingSound` (tên âm thanh vung).
+// Lựu đạn (kind 'throwable'): chỉ cần `build` như vũ khí cận chiến; cùng hình đó được dùng cho quả đang bay.
 // Súng / tên lửa (kind do server quyết định): `shotSound` (tên âm thanh bắn, có trong `kinds` của audio/gunSfx.js), `recoil` (camera hếch lên mỗi phát, radian),
 // `viewHold` (cách cầm ở góc nhìn thứ nhất, xem pistol.js; có nó thì người khác cũng thấy súng chĩa ra trước).
 // `iconSvg` ({ viewBox, path }): hình vẽ cho ô vũ khí thay cho `icon` (emoji hiển thị khác nhau giữa các máy, 🔫 thành súng nước).
 // `attack: 'slide'` (vũ khí cận chiến): dùng animation chém `Right Slide` thay vì đấm; mặc định đấm.
 // Có .glb thật cho vũ khí nào thì đổi định nghĩa của nó từ `build` sang `url`; nơi khác không phải sửa.
 // Thêm vũ khí mới: tạo file định nghĩa rồi đăng ký ở đây.
-export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket };
+export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket, frag, flashbang };
 
 const templates = new Map(); // id → Promise<template>
 
