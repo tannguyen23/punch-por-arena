@@ -5,15 +5,22 @@ import { axe } from './axe.js';
 import { spear } from './spear.js';
 import { gauntlet } from './gauntlet.js';
 import { thunder } from './thunder.js';
+import { knife } from './knife.js';
+import { pistol } from './pistol.js';
+import { ak47 } from './ak47.js';
+import { rocket } from './rocket.js';
 
 // Hình dạng và cách cầm của từng vũ khí. Id phải khớp bảng WEAPONS ở server/game/weapons.js ('fist' không có hình).
 // Mỗi định nghĩa có `icon`, `firstPersonTilt` và MỘT trong hai cách có hình:
 //   - `url` (+ length, gripKind, colors, kindOf): nạp model .glb, xem sword.js
 //   - `build(side)`: dựng tạm bằng hình khối trong code, trả về node có gốc ở chỗ cầm và đầu vũ khí hướng +Y
-// Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1), `autoFire` (giữ chuột là tự đánh), `swingSound` (tên âm thanh vung).
+// Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1), `autoFire` (giữ chuột là tự đánh / tự bắn), `swingSound` (tên âm thanh vung).
+// Súng / tên lửa (kind do server quyết định): `shotSound` (tên âm thanh bắn, có trong `kinds` của audio/gunSfx.js), `recoil` (camera hếch lên mỗi phát, radian),
+// `viewHold` (cách cầm ở góc nhìn thứ nhất, xem pistol.js; có nó thì người khác cũng thấy súng chĩa ra trước).
+// `iconSvg` ({ viewBox, path }): hình vẽ cho ô vũ khí thay cho `icon` (emoji hiển thị khác nhau giữa các máy, 🔫 thành súng nước).
 // Có .glb thật cho vũ khí nào thì đổi định nghĩa của nó từ `build` sang `url`; nơi khác không phải sửa.
 // Thêm vũ khí mới: tạo file định nghĩa rồi đăng ký ở đây.
-export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder };
+export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket };
 
 const templates = new Map(); // id → Promise<template>
 
@@ -48,6 +55,9 @@ export function equipLoadout(hands, id, tilt) {
   equipWeapon(hands.R, id, { side: 1, tilt });
   equipWeapon(hands.L, WEAPON_MODELS[id]?.dual ? id : 'fist', { side: -1, tilt });
 }
+
+// Góc nghiêng khi người khác cầm: súng chĩa thẳng ra trước theo hướng nhìn, vũ khí cận chiến kéo dài theo cẳng tay (undefined).
+export const thirdPersonTilt = (id) => (WEAPON_MODELS[id]?.viewHold ? Math.PI / 2 : undefined);
 
 // Bỏ vũ khí và huỷ mọi lần nạp đang chờ cho tay này (gọi trước khi huỷ nhân vật).
 export function releaseWeapon(hand) {

@@ -19,6 +19,7 @@ function buildSnapshot(room) {
       dead: p.dead,
       kills: p.kills,
       w: p.weapon,
+      a: p.ammo, // số đạn còn lại (null = dùng mãi)
       r: p.ready ? 1 : 0,
     })),
   };

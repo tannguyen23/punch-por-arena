@@ -2,7 +2,8 @@ import { canvas } from './core/scene.js';
 import { keys } from './core/keys.js';
 import { state } from './state.js';
 import { settings } from './settings.js';
-import { look, tryPunch } from './player/localPlayer.js';
+import { look } from './player/localPlayer.js';
+import { attack } from './player/attack.js';
 import { setPauseVisible, onPauseClick } from './ui/hud.js';
 import { copyRoomLink } from './ui/lobbyHud.js';
 import { toggleReady } from './net/socket.js';
@@ -38,7 +39,7 @@ export function initInput() {
   canvas.addEventListener('mousedown', (e) => {
     if (!hasPointerLock()) return;
     state.attacking = e.button === 0 || e.button === 2;
-    tryPunch(e.button);
+    attack(e.button);
   });
   document.addEventListener('mouseup', () => {
     state.attacking = false;

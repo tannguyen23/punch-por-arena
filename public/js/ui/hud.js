@@ -1,6 +1,7 @@
 import { state, infos } from '../state.js';
 import { updateWeaponPanel } from './weaponPanel.js';
 import { updateHotbar } from './hotbar.js';
+import { updateAmmo } from './ammo.js';
 
 const pauseEl = document.getElementById('pause');
 const hpFill = document.getElementById('hpfill');
@@ -8,6 +9,12 @@ const flash = document.getElementById('flash');
 const deadText = document.getElementById('dead');
 const board = document.getElementById('board');
 const crosshair = document.getElementById('crosshair');
+const hpBar = document.getElementById('hpbar');
+
+const HEAL_GLOW_MS = 600; // thanh máu sáng xanh ngần này sau mỗi lần máu tăng (đang tự hồi)
+
+let lastHp = null;
+let healTimer = null;
 
 export function showPause(title, text) {
   document.getElementById('pause-title').textContent = title;
@@ -40,11 +47,31 @@ export function flashCrosshairHit() {
   setTimeout(() => crosshair.classList.remove('hit'), 150);
 }
 
+// Tâm ngắm theo loại vũ khí: chấm (cận chiến), dấu cộng (súng), vòng tròn (tên lửa, nổ lan).
+function updateCrosshair() {
+  const kind = state.weaponTypes[state.weapon]?.kind ?? 'melee';
+  crosshair.classList.toggle('gun', kind === 'gun');
+  crosshair.classList.toggle('rocket', kind === 'rocket');
+}
+
+// Máu tăng mà vẫn đang sống (không phải vừa hồi sinh) là đang tự hồi máu: thanh máu sáng lên.
+function showHealing() {
+  const healing = state.alive && lastHp !== null && lastHp > 0 && state.hp > lastHp;
+  lastHp = state.alive ? state.hp : 0;
+  if (!healing) return;
+  hpBar.classList.add('healing');
+  clearTimeout(healTimer);
+  healTimer = setTimeout(() => hpBar.classList.remove('healing'), HEAL_GLOW_MS);
+}
+
 export function updateHud(snapshotPlayers) {
   hpFill.style.width = `${(Math.max(0, state.hp) / state.maxHp) * 100}%`;
+  showHealing();
   deadText.style.display = state.alive ? 'none' : 'block';
   updateWeaponPanel();
+  updateCrosshair();
   updateHotbar();
+  updateAmmo();
   updateScoreboard(snapshotPlayers);
 }
 

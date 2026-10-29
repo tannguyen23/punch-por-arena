@@ -7,8 +7,9 @@ function distToRect(px, pz, { x, z, w, d }) {
   return Math.hypot(dx, dz);
 }
 
-// Đoạn thẳng (x1,z1)→(x2,z2) có cắt hình chữ nhật không (phương pháp slab).
-function segmentIntersectsRect(x1, z1, x2, z2, { x, z, w, d }) {
+// Đoạn thẳng (x1,z1)→(x2,z2) đi vào hình chữ nhật ở đâu (phương pháp slab): tỉ lệ t trong [0, 1] dọc đoạn thẳng,
+// 0 nếu điểm đầu đã nằm trong, null nếu không cắt.
+function segmentRectEntry(x1, z1, x2, z2, { x, z, w, d }) {
   let tmin = 0;
   let tmax = 1;
   const axes = [
@@ -17,7 +18,7 @@ function segmentIntersectsRect(x1, z1, x2, z2, { x, z, w, d }) {
   ];
   for (const [start, delta, lo, hi] of axes) {
     if (Math.abs(delta) < 1e-9) {
-      if (start < lo || start > hi) return false;
+      if (start < lo || start > hi) return null;
       continue;
     }
     let t1 = (lo - start) / delta;
@@ -25,9 +26,11 @@ function segmentIntersectsRect(x1, z1, x2, z2, { x, z, w, d }) {
     if (t1 > t2) [t1, t2] = [t2, t1];
     tmin = Math.max(tmin, t1);
     tmax = Math.min(tmax, t2);
-    if (tmin > tmax) return false;
+    if (tmin > tmax) return null;
   }
-  return true;
+  return tmin;
 }
 
-module.exports = { distToRect, segmentIntersectsRect };
+const segmentIntersectsRect = (x1, z1, x2, z2, rect) => segmentRectEntry(x1, z1, x2, z2, rect) !== null;
+
+module.exports = { distToRect, segmentRectEntry, segmentIntersectsRect };
