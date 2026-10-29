@@ -23,11 +23,14 @@ export const state = {
   sprintExhausted: false,
   sprintRecovery: 0,
   inWater: false, // chân đang ngập dưới mặt nước
+  slide: { x: 0, z: 0, active: false }, // đà trượt trên băng (m/giây theo x, z); active = đang trượt (xem player/iceSlide.js)
   match: {
     phase: 'lobby', // 'lobby' (phòng chờ) | 'countdown' (3-2-1) | 'playing' | 'ended' (xem bảng xếp hạng)
     endsAt: 0, // mốc performance.now() khi hết trận (hoặc hết giờ nghỉ)
     wave: null, // hòm tiếp tế sắp chạm đất: { at: mốc performance.now() }
     ranking: [], // bảng xếp hạng khi hết trận: [{ id, name, kills }]
+    result: null, // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (server/game/match.js)
+    showEndAt: 0, // mốc performance.now() từ đó mới hiện bảng kết quả (sau bom hạt nhân đợi xem xong vụ nổ)
   },
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
   ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
@@ -36,6 +39,7 @@ export const state = {
   activeSlot: null, // ô đang cầm (ô tay không là FIST_SLOT trong config.js); null khi chưa có snapshot
   slotChangedAt: 0, // mốc performance.now() lần mình bấm đổi ô (xem SLOT_SYNC_GRACE_MS)
   weaponTypes: {}, // id → { kind, name, damage, range, cooldown, splash } do server gửi
+  streak: 0, // số lần mình hạ gục liên tiếp không chết (từ snapshot); đủ RADIO_STREAK_KILLS thì bấm R gọi máy bay thả radio
 
   attacking: false, // đang giữ chuột đánh
   cooldown: 0,

@@ -2,6 +2,7 @@ import { state, infos } from '../state.js';
 import { updateWeaponPanel } from './weaponPanel.js';
 import { updateHotbar } from './hotbar.js';
 import { updateAmmo } from './ammo.js';
+import { updateStreak } from './streak.js';
 
 const pauseEl = document.getElementById('pause');
 const hpFill = document.getElementById('hpfill');
@@ -73,6 +74,7 @@ export function updateHud(snapshotPlayers) {
   updateCrosshair();
   updateHotbar();
   updateAmmo();
+  updateStreak();
   updateScoreboard(snapshotPlayers);
 }
 

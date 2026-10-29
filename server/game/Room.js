@@ -20,10 +20,14 @@ class Room {
     this.nextStrikeAt = 0;
     this.nextStrikeId = 1;
     this.lastTargetedAt = new Map(); // id người chơi → mốc Date.now() lần gần nhất bị sét nhắm
+    this.icePatches = []; // vũng băng do lựu đạn băng tạo ra: { id, x, z, r, endsAt } (ice.js)
+    this.nuke = null; // quả bom hạt nhân đang tới: { id, ownerId, at, view (tin 'nuke' đã gửi), startedAt, timer }
+    this.nextNukeId = 1;
     this.phase = 'lobby';
     this.endsAt = 0; // mốc Date.now() hết pha hiện tại (countdown / playing / ended)
     this.nextAirdropAt = 0; // mốc Date.now() máy bay tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing')
     this.ranking = []; // bảng xếp hạng của trận vừa kết thúc
+    this.result = null; // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (match.js)
   }
 }
 

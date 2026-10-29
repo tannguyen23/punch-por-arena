@@ -2,13 +2,17 @@
 // Sửa thẳng vào object `look` mà menu.js giữ, nên lúc vào phòng menu.js luôn gửi lựa chọn mới nhất.
 import { SHIRT, PANTS, GLOVE, SKIN, HAIR, PATTERNS, randomLook } from './lookOptions.js';
 import { initPreview, setPreviewLook, stopPreview } from './preview.js';
+import { initFaceUpload } from './faceUpload.js';
 import { DEFAULT_LOOK } from '../config.js';
 
 let look = null;
+let showFace = () => {};
 const buttons = [];
+const faceError = document.getElementById('face-error');
 
 function refresh() {
   for (const b of buttons) b.el.classList.toggle('on', look[b.key] === b.value);
+  showFace(look.face);
   setPreviewLook(look);
 }
 
@@ -40,8 +44,16 @@ export function initCustomize(sharedLook, onDone) {
       el.textContent = label;
     });
   });
+  showFace = initFaceUpload({
+    onChange(face) {
+      faceError.textContent = '';
+      look.face = face;
+      refresh();
+    },
+    onError: () => (faceError.textContent = 'Không đọc được ảnh này'),
+  });
   document.getElementById('random').addEventListener('click', () => {
-    Object.assign(look, randomLook());
+    Object.assign(look, randomLook()); // randomLook không có ảnh mặt: ảnh mặt là lựa chọn riêng, giữ nguyên
     refresh();
   });
   document.getElementById('look-default').addEventListener('click', () => {

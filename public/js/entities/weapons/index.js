@@ -11,6 +11,8 @@ import { ak47 } from './ak47.js';
 import { rocket } from './rocket.js';
 import { frag } from './frag.js';
 import { flashbang } from './flashbang.js';
+import { icegrenade } from './icegrenade.js';
+import { nuke } from './nuke.js';
 
 // Hình dạng và cách cầm của từng vũ khí. Id phải khớp bảng WEAPONS ở server/game/weapons.js ('fist' không có hình).
 // Mỗi định nghĩa có `icon`, `firstPersonTilt` và MỘT trong hai cách có hình:
@@ -22,9 +24,10 @@ import { flashbang } from './flashbang.js';
 // `viewHold` (cách cầm ở góc nhìn thứ nhất, xem pistol.js; có nó thì người khác cũng thấy súng chĩa ra trước).
 // `iconSvg` ({ viewBox, path }): hình vẽ cho ô vũ khí thay cho `icon` (emoji hiển thị khác nhau giữa các máy, 🔫 thành súng nước).
 // `attack: 'slide'` (vũ khí cận chiến): dùng animation chém `Right Slide` thay vì đấm; mặc định đấm.
+// Vũ khí ném (kind 'grenade', icegrenade.js): `attack: 'slide'` làm cú vung tay ném; hình dựng bằng `build` dùng lại cho quả đang bay (fx/grenades.js).
 // Có .glb thật cho vũ khí nào thì đổi định nghĩa của nó từ `build` sang `url`; nơi khác không phải sửa.
 // Thêm vũ khí mới: tạo file định nghĩa rồi đăng ký ở đây.
-export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket, frag, flashbang };
+export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket, frag, flashbang, icegrenade, nuke };
 
 const templates = new Map(); // id → Promise<template>
 

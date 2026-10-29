@@ -43,7 +43,7 @@ function addMarker(root) {
 // giữa chừng thấy đúng chỗ máy bay / hòm đang ở. Vũ khí trong hòm chỉ hiện (xoay trên nóc hòm) sau khi chạm đất.
 // `hooks.onLand(pickup)`: hòm vừa chạm đất; `hooks.onPlane(pickup, position | null)`: máy bay di chuyển / biến mất (để phát tiếng).
 // `dropped`: vũ khí người chơi vứt ra, chỉ có vũ khí lơ lửng sát đất và vòng sáng (không máy bay, hòm, khói).
-export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false }, hooks = {}) {
+export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false, smokeKind = null }, hooks = {}) {
   const now = performance.now();
   const ground = heightAt(x, z);
   const root = new TransformNode('pickup' + id, scene);
@@ -58,7 +58,7 @@ export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releas
   spin.position.y = hover;
 
   const pickup = {
-    id, weapon, ammo, root, crate, spin, hooks, speed, heading, dropped, hover,
+    id, weapon, ammo, root, crate, spin, hooks, speed, heading, dropped, hover, smokeKind,
     dropHeight: y - ground,
     releaseAt: now + releaseIn,
     landAt: now + landIn,
@@ -130,10 +130,10 @@ function updateFalling(pickup, now) {
   pickup.hooks.onLand?.(pickup);
 }
 
-// Cột khói đỏ bốc lên ở chỗ hòm sẽ rơi ngay khi hòm rời máy bay, cho cả sân thấy từ xa.
+// Cột khói bốc lên ở chỗ hòm sẽ rơi ngay khi hòm rời máy bay, cho cả sân thấy từ xa (đỏ, hoặc màu khác theo `smokeKind`).
 function updateSmoke(pickup, now) {
   if (pickup.dropped || pickup.smoke || now < pickup.releaseAt) return;
-  pickup.smoke = createSmoke(pickup.root.position, { prewarm: pickup.lateJoin });
+  pickup.smoke = createSmoke(pickup.root.position, { prewarm: pickup.lateJoin, color: AIRDROP.smokeColors[pickup.smokeKind] });
 }
 
 export function updatePickup(pickup, dt) {

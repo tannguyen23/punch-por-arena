@@ -21,6 +21,9 @@ import { updateRockets } from './fx/rockets.js';
 import { updateGrenades } from './fx/grenades.js';
 import { updateWeather } from './fx/weather.js';
 import { updateLightning } from './fx/lightning.js';
+import { updateIce } from './fx/icePatch.js';
+import { updateNuke, preloadNukeSounds } from './fx/nuke.js';
+import { updateCloud } from './fx/nukeCloud.js';
 import { updateSprintEffects } from './fx/sprintEffects.js';
 import * as Sfx from './audio/sfx.js';
 
@@ -33,6 +36,7 @@ initMenu((name, look, intent) => {
   state.joined = true;
   setLocalLook(look);
   Sfx.init();
+  preloadNukeSounds();
   connect(name, look, intent);
   canvas.requestPointerLock();
 });
@@ -53,6 +57,9 @@ scene.onBeforeRenderObservable.add(() => {
   updateGrenades(dt);
   updateWeather(dt);
   updateLightning(dt);
+  updateIce();
+  updateNuke(dt);
+  updateCloud(dt);
   Fx.update(dt);
 });
 

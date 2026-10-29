@@ -7,6 +7,7 @@ const { eyeOf, aimDirection } = require('./raycast');
 const { moveGrenade } = require('./grenadePhysics');
 const { blast } = require('./explosion');
 const { flashTargets } = require('./flashbang');
+const { freezeGround } = require('./ice');
 
 // Lựu đạn: ném theo cung từ mắt người ném, server mô phỏng đường bay (grenadePhysics.js), hết ngòi thì nổ.
 // Vị trí từng quả đi trong snapshot (`gr`), client chỉ vẽ theo. Không require match.js (match.js require file này).
@@ -37,12 +38,17 @@ function handleThrow(room, p, m) {
   useAmmo(p); // quả cuối thì ô tự trống (inventory.js)
 }
 
-// Nổ: lựu đạn nổ gây sát thương lan như tên lửa; lựu đạn choáng gửi kèm ai bị choáng và mức độ (client tự tính thêm hướng nhìn).
+// Nổ: lựu đạn nổ gây sát thương lan như tên lửa; lựu đạn choáng gửi kèm ai bị choáng và mức độ (client tự tính thêm hướng nhìn);
+// lựu đạn băng không gây sát thương mà đóng băng mặt đất chỗ quả nằm (ice.js).
 function detonate(room, grenade) {
   const weapon = WEAPONS[grenade.weapon];
   const msg = { t: 'detonate', id: grenade.id, w: grenade.weapon, at: pack(grenade.pos), r: weapon.splash };
   if (weapon.effect === 'flash') {
     broadcast(room, { ...msg, hits: flashTargets(room, grenade.pos, weapon.splash) });
+    return;
+  }
+  if (weapon.effect === 'ice') {
+    freezeGround(room, grenade, weapon);
     return;
   }
   broadcast(room, msg);

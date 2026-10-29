@@ -6,6 +6,7 @@ import { eyeHeight } from './aim.js';
 import { camera } from './camera.js';
 import { updateViewmodel } from './viewmodel.js';
 import { updateSprint } from './sprint.js';
+import { slideVelocity, settleSlide, resetSlide } from './iceSlide.js';
 import { groundAt, waterLevel } from '../core/terrain.js';
 import * as Sfx from '../audio/sfx.js';
 import {
@@ -28,8 +29,10 @@ function applyMovement(dt) {
   state.crouching = keys.has('KeyC');
   updateSprint(moving && !state.crouching && (keys.has('ShiftLeft') || keys.has('ShiftRight')), dt);
   const speed = MOVE_SPEED * (state.sprinting ? SPRINT_MULT : state.crouching ? CROUCH_MULT : 1) * (isWading() ? WATER_SPEED_MULT : 1);
-  state.me.x += ((sin * fwd + cos * strafe) / len) * speed * dt * (moving ? 1 : 0);
-  state.me.z += ((cos * fwd - sin * strafe) / len) * speed * dt * (moving ? 1 : 0);
+  const scale = moving ? speed / len : 0;
+  const { x, z } = slideVelocity((sin * fwd + cos * strafe) * scale, (cos * fwd - sin * strafe) * scale, dt);
+  state.me.x += x * dt;
+  state.me.z += z * dt;
 }
 
 // Chân ngập dưới mặt nước (lội sông).
@@ -83,12 +86,15 @@ export function updateLocalPlayer(dt) {
   state.cooldown = Math.max(0, state.cooldown - dt);
 
   if (state.alive && state.myId !== null) {
+    const { x, z } = state.me;
     applyMovement(dt);
     applyVertical(dt);
     updateWading();
     resolveCollisions();
+    settleSlide(x, z, dt);
   } else if (!state.alive) {
     state.crouching = false;
+    resetSlide();
     updateSprint(false, dt);
   }
 

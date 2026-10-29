@@ -1,4 +1,4 @@
-const { INVENTORY_SLOTS } = require('../config');
+const { INVENTORY_SLOTS, START_WEAPONS } = require('../config');
 const { WEAPONS, DEFAULT_WEAPON } = require('./weapons');
 
 // Túi đồ: `p.slots` có INVENTORY_SLOTS ô vũ khí ({ weapon, ammo } hoặc null), cộng một ô tay không cố định ở cuối (FIST_SLOT).
@@ -8,15 +8,22 @@ const FIST_SLOT = INVENTORY_SLOTS;
 
 const emptySlots = () => Array(INVENTORY_SLOTS).fill(null);
 
+// Túi lúc bắt đầu / hồi sinh: các món trong START_WEAPONS (config.js, để thử) vào những ô đầu, còn lại trống.
+function startingSlots() {
+  const slots = emptySlots();
+  START_WEAPONS.slice(0, INVENTORY_SLOTS).forEach((item, i) => (slots[i] = { ...item }));
+  return slots;
+}
+
 function syncHeld(p) {
   const slot = p.slots[p.activeSlot] ?? null;
   p.weapon = slot ? slot.weapon : DEFAULT_WEAPON;
   p.ammo = slot ? slot.ammo : null;
 }
 
-// Chết / sang trận mới: mất hết vũ khí, về tay không.
+// Chết / sang trận mới: mất hết vũ khí, về tay không (chỉ còn các món khởi đầu).
 function clearInventory(p) {
-  p.slots = emptySlots();
+  p.slots = startingSlots();
   p.activeSlot = FIST_SLOT;
   syncHeld(p);
 }
@@ -77,4 +84,4 @@ const hasAmmo = (p) => p.ammo === null || p.ammo > 0;
 // Gửi trong snapshot: mỗi ô là [vũ khí, đạn] hoặc 0 (trống).
 const slotsView = (p) => p.slots.map((s) => (s ? [s.weapon, s.ammo] : 0));
 
-module.exports = { FIST_SLOT, emptySlots, clearInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };
+module.exports = { FIST_SLOT, emptySlots, startingSlots, clearInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };

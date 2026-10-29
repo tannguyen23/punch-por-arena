@@ -49,6 +49,10 @@ export const GROUND_STICK = 0.25; // đi xuống dốc, cách đất dưới ng�
 export const HOTBAR_SLOTS = 3; // số ô vũ khí trong túi, khớp INVENTORY_SLOTS ở server/config.js
 export const FIST_SLOT = HOTBAR_SLOTS; // ô tay không cố định nằm sau các ô vũ khí (phím 4), khớp FIST_SLOT ở server
 export const PICKUP_RADIUS = 1.2; // khớp PICKUP_RADIUS ở server/config.js (chỉ dùng để nhắc "túi đầy")
+export const RADIO_STREAK_KILLS = 3; // hạ gục liên tiếp (không chết) để gọi máy bay thả radio gọi bom, khớp server/config.js
+
+// Ảnh mặt người chơi chọn: cắt giữa về đúng cỡ này rồi gửi lên server dạng điểm ảnh RGBA thô (base64). Khớp với FACE_IMAGE của server.
+export const FACE_IMAGE = { width: 64, height: 48 };
 
 export const MOUSE_SENSITIVITY = 0.0022;
 export const SENSITIVITY_MIN = 0.0005; // radian/pixel, giới hạn thanh chỉnh độ nhạy chuột
@@ -75,6 +79,70 @@ export const GUN_FX = {
   flashBurstSize: 3, // quả cầu sáng phình tới đường kính này (mét)
 };
 
+// Lựu đạn băng (server quyết định bay và nổ ở đâu; ở đây là phần hình và cách trượt).
+export const ICE = {
+  // Trượt (player/iceSlide.js): trên băng người chơi không đổi hướng ngay mà tăng tốc dần theo hướng bấm rồi trượt đi theo đà.
+  slide: {
+    entryBoost: 1.5, // vừa bước lên băng thì tốc độ đang đi nhân ngần này...
+    entryMinSpeed: 8, // ...nhưng không dưới ngần này (m/giây) nếu đang bấm đi, để bước lên là bị tống đi nhanh
+    accel: 1.2, // tăng tốc theo hướng bấm = tốc độ đi bình thường × hệ số này (m/giây²): chạy nhanh/ngồi thì trượt nhanh/chậm tương ứng
+    friction: 0.6, // đà giảm theo hàm mũ với tốc độ này (1/giây): càng nhỏ càng trượt xa
+    maxSpeed: 13, // tốc độ trượt tối đa (m/giây)
+    exitGrip: 3, // rời khỏi băng thì đà tan dần về tốc độ đi bình thường với tốc độ này (1/giây)
+    settleSpeed: 0.3, // đà lệch tốc độ đi bình thường ít hơn ngần này (m/giây) thì coi như hết trượt
+    heightTolerance: 0.5, // chân cao hơn mặt đất dưới vũng băng quá ngần này (đứng trên cầu) thì không phải đang đứng trên băng
+  },
+  // Vũng băng (fx/ice.js): đĩa phủ lên đất theo địa hình.
+  patch: {
+    rings: 5, // số vòng đồng tâm của đĩa
+    segments: 28, // số đỉnh mỗi vòng
+    lift: 0.04, // nâng đĩa lên khỏi mặt đất (mét), kèm zOffset để không nhấp nháy với đất
+    growTime: 0.25, // giây vũng băng loang ra khi mới tạo
+    fadeTime: 1.2, // giây mờ dần trước khi tan
+    edgeAlpha: 0.0, // độ đặc ở mép đĩa (giữa đĩa là centerAlpha)
+    centerAlpha: 0.82,
+    textureSize: 256,
+    textureScale: 1.15, // vết nứt trên mặt băng: một ô hoạ tiết ứng với từng này lần bán kính
+  },
+  // Quả lựu đạn đang bay (fx/grenades.js).
+  grenade: { spin: 9, maxAge: 6, trailEvery: 0.04 }, // quay (rad/giây); phòng khi mất tin 'freeze'; nhả hạt băng mỗi chừng này giây
+  burst: { life: 0.55, shards: 22, shardSpeed: 5 }, // hiệu ứng băng vỡ lúc nổ
+};
+
+// Radio gọi bom hạt nhân (fx/nuke.js, fx/nukeCloud.js, ui/nukeFlash.js). Các mốc thời gian do server gửi trong 'nuke'; ở đây là âm thanh và phần hình.
+export const NUKE = {
+  // File trong public/sound (không kèm đuôi .mp3); `gain` là âm lượng. Phát theo thứ tự: radio → còi báo động → bom rít → nổ.
+  sounds: {
+    radio: { file: 'radio_chat', gain: 1 },
+    raid: { file: 'air_raid', gain: 0.8 },
+    fall: { file: 'falling bomb', gain: 1 },
+    boom: { file: 'explosion', gain: 1 },
+  },
+  raidFadeMs: 1200, // còi báo động nhỏ dần ngần này khi bom bắt đầu rơi
+  planeLeaveMargin: 40, // máy bay bay quá điểm thả ngần này (mét) so với lúc vào thì xoá
+  flash: { holdMs: 1200, fadeMs: 5000 }, // màn hình trắng xoá: giữ kín rồi tan dần
+  rumble: { power: 0.16, seconds: 3.5 }, // rung camera sau vụ nổ, giảm dần
+  bomb: { length: 3.2, radius: 0.45 }, // quả bom rơi (mét)
+  cloud: {
+    life: 18, // giây từ lúc nổ tới khi tan hết
+    fireballRadius: 38,
+    fireballGrow: 1.0, // giây quả cầu lửa phình ra
+    fireballFade: 5, // giây quả cầu lửa tắt hẳn
+    rise: 10, // giây khối mây bốc lên tới đỉnh
+    stemHeight: 88,
+    stemBottom: 10, // bán kính chân / đỉnh cột khói
+    stemTop: 15,
+    capRadius: 44, // bán kính tán nấm khi nở hết
+    capGrow: 7, // giây tán nấm nở ra
+    puffs: 30, // số cụm mây tạo thành tán nấm
+    fadeFrom: 12, // giây bắt đầu mờ dần
+    shockRadius: 240, // sóng xung kích lan trên mặt đất
+    shockTime: 3,
+    domeRadius: 170, // vòm sóng xung kích
+    domeTime: 2.2,
+  },
+};
+
 // Máy bay và hòm tiếp tế (thời điểm, vị trí, tốc độ do server gửi; ở đây chỉ là phần hình).
 export const AIRDROP = {
   planeVisible: 220, // máy bay đã bay qua điểm thả quá ngần này (mét) thì xoá
@@ -82,7 +150,9 @@ export const AIRDROP = {
   dropHover: 0.6, // vũ khí người chơi vứt ra (không có hòm) lơ lửng thấp hơn
   sway: 0.18, // hòm đung đưa dưới dù (radian)
   smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì cột khói dựng sẵn cả cột
-  // Cột khói đỏ ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.
+  // Cột khói ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.
+  // Khói đỏ là mặc định (hòm tiếp tế định kỳ); `smokeColors` là các màu khác theo `smokeKind` server gửi (vd: hòm radio gọi bom = vàng).
+  smokeColors: { yellow: [0.98, 0.85, 0.1] },
   smoke: {
     color: [0.92, 0.12, 0.1],
     rate: 40, // cụm khói mỗi giây
@@ -118,6 +188,16 @@ export const CHARACTER = {
   // Khối không có tên riêng (vd: 23 khối `cube` của tóc) được nhận theo tên nhóm cha.
   groupKinds: { hair: 'hair' },
   fixedColors: { shoe: '#1b1b22', eye: '#ffffff', pupil: '#14141a', mouth: '#8c2626' },
+  // Ảnh mặt dán lên khối `mesh` (đầu hình elip), thành khung `width` × `height` (đơn vị model) quanh tâm (0, centerY) của khối, nhìn từ phía trước.
+  // `lift` phóng lớp ảnh to hơn đầu một chút để không chìm vào da; `replaces` là các khối mặt mặc định bị ảnh thay thế (ẩn đi).
+  face: {
+    mesh: 'head',
+    width: 0.3,
+    height: 0.225,
+    centerY: 0,
+    lift: 1.01,
+    replaces: ['left_eye', 'right_eye', 'left_pupil', 'right_pupil', 'mouth'],
+  },
 };
 
 // Tay của mình ở góc nhìn thứ nhất: dùng chính nhân vật model (cùng hoạt ảnh đấm, thế thủ, cùng cách cầm vũ khí) nhưng chỉ hiện

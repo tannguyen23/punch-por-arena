@@ -5,6 +5,7 @@ import { muzzleFlash } from '../fx/gunEffects.js';
 import { swingHand } from './viewmodel.js';
 import { muzzlePosition } from './aim.js';
 import { announce } from '../ui/matchHud.js';
+import { nukeActive } from '../fx/nuke.js';
 import * as Sfx from '../audio/sfx.js';
 import { PUNCH_COOLDOWN, PITCH_LIMIT, FIST_SLOT } from '../config.js';
 
@@ -78,13 +79,26 @@ function throwGrenade(button) {
   state.slotChangedAt = performance.now();
 }
 
-// button: 0 = chuột trái, 2 = chuột phải. Cận chiến: tay trái / tay phải; súng: nút nào cũng bắn; lựu đạn: ném mạnh / nhẹ. Trả về true nếu đã đánh.
+// Radio gọi bom hạt nhân: dùng một lần, mọi thứ sau đó (radio, còi, máy bay, bom) do server báo về ('nuke', 'nukeboom').
+function callNuke() {
+  if (nukeActive()) {
+    announce('ĐÃ CÓ BOM ĐANG TỚI!');
+    return;
+  }
+  state.cooldown = cooldownOf(state.weapon);
+  send({ t: 'fire', yaw: state.yaw, pitch: state.pitch });
+  spendAmmo();
+}
+
+// button: 0 = chuột trái, 2 = chuột phải. Cận chiến: tay trái / tay phải; súng: nút nào cũng bắn; lựu đạn: ném mạnh / nhẹ; radio: nút nào cũng gọi. Trả về true nếu đã đánh.
 export function attack(button) {
   if (!state.alive || state.cooldown > 0 || state.match.phase !== 'playing') return false;
   if (button !== 0 && button !== 2) return false;
+  const kind = kindOf(state.weapon);
   if (state.ammo === 0) dryAttack();
-  else if (kindOf(state.weapon) === 'melee') punch(button);
-  else if (kindOf(state.weapon) === 'throwable') throwGrenade(button);
+  else if (kind === 'melee') punch(button);
+  else if (kind === 'throwable') throwGrenade(button);
+  else if (kind === 'nuke') callNuke();
   else fire();
   return true;
 }

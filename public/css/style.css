@@ -39,6 +39,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #ammo .ammo-count { font-size: 44px; font-weight: 800; line-height: 1; }
 #ammo .ammo-label { font-size: 12px; font-weight: 600; color: #bcc; letter-spacing: 1px; }
 #ammo.low .ammo-count { color: #f55; animation: pulse .6s infinite; }
+#streak { position: fixed; left: 50%; bottom: 84px; transform: translateX(-50%); padding: 6px 14px; border-radius: 6px; background: rgba(0,0,0,.45); color: #fff; font-size: 14px; font-weight: 700; letter-spacing: 1px; text-shadow: 0 2px 6px #000; pointer-events: none; white-space: nowrap; }
+#streak[hidden] { display: none; }
+#streak.ready { background: rgba(250,210,30,.9); color: #1b1b1b; text-shadow: none; animation: pulse .8s infinite; }
 #match-timer { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; text-shadow: 0 2px 6px #000; pointer-events: none; }
 #match-timer.low { color: #fc4; }
 #match-timer.urgent { color: #f44; animation: pulse 1s infinite; }
@@ -67,6 +70,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #board { position: fixed; right: 16px; top: 16px; color: #fff; background: rgba(0,0,0,.4); padding: 8px 12px; border-radius: 6px; font-size: 14px; pointer-events: none; min-width: 140px; }
 #flash { position: fixed; inset: 0; background: red; opacity: 0; pointer-events: none; transition: opacity .25s; }
 #blind { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+#nuke-flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
 #dead { position: fixed; left: 0; right: 0; top: 35%; text-align: center; color: #fff; font-size: 40px; font-weight: bold; text-shadow: 0 2px 8px #000; display: none; pointer-events: none; }
 
 /* ---------- Màn hình phủ (menu, tạm dừng) ---------- */
@@ -95,6 +99,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 .sw.on { border-color: #fff; box-shadow: 0 0 0 2px #4af; }
 .pat { padding: 4px 9px; border-radius: 14px; border: 1px solid #667; background: transparent; color: #ddd; cursor: pointer; font-size: 13px; }
 .pat.on { background: #4af; border-color: #4af; color: #002; }
+.pat:disabled { opacity: .4; cursor: default; }
+.face-opts { align-items: center; }
+#face-thumb { width: 48px; height: 36px; border-radius: 4px; border: 1px solid #667; background: #0d1117; }
 .buttons { display: flex; gap: 10px; margin-top: 16px; }
 .buttons button { flex: 1; padding: 11px; font-size: 16px; border-radius: 8px; border: 0; cursor: pointer; font-weight: 600; }
 #menu .panel[hidden] { display: none; }

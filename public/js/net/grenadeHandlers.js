@@ -4,6 +4,7 @@ import { addGrenade, removeGrenade } from '../fx/grenades.js';
 import { flashBurst } from '../fx/gunEffects.js';
 import { blind } from '../ui/blind.js';
 import { blastFeedback } from './combatHandlers.js';
+import { iceDetonated } from './iceHandlers.js';
 import { playAt } from './positional.js';
 import * as Sfx from '../audio/sfx.js';
 import { FLASHBANG } from '../config.js';
@@ -41,10 +42,12 @@ export const grenadeHandlers = {
     playAt('whoosh', r.root.position);
   },
 
-  // Hết ngòi: lựu đạn nổ (sát thương do server tính, đi qua 'hit') hoặc lựu đạn choáng (`hits` = ai thấy, mức độ).
+  // Hết ngòi: lựu đạn nổ (sát thương do server tính, đi qua 'hit'), lựu đạn choáng (`hits` = ai thấy, mức độ)
+  // hoặc lựu đạn băng (`ice`, vũng băng ở net/iceHandlers.js).
   detonate(m) {
     removeGrenade(m.id);
     if (m.hits) flashed(m);
+    else if (m.ice) iceDetonated(m);
     else blastFeedback(m.at, m.r);
   },
 };

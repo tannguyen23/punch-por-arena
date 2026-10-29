@@ -2,6 +2,7 @@ import { solidMaterial } from '../core/scene.js';
 import { CHARACTER, VIEWMODEL } from '../config.js';
 import { shirtMaterial } from './shirtPattern.js';
 import { createCharacterAnimator } from './characterAnimator.js';
+import { applyFace } from './face.js';
 
 const { TransformNode, Color3, Vector3, Quaternion, Matrix } = BABYLON;
 
@@ -163,6 +164,7 @@ export function createModelAvatar(scene, id, look, options = {}) {
   const { rootNodes, animationGroups } = template.container.instantiateModelsToScene((name) => name, false);
   rootNodes.forEach((node) => (node.parent = body));
   tint(scene, id, body, look);
+  if (look.face && !options.viewmodel) applyFace(scene, id, body, look.face); // tay góc nhìn thứ nhất không có đầu
   const legs = ['left_L', 'right_L'].map((name) => body.getChildTransformNodes(false, (n) => n.name === name)[0]);
   // Tư thế đứng yên lấy từ khung đầu của idle (model cũ không có idle thì dùng thế thủ của cú đấm).
   // Phần xoay của chân do pose() ghi (đung đưa khi đi + bước chân của animation).

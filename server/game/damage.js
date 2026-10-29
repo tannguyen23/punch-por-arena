@@ -13,8 +13,12 @@ function applyDamage(room, attacker, target, amount) {
   broadcast(room, { t: 'hit', id: target.id, by: attacker?.id ?? null, dmg });
   if (target.hp > 0) return;
   target.dead = true;
+  target.streak = 0; // chết thì mất chuỗi hạ gục
   clearInventory(target); // chết thì mất hết vũ khí
-  if (attacker && attacker !== target) attacker.kills++;
+  if (attacker && attacker !== target) {
+    attacker.kills++;
+    attacker.streak++;
+  }
   setTimeout(() => room.players.has(target.id) && respawn(room, target), RESPAWN_MS);
 }
 

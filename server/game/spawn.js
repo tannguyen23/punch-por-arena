@@ -25,9 +25,24 @@ function randomFreePosition(room) {
   return pos;
 }
 
+// Vị trí trống cách `center` chừng `distance` mét (hướng ngẫu nhiên). Không tìm được chỗ trống thì lấy chỗ ngẫu nhiên trong sân.
+function freePositionNear(room, center, distance) {
+  const range = currentMap.size - MAP_MARGIN;
+  for (let i = 0; i < 20; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const d = distance * (0.6 + 0.4 * Math.random());
+    const pos = {
+      x: Math.max(-range, Math.min(range, center.x + Math.cos(angle) * d)),
+      z: Math.max(-range, Math.min(range, center.z + Math.sin(angle) * d)),
+    };
+    if (isFree(room, pos)) return pos;
+  }
+  return randomFreePosition(room);
+}
+
 function respawn(room, p) {
   Object.assign(p, randomFreePosition(room), { hp: MAX_HP, dead: false });
   send(p.ws, { t: 'setpos', x: p.x, z: p.z });
 }
 
-module.exports = { randomFreePosition, respawn };
+module.exports = { randomFreePosition, freePositionNear, respawn };

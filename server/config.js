@@ -109,6 +109,24 @@ module.exports = {
     jitter: 2.5, // tâm sét lệch ngẫu nhiên tối đa ngần này (mét) so với người bị nhắm
   },
 
+  // Lựu đạn băng (server/game/ice.js): bay và nảy như mọi lựu đạn (GRENADE ở trên); chỉ số riêng (bán kính, thời gian băng) nằm trong WEAPONS.
+  // Radio gọi bom hạt nhân (server/game/nuke.js). Mốc thời gian tính từ lúc bấm dùng radio; client phát âm thanh theo các mốc này
+  // nên độ dài file trong public/sound nên khớp: radio_chat.mp3 ≈ NUKE_RADIO_MS, falling bomb.mp3 ≈ NUKE_FALL_MS.
+  NUKE_RADIO_MS: 5000, // radio nói chuyện xong thì còi báo động vang lên
+  NUKE_PLANE_IN_MS: 8000, // máy bay lao vào sân (còi báo động đã kêu được 3 giây)
+  NUKE_PLANE_SPEED: 110, // m/giây
+  NUKE_PLANE_APPROACH: 250, // máy bay xuất hiện cách điểm thả ngần này (mét) rồi bay thẳng qua
+  NUKE_PLANE_ALTITUDE: 70, // độ cao bay so với mặt đất ở điểm thả
+  NUKE_FALL_MS: 3000, // bom rơi từ máy bay xuống đất (khớp độ dài falling bomb.mp3 ≈ 3s), hết thì nổ và mọi người chết
+  NUKE_END_SCREEN_MS: 7000, // sau vụ nổ trận kết thúc ngay (người gọi bom thắng) nhưng bảng kết quả chỉ hiện sau ngần này để xem xong màn trắng xoá và mây nấm
+  // Radio gọi bom: số lần hạ gục liên tiếp (không chết) để gọi máy bay thả hòm chứa radio, và hòm rơi cách người gọi chừng này (mét).
+  RADIO_STREAK_KILLS: 3, // khớp RADIO_STREAK_KILLS ở public/js/config.js
+  RADIO_DROP_DISTANCE: 8,
+  // Hòm tiếp tế thường không còn radio. Để thử có thể cho mọi người bắt đầu với radio: [{ weapon: 'nuke', ammo: 1 }].
+  START_WEAPONS: [],
+
   PATTERN_COUNT: 5,
   LOOK_DEFAULT: { shirt: '#e53935', pants: '#1a237e', glove: '#1e88e5', skin: '#f5c7a3', hair: '#1a120d' },
+  FACE_IMAGE: { width: 64, height: 48 }, // cỡ ảnh mặt (điểm ảnh RGBA thô), khớp với FACE_IMAGE của client
+  MAX_MESSAGE_BYTES: 64 * 1024, // tin nhắn WebSocket lớn nhất nhận từ client (tin `join` kèm ảnh mặt khoảng 17 KB)
 };
