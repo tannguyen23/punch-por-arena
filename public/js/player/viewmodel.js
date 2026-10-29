@@ -25,6 +25,7 @@ let viewmodelRest = null; // vị trí tay góc nhìn thứ nhất khi không n�
 let localLook = null;
 let equipped = 'fist'; // vũ khí đang cầm; đổi theo state.weapon do server quyết định
 let raise = 0; // 1 → 0 trong EQUIP_RAISE_TIME giây sau khi đổi vũ khí: vũ khí mới đưa từ dưới lên cho dễ để ý
+let wasAlive = true; // dọn hoạt ảnh đang dở khi bị hạ (viewmodel bị ẩn lúc chết)
 
 const isGun = (id) => Boolean(WEAPON_MODELS[id]?.viewHold);
 
@@ -73,6 +74,8 @@ export function swingHand(hand, cooldown) {
 export function updateViewmodel(dt) {
   ensureViewmodel();
   syncWeapon();
+  if (wasAlive && !state.alive) viewmodel?.resetAnimation();
+  wasAlive = state.alive;
   state.recoil *= Math.exp(-RECOIL_RECOVER * dt);
   raise = Math.max(0, raise - dt / EQUIP_RAISE_TIME);
   const lift = raise * raise; // chậm dần khi gần tới chỗ

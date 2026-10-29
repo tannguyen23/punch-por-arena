@@ -5,6 +5,7 @@ import { createHolder } from './weaponModel.js';
 export const axe = {
   icon: '🪓',
   firstPersonTilt: 0.8,
+  attack: 'slide',
   // Gốc ở giữa chỗ cầm trên cán, đầu rìu hướng +Y, lưỡi rìu quay về +X.
   build() {
     const root = createHolder();

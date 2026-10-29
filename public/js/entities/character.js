@@ -119,13 +119,15 @@ function aimAtCameraTilt(item, anchor, root, tilt) {
   item.rotationQuaternion = Quaternion.FromUnitVectorsToRef(Vector3.Up(), local, new Quaternion());
 }
 
-// Một tay của nhân vật model: cầm vũ khí ở neo và chạy hoạt ảnh đấm khi bị gọi punch().
+// Một tay của nhân vật model: cầm vũ khí ở neo và chạy hoạt ảnh đấm / chém khi bị gọi punch().
 // `view` (chỉ có ở tay góc nhìn thứ nhất): { root, group } — vũ khí được vẽ đè (nhóm vẽ `group`).
 // Có `tilt` thì vũ khí chĩa theo (0, cos tilt, sin tilt) của camera (góc nhìn thứ nhất) hoặc của thân nhân vật `root` (người khác cầm súng).
 function createHand(anchor, animator, side, root, view = null) {
+  const slide = side === 'L' ? 'SL' : 'S'; // tay trái dùng bản soi gương của Right Slide
   return {
+    attack: null, // kiểu đánh của vũ khí đang cầm ('slide' = chém), equipWeapon gán
     punch(cooldown) {
-      animator?.play(side, cooldown);
+      animator?.play(this.attack === 'slide' && animator?.sets[slide] ? slide : side, cooldown);
     },
     update() {},
     hold(item, tilt) {
@@ -162,8 +164,9 @@ export function createModelAvatar(scene, id, look, options = {}) {
   rootNodes.forEach((node) => (node.parent = body));
   tint(scene, id, body, look);
   const legs = ['left_L', 'right_L'].map((name) => body.getChildTransformNodes(false, (n) => n.name === name)[0]);
-  // Đặt luôn tư thế thế thủ làm tư thế đứng yên. Phần xoay của chân do pose() ghi (đung đưa khi đi + bước chân của animation).
-  const animator = createCharacterAnimator(body, animationGroups, { driven: legs.filter(Boolean) });
+  // Tư thế đứng yên lấy từ khung đầu của idle (model cũ không có idle thì dùng thế thủ của cú đấm).
+  // Phần xoay của chân do pose() ghi (đung đưa khi đi + bước chân của animation).
+  const animator = createCharacterAnimator(body, animationGroups, { driven: legs.filter(Boolean), idleSpeed: CHARACTER.idleSpeed });
   const handMesh = (name) => body.getChildMeshes(false).find((m) => m.name === name);
 
   // Điểm giữa hai mắt (khi chưa dời nhân vật đi đâu): chỗ đặt camera cho tay góc nhìn thứ nhất.
@@ -197,6 +200,9 @@ export function createModelAvatar(scene, id, look, options = {}) {
     update: (dt) => animator?.update(dt),
     // Rời đất / chạm đất: chạy hoạt ảnh nhảy. `airTime` là thời gian bay dự kiến (giây).
     setAirborne: (airborne, airTime) => animator?.setAirborne(airborne, airTime),
+    // Bị hạ: ngã và nằm dưới đất. Hồi sinh: đứng dậy về tư thế đứng yên.
+    knockOut: () => animator?.knockOut(),
+    resetAnimation: () => animator?.reset(),
     // Chân đung đưa khi đi (chưa có animation đi bộ), cộng thêm bước chân của hoạt ảnh đấm / chân của hoạt ảnh nhảy nếu đang có. Ngồi chưa có hiệu ứng.
     pose(crouch, angle) {
       const walking = animator?.airborne ? 0 : angle; // đang bay thì chân theo hoạt ảnh nhảy, không đung đưa như đi bộ

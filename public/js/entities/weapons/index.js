@@ -18,6 +18,7 @@ import { rocket } from './rocket.js';
 // Súng / tên lửa (kind do server quyết định): `shotSound` (tên âm thanh bắn, có trong `kinds` của audio/gunSfx.js), `recoil` (camera hếch lên mỗi phát, radian),
 // `viewHold` (cách cầm ở góc nhìn thứ nhất, xem pistol.js; có nó thì người khác cũng thấy súng chĩa ra trước).
 // `iconSvg` ({ viewBox, path }): hình vẽ cho ô vũ khí thay cho `icon` (emoji hiển thị khác nhau giữa các máy, 🔫 thành súng nước).
+// `attack: 'slide'` (vũ khí cận chiến): dùng animation chém `Right Slide` thay vì đấm; mặc định đấm.
 // Có .glb thật cho vũ khí nào thì đổi định nghĩa của nó từ `build` sang `url`; nơi khác không phải sửa.
 // Thêm vũ khí mới: tạo file định nghĩa rồi đăng ký ở đây.
 export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket };
@@ -42,6 +43,7 @@ export function createWeaponModel(id, side = 1) {
 // `side`: +1 tay phải, -1 tay trái (cho vũ khí có hai bản đối xứng); `tilt`: góc nghiêng ở góc nhìn thứ nhất.
 export async function equipWeapon(hand, id, { side = 1, tilt } = {}) {
   hand.wanted = id;
+  hand.attack = WEAPON_MODELS[id]?.attack ?? null; // kiểu đánh của vũ khí (mặc định đấm)
   hand.drop();
   const model = await createWeaponModel(id, side);
   if (!model) return;
@@ -62,5 +64,6 @@ export const thirdPersonTilt = (id) => (WEAPON_MODELS[id]?.viewHold ? Math.PI / 
 // Bỏ vũ khí và huỷ mọi lần nạp đang chờ cho tay này (gọi trước khi huỷ nhân vật).
 export function releaseWeapon(hand) {
   hand.wanted = null;
+  hand.attack = null;
   hand.drop();
 }

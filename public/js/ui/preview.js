@@ -38,7 +38,11 @@ export function initPreview() {
   base.material = solidMaterial(new Color3(0.16, 0.2, 0.28), scene);
 
   engine.runRenderLoop(() => {
-    if (avatar) avatar.root.rotation.y += (engine.getDeltaTime() / 1000) * PREVIEW.rotateSpeed;
+    const dt = engine.getDeltaTime() / 1000;
+    if (avatar) {
+      avatar.root.rotation.y += dt * PREVIEW.rotateSpeed;
+      avatar.update(dt); // chạy vòng lặp idle để khung xem trước có cử động
+    }
     scene.render();
   });
   addEventListener('resize', resize);

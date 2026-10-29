@@ -1,17 +1,22 @@
-// Hoạt ảnh của nhân vật dựng từ model .glb: đấm trái, đấm phải và nhảy.
+// Hoạt ảnh của nhân vật dựng từ model .glb: đấm trái, đấm phải, nhảy, đứng yên (idle) và ngã khi bị hạ (knock_out).
 //
-// Model chứa các animation "Left punch", "Right punch" và "Jump" (xoay/dịch chuyển các nhóm upper, head, hai tay, hai cẳng tay,
-// chân và player). Khung đầu của hai cú đấm là tư thế thế thủ nên dùng làm tư thế đứng yên chung (các nút chỉ có trong Jump
-// thì lấy khung đầu của Jump). Mỗi hoạt ảnh được trộn mượt từ tư thế hiện tại vào, và trộn mượt về tư thế đứng yên khi hết.
+// Model chứa các animation "Left punch", "Right punch", "Jump", "idle" và "knock_out" (xoay/dịch chuyển các nhóm upper,
+// head, hai tay, hai cẳng tay, chân và player). Tư thế đứng yên lấy từ khung đầu của idle; model chưa có idle thì lấy
+// khung đầu của hai cú đấm (thế thủ) như trước. Mỗi hoạt ảnh được trộn mượt từ tư thế hiện tại vào, và trộn mượt về tư
+// thế đứng yên khi hết.
 // - Đấm: chạy một lần, tốc độ tăng nếu cooldown của vũ khí ngắn hơn animation. Thiếu một bên thì soi gương bên kia
 //   (đổi nút trái ↔ phải, quaternion (x,y,z,w) → (x,-y,-z,w), vị trí (x,y,z) → (-x,y,z)).
 // - Nhảy: bắt đầu khi người chơi rời đất (setAirborne), căn tốc độ để vừa thời gian bay dự kiến, GIỮ tư thế cuối nếu còn
 //   trên không, và trả về tư thế đứng yên khi chạm đất. Đấm giữa không trung thì sau cú đấm quay lại tư thế nhảy.
+// - Đứng yên: lặp clip idle; clip không khép kín (khoá cuối khác khung đầu) nên đoạn cuối được hoà dần về khung đầu.
+// - Ngã: chạy knock_out một lần rồi GIỮ tư thế cuối (nằm dưới đất) cho tới khi hồi sinh (reset).
 // Tự nội suy khoá thay vì dùng bộ phát của Babylon để trộn được giữa các hoạt ảnh liên tiếp và đổi tốc độ theo ý.
 const { Quaternion, Vector3 } = BABYLON;
 
 const BLEND_IN = 0.04; // giây: trộn từ tư thế hiện tại vào đầu hoạt ảnh (tránh giật khi đấm liên tiếp / đổi hoạt ảnh)
+const SLIDE_BLEND_IN = 0.1; // giây: cú chém bắt đầu với tay giơ cao nên cần trộn lâu hơn để không giật
 const RETURN = 0.14; // giây: trộn về tư thế đứng yên (cuối hoạt ảnh, hoặc với các nút hoạt ảnh hiện tại không điều khiển)
+const IDLE_FADE = 0.08; // giây: hoà khung cuối của idle về khung đầu để vòng lặp không bị giật
 const smooth = (t) => t * t * (3 - 2 * t);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
@@ -68,34 +73,50 @@ function sample(track, t, out) {
 }
 
 export class CharacterAnimator {
-  // sets: { L, R, J? } — bộ đường của đấm trái, đấm phải và nhảy (mỗi bộ chỉ chứa những nút nó điều khiển).
+  // sets: { L, R, J?, I?, K? } — bộ đường của đấm trái, đấm phải, nhảy, đứng yên và ngã (mỗi bộ chỉ chứa những nút nó điều khiển).
   // driven: các nút mà phần XOAY do nơi khác ghi (chân đi bộ): ta chỉ giữ giá trị trong `rotationOf`, không tự ghi lên nút.
-  constructor(sets, { driven = [] } = {}) {
+  constructor(sets, { driven = [], idleSpeed = 1 } = {}) {
     this.sets = sets;
     this.driven = new Set(driven);
+    this.idleSpeed = idleSpeed;
     for (const set of Object.values(sets)) {
       set.keys = new Set(set.map(keyOf));
       set.duration = Math.max(...set.map((t) => t.times.at(-1)));
+      if (set === sets.S || set === sets.SL) set.blendIn = SLIDE_BLEND_IN;
     }
 
-    // Tư thế đứng yên của mỗi nút = khung đầu (hai cú đấm trước, rồi Jump cho những nút chúng không có).
+    // Nút đích của mọi đường, và tư thế gốc của model (trước khi ta ghi gì) để làm nền cho nút không có trong idle.
     this.entries = new Map(); // key → { target, path }
-    this.idle = new Map();
-    for (const t of [...sets.L, ...sets.R, ...(sets.J ?? [])]) {
-      const key = keyOf(t);
-      if (this.idle.has(key)) continue;
-      this.entries.set(key, { target: t.target, path: t.path });
-      this.idle.set(key, t.values[0].clone());
+    const rest = new Map();
+    for (const set of Object.values(sets)) {
+      for (const t of set) {
+        const key = keyOf(t);
+        if (this.entries.has(key)) continue;
+        this.entries.set(key, { target: t.target, path: t.path });
+        rest.set(key, t.path === 'rotation' ? (t.target.rotationQuaternion?.clone() ?? Quaternion.FromEulerVector(t.target.rotation)) : t.target.position.clone());
+      }
     }
-    this.current = new Map([...this.idle].map(([k, v]) => [k, v.clone()]));
+
+    // Tư thế đứng yên của mỗi nút = khung đầu của idle; không có idle thì khung đầu của hai cú đấm rồi Jump như trước.
+    // Nút không có trong idle giữ tư thế gốc của model (vd: cẳng tay chỉ được các cú đấm điều khiển).
+    this.base = new Map();
+    const standing = sets.I ?? [...(sets.L ?? []), ...(sets.R ?? []), ...(sets.J ?? [])];
+    for (const t of standing) {
+      const key = keyOf(t);
+      if (!this.base.has(key)) this.base.set(key, t.values[0].clone());
+    }
+    for (const [key, value] of rest) if (!this.base.has(key)) this.base.set(key, value);
+
+    this.current = new Map([...this.base].map(([k, v]) => [k, v.clone()]));
     this.from = new Map();
-    this.stage = 'idle'; // 'idle' | 'punch' | 'jump' | 'return'
-    this.t = 0; // thời gian trong hoạt ảnh đấm / lúc trả về
+    this.stage = 'idle'; // 'idle' | 'punch' | 'jump' | 'return' | 'ko'
+    this.t = 0; // thời gian trong hoạt ảnh đấm / lúc trả về / lúc ngã
+    this.idleT = 0; // thời gian trong vòng lặp idle
     this.blendT = 0; // thời gian từ lúc bắt đầu hoạt ảnh hiện tại (để trộn)
     this.airborne = false;
     this.airT = 0; // thời gian đã ở trên không
     this.jumpSpeed = 1;
-    for (const [key, v] of this.idle) this.apply(key, v);
+    for (const [key, v] of this.base) this.apply(key, v);
   }
 
   apply(key, value) {
@@ -120,9 +141,10 @@ export class CharacterAnimator {
     this.from = this.snapshot();
   }
 
-  // Bắt đầu một cú đấm. `cooldown` (giây) là khoảng giữa hai đòn của vũ khí: đòn nhanh thì animation được tua nhanh cho kịp.
+  // Bắt đầu một cú đấm / chém. `cooldown` (giây) là khoảng giữa hai đòn của vũ khí: đòn nhanh thì animation được tua nhanh cho kịp.
   play(hand, cooldown = Infinity) {
     this.active = this.sets[hand];
+    if (!this.active) return;
     this.t = 0;
     this.speed = Math.max(1, this.active.duration / cooldown);
     this.begin('punch');
@@ -136,11 +158,28 @@ export class CharacterAnimator {
       if (!this.sets.J) return;
       this.airT = 0;
       this.jumpSpeed = this.sets.J.duration / airTime;
-      if (this.stage !== 'punch') this.begin('jump'); // đang đấm thì để cú đấm xong rồi mới vào tư thế nhảy
+      if (this.stage !== 'punch' && this.stage !== 'ko') this.begin('jump'); // đang đấm thì để cú đấm xong rồi mới vào tư thế nhảy
     } else if (this.stage === 'jump') {
       this.t = 0;
       this.begin('return');
     }
+  }
+
+  // Bị hạ: ngã một lần rồi giữ tư thế nằm dưới đất. `reset()` khi hồi sinh để đứng dậy.
+  knockOut() {
+    if (!this.sets.K || this.stage === 'ko') return;
+    this.t = 0;
+    this.begin('ko');
+  }
+
+  // Hồi sinh: trả mọi nút về tư thế đứng yên và chạy lại vòng lặp idle.
+  reset() {
+    this.airborne = false;
+    this.t = 0;
+    this.idleT = 0;
+    this.blendT = 0;
+    this.stage = 'idle';
+    for (const [key, v] of this.base) this.apply(key, v);
   }
 
   blendTo(key, target, weight) {
@@ -148,15 +187,46 @@ export class CharacterAnimator {
     this.apply(key, KINDS[path].blend(this.from.get(key), target, weight, KINDS[path].create()));
   }
 
+  updateIdle(dt) {
+    const clip = this.sets.I;
+    if (!clip) return;
+    this.idleT = (this.idleT + dt * this.idleSpeed) % clip.duration;
+    const fade = Math.min(IDLE_FADE, clip.duration * 0.5);
+    const end = clip.duration - fade;
+    const w = this.idleT < end ? 0 : smooth((this.idleT - end) / fade);
+    for (const track of clip) {
+      const { path } = track;
+      const value = sample(track, this.idleT, KINDS[path].create());
+      if (w > 0) KINDS[path].blend(value, sample(track, 0, KINDS[path].create()), w, value);
+      this.apply(keyOf(track), value);
+    }
+  }
+
+  updateKo(dt) {
+    const clip = this.sets.K;
+    this.t += dt;
+    this.blendT += dt;
+    const time = Math.min(this.t, clip.duration);
+    const blendIn = smooth(clamp01(this.blendT / BLEND_IN));
+    const blendOut = smooth(clamp01(this.blendT / RETURN));
+    for (const track of clip) this.blendTo(keyOf(track), sample(track, time, KINDS[track.path].create()), blendIn);
+    // Nút không thuộc knock_out thì trả dần về tư thế đứng yên rồi giữ nguyên.
+    for (const [key, base] of this.base) if (!clip.keys.has(key)) this.blendTo(key, base, blendOut);
+  }
+
   update(dt) {
-    if (this.stage === 'idle') return;
+    if (this.stage === 'idle') return this.updateIdle(dt);
+    if (this.stage === 'ko') return this.updateKo(dt);
     if (this.airborne) this.airT += dt;
 
     if (this.stage === 'return') {
       this.t += dt;
       const blend = smooth(clamp01(this.t / RETURN));
-      for (const [key, idle] of this.idle) this.blendTo(key, idle, blend);
-      if (blend >= 1) this.stage = 'idle';
+      for (const [key, base] of this.base) this.blendTo(key, base, blend);
+      if (blend >= 1) {
+        this.stage = 'idle';
+        this.idleT = 0; // vào vòng lặp idle từ khung đầu
+      }
       return;
     }
 
@@ -165,13 +235,14 @@ export class CharacterAnimator {
     if (this.stage === 'punch') this.t += dt * this.speed;
     const time = this.stage === 'jump' ? this.airT * this.jumpSpeed : this.t;
     this.blendT += dt;
-    const blendIn = smooth(clamp01(this.blendT / BLEND_IN));
+    const blendTime = this.stage === 'punch' ? (this.active.blendIn ?? BLEND_IN) : BLEND_IN;
+    const blendIn = smooth(clamp01(this.blendT / blendTime));
     const blendOut = smooth(clamp01(this.blendT / RETURN));
     for (const track of clip) {
       this.blendTo(keyOf(track), sample(track, Math.min(time, clip.duration), KINDS[track.path].create()), blendIn);
     }
     // Nút không thuộc hoạt ảnh này (vd: chân đang bước dở từ cú đấm trước) thì trả dần về tư thế đứng yên.
-    for (const [key, idle] of this.idle) if (!clip.keys.has(key)) this.blendTo(key, idle, blendOut);
+    for (const [key, base] of this.base) if (!clip.keys.has(key)) this.blendTo(key, base, blendOut);
 
     if (this.stage === 'punch' && time >= clip.duration) {
       if (this.airborne && this.sets.J) {
@@ -192,12 +263,25 @@ export function createCharacterAnimator(body, groups, options) {
 
   const sets = {};
   for (const group of groups) {
-    const side = /jump/i.test(group.name) ? 'J' : /right/i.test(group.name) ? 'R' : /left/i.test(group.name) ? 'L' : null;
+    const side = /knock|death|die/i.test(group.name)
+      ? 'K'
+      : /idle/i.test(group.name)
+        ? 'I'
+        : /jump/i.test(group.name)
+          ? 'J'
+          : /slide/i.test(group.name)
+            ? 'S'
+            : /right/i.test(group.name)
+              ? 'R'
+              : /left/i.test(group.name)
+                ? 'L'
+                : null;
     if (side) sets[side] = extractTracks(group);
     group.dispose();
   }
   if (!sets.L && !sets.R) return null;
   if (!sets.L) sets.L = mirrorTracks(sets.R, partnerOf);
   if (!sets.R) sets.R = mirrorTracks(sets.L, partnerOf);
+  if (sets.S) sets.SL = mirrorTracks(sets.S, partnerOf); // tay trái của vũ khí hai tay dùng bản soi gương
   return new CharacterAnimator(sets, options);
 }

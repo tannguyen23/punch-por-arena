@@ -13,6 +13,7 @@ const MIME = {
 // Chỉ phục vụ file nằm trong public/, cộng thêm thư viện Babylon từ node_modules (VENDOR_FILES).
 function resolveFile(pathname) {
   if (pathname === '/') pathname = '/index.html';
+  if (pathname === '/char-anim') pathname = '/char-anim.html'; // trang debug hoạt ảnh
   if (VENDOR_FILES[pathname]) return VENDOR_FILES[pathname];
   const file = path.join(PUBLIC_DIR, pathname);
   return file.startsWith(PUBLIC_DIR + path.sep) ? file : null;
