@@ -4,6 +4,7 @@ import { updateRemote } from './entities/remotePlayer.js';
 import { updatePickup } from './entities/pickup.js';
 import { updateMatchHud } from './ui/matchHud.js';
 import { updateLobbyHud } from './ui/lobbyHud.js';
+import { updateStamina } from './ui/stamina.js';
 import { updateWater } from './world/arena.js';
 import { updateLocalPlayer } from './player/localPlayer.js';
 import { setLocalLook } from './player/viewmodel.js';
@@ -17,6 +18,7 @@ import { loadSettings } from './settings.js';
 import { initSettings } from './ui/settingsPanel.js';
 import * as Fx from './fx/effects.js';
 import { updateRockets } from './fx/rockets.js';
+import { updateSprintEffects } from './fx/sprintEffects.js';
 import * as Sfx from './audio/sfx.js';
 
 loadSettings();
@@ -35,9 +37,11 @@ initMenu((name, look, intent) => {
 scene.onBeforeRenderObservable.add(() => {
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.1);
   updateLocalPlayer(dt);
+  updateStamina();
   updateAttack();
   updatePickupHint();
   for (const r of remotes.values()) updateRemote(r, dt);
+  updateSprintEffects(dt);
   for (const pickup of pickups.values()) updatePickup(pickup, dt);
   updateMatchHud();
   updateLobbyHud();

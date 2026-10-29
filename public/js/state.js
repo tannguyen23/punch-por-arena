@@ -19,6 +19,9 @@ export const state = {
   crouching: false,
   crouchAmount: 0, // 0 đứng → 1 ngồi hẳn, đổi mượt theo thời gian
   sprinting: false,
+  stamina: 1,
+  sprintExhausted: false,
+  sprintRecovery: 0,
   inWater: false, // chân đang ngập dưới mặt nước
   match: {
     phase: 'lobby', // 'lobby' (phòng chờ) | 'countdown' (3-2-1) | 'playing' | 'ended' (xem bảng xếp hạng)

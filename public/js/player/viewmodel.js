@@ -82,6 +82,7 @@ export function updateViewmodel(dt) {
   const showHands = state.alive && !isGun(equipped);
   if (viewmodel) {
     viewmodel.root.setEnabled(showHands);
+    viewmodel.setRunning(state.alive && state.sprinting);
     viewmodel.root.position.copyFrom(viewmodelRest);
     viewmodel.root.position.y -= VIEWMODEL.raiseDrop * lift;
     viewmodel.update(dt);

@@ -200,12 +200,13 @@ export function createModelAvatar(scene, id, look, options = {}) {
     update: (dt) => animator?.update(dt),
     // Rời đất / chạm đất: chạy hoạt ảnh nhảy. `airTime` là thời gian bay dự kiến (giây).
     setAirborne: (airborne, airTime) => animator?.setAirborne(airborne, airTime),
+    setRunning: (running) => animator?.setRunning(running),
     // Bị hạ: ngã và nằm dưới đất. Hồi sinh: đứng dậy về tư thế đứng yên.
     knockOut: () => animator?.knockOut(),
     resetAnimation: () => animator?.reset(),
     // Chân đung đưa khi đi (chưa có animation đi bộ), cộng thêm bước chân của hoạt ảnh đấm / chân của hoạt ảnh nhảy nếu đang có. Ngồi chưa có hiệu ứng.
     pose(crouch, angle) {
-      const walking = animator?.airborne ? 0 : angle; // đang bay thì chân theo hoạt ảnh nhảy, không đung đưa như đi bộ
+      const walking = animator?.airborne || (animator?.running && animator.sets.Run) || animator?.stage === 'ko' ? 0 : angle;
       legs.forEach((leg, i) => {
         if (!leg) return;
         Quaternion.RotationAxisToRef(Vector3.Right(), i === 0 ? walking : -walking, swing);
