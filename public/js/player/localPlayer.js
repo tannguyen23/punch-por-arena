@@ -8,7 +8,7 @@ import { updateViewmodel } from './viewmodel.js';
 import { updateSprint } from './sprint.js';
 import { slideVelocity, settleSlide, resetSlide } from './iceSlide.js';
 import { groundAt, waterLevel } from '../core/terrain.js';
-import { isFrozen } from '../core/freeze.js';
+import { isImmobile } from '../core/freeze.js';
 import { sizeOf, speedOf } from '../core/bodySize.js';
 import { updateBodyView } from './bodyView.js';
 import { applyKnockback, resetKnockback } from './knockback.js';
@@ -60,7 +60,7 @@ function applyVertical(dt) {
   if (me.y <= ground + GROUND_STICK && state.vy <= 0) {
     me.y = ground;
     state.vy = 0;
-    if (keys.has('Space') && !state.crouching && !isFrozen()) state.vy = JUMP_SPEED;
+    if (keys.has('Space') && !state.crouching && !isImmobile()) state.vy = JUMP_SPEED;
   }
   state.vy -= GRAVITY * dt;
   me.y += state.vy * dt;
@@ -95,7 +95,7 @@ export function updateLocalPlayer(dt) {
 
   if (state.alive && state.myId !== null) {
     const { x, z } = state.me;
-    if (!isFrozen()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật
+    if (!isImmobile()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật; võ sĩ solo ngoài hiệp cũng đứng yên
     applyKnockback(dt);
     applyVertical(dt);
     updateWading();

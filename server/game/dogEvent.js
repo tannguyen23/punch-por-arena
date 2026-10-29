@@ -1,12 +1,11 @@
 const { DOG_EVENT } = require('../config');
 const { stripInventory, clearInventory } = require('./inventory');
 const { clearPotion } = require('./potions');
-const { resetPoopSkill, tickPoop, clearPoops } = require('./poop');
+const { resetPoopSkill, tickPoop, clearPoops, poopsView, poopInfo } = require('./poop');
 
 // Sự kiện "hoá chó": một người sống ngẫu nhiên thành chó (mất hết vũ khí, không đánh / nhặt được, client cho chạy nhanh hơn).
 // Hạ được chó thì người hạ nhận tiền thưởng, chó chạy thoát tới hết giờ thì chính nó nhận. Vòng đời nằm ở events.js.
 
-const durationMs = DOG_EVENT.durationMs;
 
 // Trả về trạng thái sự kiện, hoặc null nếu không có ai để hoá chó.
 function begin(room) {
@@ -48,4 +47,21 @@ function finish(room, ev) {
   clearInventory(target);
 }
 
-module.exports = { durationMs, begin, tick, onDown, finish };
+// Kỹ năng thả shit của chó, và shit đang nằm trên sân cho người vào giữa chừng (thêm vào tin 'event').
+const view = (room) => ({ poop: poopInfo(), poops: poopsView(room) });
+
+// Mô tả cho trang /admin-test (debug/options.js): tên, số người tối thiểu để thử, các thông số thời gian chỉnh được (`apply` ghi vào config)
+// và thời lượng tối đa = tổng `times × giá trị` của các thông số (không tính phần đứng hình đọc luật).
+const debug = {
+  name: 'Hoá chó',
+  minPlayers: 1,
+  options: [
+    { key: 'run', label: 'Chó chạy trốn', default: 15, min: 3, max: 300, apply: (seconds) => { DOG_EVENT.durationMs = seconds * 1000; } },
+  ],
+  length: [{ key: 'run', times: 1 }],
+};
+
+module.exports = {
+  get durationMs() { return DOG_EVENT.durationMs; }, // đọc lúc dùng: /admin-test đổi được khi server đang chạy
+  begin, tick, onDown, finish, view, debug,
+};

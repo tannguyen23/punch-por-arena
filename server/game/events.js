@@ -1,17 +1,26 @@
-const { EVENTS, MATCH_DURATION_MS, MIN_PLAYERS_TO_START } = require('../config');
+const config = require('../config');
 const { broadcast } = require('../net/messaging');
 const dogEvent = require('./dogEvent');
-const { poopsView, poopInfo } = require('./poop');
+const duelEvent = require('./duelEvent');
 
 // Sự kiện ngẫu nhiên trong trận. Đầu trận lên lịch 1–3 sự kiện rải đều (mỗi sự kiện một "ô" thời gian riêng, không chồng nhau);
 // tới giờ thì bắt đầu: `introMs` đầu cả phòng đứng hình để đọc luật (restrictions.js), sau đó sự kiện chạy tới hết giờ hoặc có kết quả.
-// Mỗi loại sự kiện là một module có `durationMs`, `begin`, `tick`, `onDown`, `finish` (xem dogEvent.js). Không require match.js
+// Mỗi loại sự kiện là một module có `durationMs`, `begin`, `tick`, `onDown`, `finish` (xem dogEvent.js) và tuỳ chọn `view(room, ev, now)`
+// (thêm trường vào tin 'event'), `absorbLethal(room, ev, target, attacker)` (nhận lấy cú đánh hạ gục, xem duelEvent.js) và `pauses` (mảng tên hoạt động
+// nền tạm ngưng trong lúc sự kiện chạy, xem `isPaused`). Không require match.js
 // (match.js require file này).
 
-const KINDS = { dog: dogEvent };
-const KIND_IDS = Object.keys(KINDS);
+const KINDS = { dog: dogEvent, duel: duelEvent };
+const { EVENTS, TEST } = config; // các object này được sửa tại chỗ khi chạy /admin-test nên đọc thuộc tính lúc dùng, không sao chép giá trị
 
-const pickKind = () => KIND_IDS[Math.floor(Math.random() * KIND_IDS.length)];
+// Loại sự kiện được phép lúc này (đọc lại mỗi lần vì /admin-test đổi được khi server đang chạy).
+function kindIds() {
+  if (EVENTS.only && KINDS[EVENTS.only]) return [EVENTS.only];
+  const requested = EVENTS.sequence.filter((kind) => KINDS[kind]);
+  return requested.length > 0 ? requested : Object.keys(KINDS);
+}
+
+const pickKind = (ids) => ids[Math.floor(Math.random() * ids.length)];
 const lengthOf = (kind) => EVENTS.introMs + KINDS[kind].durationMs;
 const clamp = (v, min, max) => Math.max(min, Math.min(max, v));
 
@@ -22,13 +31,27 @@ function planEvents(room, now) {
   room.frozenUntil = 0;
   const start = now + EVENTS.firstMs;
   const end = room.endsAt - EVENTS.tailMs;
-  const longest = Math.max(...KIND_IDS.map(lengthOf));
-  const wanted = clamp(Math.floor(MATCH_DURATION_MS / EVENTS.perMatchMs), 1, EVENTS.max);
-  const count = Math.min(wanted, Math.floor((end - start) / longest));
+  const ids = kindIds();
+  const wanted = EVENTS.count ?? clamp(Math.floor(config.MATCH_DURATION_MS / EVENTS.perMatchMs), 1, EVENTS.max);
   room.eventPlan = [];
+
+  // Chế độ test: chạy đúng thứ tự đã chọn, nối tiếp ngay sau `firstMs` và cách nhau `testGapMs`.
+  if (TEST.enabled) {
+    let at = start;
+    for (let i = 0; i < wanted; i++) {
+      const kind = ids[i % ids.length];
+      if (at + lengthOf(kind) > end) break;
+      room.eventPlan.push({ kind, at });
+      at += lengthOf(kind) + EVENTS.testGapMs;
+    }
+    return;
+  }
+
+  const longest = Math.max(...ids.map(lengthOf));
+  const count = Math.min(wanted, Math.floor((end - start) / longest));
   for (let i = 0; i < count; i++) {
     const slot = (end - start) / count;
-    const kind = pickKind();
+    const kind = pickKind(ids);
     room.eventPlan.push({ kind, at: start + slot * i + Math.random() * (slot - lengthOf(kind)) });
   }
 }
@@ -45,14 +68,14 @@ function eventView(room, now = Date.now()) {
     bounty: ev.bounty,
     introLeft: Math.max(0, ev.introEndsAt - now),
     left: Math.max(0, ev.endsAt - now),
-    ...(ev.kind === 'dog' ? { poop: poopInfo(), poops: poopsView(room) } : {}), // kỹ năng thả shit của chó, và shit đang nằm trên sân cho người vào giữa chừng
+    ...KINDS[ev.kind].view?.(room, ev, now), // phần riêng của từng loại (chó: kỹ năng thả shit; solo: võ sĩ, hiệp, cược)
   };
 }
 
 // Còn người sống đủ để chơi và không có bom hạt nhân đang tới thì mới bắt đầu được.
 function canStart(room) {
   const alive = [...room.players.values()].filter((p) => !p.dead).length;
-  return !room.nuke && alive >= MIN_PLAYERS_TO_START;
+  return !room.nuke && alive >= config.MIN_PLAYERS_TO_START;
 }
 
 function startEvent(room, kind, now) {
@@ -103,6 +126,21 @@ function onPlayerDown(room, target, attacker) {
   if (result) endEvent(room, result);
 }
 
+// Sự kiện đang chạy có yêu cầu tạm ngưng hoạt động nền `activity` không: 'airdrop' (máy bay thả hòm tiếp tế mới), 'potion' (thuốc mới rơi trên sân).
+// Chỉ chặn thứ MỚI xuất hiện; hòm đã bay / thuốc đã nằm trên sân vẫn ở nguyên (người chơi không nhặt được trong lúc sự kiện, cantAct). Thêm loại hoạt động
+// mới thì match.js gọi hàm này ở chỗ lên lịch nó.
+function isPaused(room, activity) {
+  const ev = room.event;
+  return Boolean(ev && KINDS[ev.kind].pauses?.includes(activity));
+}
+
+// Có người bị đánh về 0 máu (gọi từ damage.js trước khi tính là chết): sự kiện có thể nhận lấy cú đánh đó thay vì để người chơi chết thật.
+// Trả về true nếu đã nhận.
+function absorbLethal(room, target, attacker) {
+  const ev = room.event;
+  return Boolean(ev && KINDS[ev.kind].absorbLethal?.(room, ev, target, attacker));
+}
+
 // Hết trận / về phòng chờ: huỷ sự kiện đang chạy (không ai được thưởng) và bỏ lịch.
 function clearEvents(room) {
   endEvent(room, { reason: 'cancelled' });
@@ -110,4 +148,7 @@ function clearEvents(room) {
   room.frozenUntil = 0;
 }
 
-module.exports = { planEvents, tickEvents, onPlayerDown, clearEvents, eventView };
+// Mô tả debug của mọi loại sự kiện đã đăng ký (trang /admin-test dựng form từ đây, xem `debug` trong dogEvent.js). Sự kiện chưa khai báo thì vẫn chọn được.
+const eventDebugInfo = () => Object.entries(KINDS).map(([id, module]) => ({ name: id, minPlayers: 1, options: [], length: [], ...module.debug, id }));
+
+module.exports = { eventDebugInfo, isPaused, planEvents, tickEvents, onPlayerDown, absorbLethal, clearEvents, eventView };

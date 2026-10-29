@@ -46,4 +46,4 @@ function respawn(room, p) {
   send(p.ws, { t: 'setpos', x: p.x, z: p.z });
 }
 
-module.exports = { randomFreePosition, freePositionNear, respawn };
+module.exports = { isFree, randomFreePosition, freePositionNear, respawn };

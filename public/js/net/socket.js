@@ -27,7 +27,7 @@ export function connect(name, look, intent = {}) {
   }
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
   ws.onopen = () => send({ t: 'join', name, look, ...intent });
-  ws.onclose = () => showPause('Mất kết nối', 'Tải lại trang (F5) để vào lại');
+  ws.onclose = () => !state.kicked && showPause('Mất kết nối', 'Tải lại trang (F5) để vào lại'); // bị kick thì roomHandlers.js đã đưa về menu
   ws.onmessage = handleMessage;
   startStateSync();
 }

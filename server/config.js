@@ -4,6 +4,10 @@ const ROOT = path.join(__dirname, '..');
 
 // Tuỳ chọn khi chạy: `node server/index.js --min-players=1 --match-seconds=40` (hoặc biến môi trường MIN_PLAYERS / MATCH_SECONDS).
 const arg = (name) => process.argv.find((a) => a.startsWith(`--${name}=`))?.split('=')[1];
+const flag = (name, env) => {
+  const value = arg(name) ?? process.env[env];
+  return value === '1' || value === 'true';
+};
 
 module.exports = {
   PORT: process.env.PORT || 3000,
@@ -20,8 +24,8 @@ module.exports = {
   PUNCH_COOLDOWN: 350,
   PUNCH_VERTICAL: 2.2, // chênh lệch độ cao tối đa để đòn đánh còn trúng (đứng trên cầu không đấm được người dưới sông)
   RESPAWN_MS: 2000,
-  REGEN_DELAY_MS: 5000, // không bị trúng đòn ngần này thì bắt đầu hồi máu
-  REGEN_PER_SEC: 8, // máu hồi mỗi giây (tới đầy)
+  REGEN_DELAY_MS: 10000, // không bị trúng đòn ngần này thì bắt đầu hồi máu
+  REGEN_PER_SEC: 3, // máu hồi mỗi giây (tới đầy)
   KILL_SCORE: 50, // điểm cộng cho mỗi lần hạ gục
   TICK_MS: 50,
   MIN_DIST: 1.0, // khoảng cách tối thiểu giữa hai người chơi (bán kính 0.5 mỗi người)
@@ -42,7 +46,21 @@ module.exports = {
   // Phòng và phòng chờ
   ROOM_MAX_PLAYERS: 8, // số người tối đa trong một phòng
   MIN_PLAYERS_TO_START: Number(arg('min-players') ?? process.env.MIN_PLAYERS) || 2, // số người tối thiểu (và ai cũng bấm F) mới đếm ngược
+  READY_RATIO: 0.5, // phòng chờ: HƠN ngần này số người bấm F là đủ để đếm ngược (người AFK không giữ cả phòng lại; người chưa sẵn sàng vẫn bị kéo vào trận)
   COUNTDOWN_MS: 3000, // đếm ngược 3-2-1 trước khi vào trận
+
+  // Công cụ debug (`npm run dev:debug`): bật thì server phục vụ trang /admin-test và /api/debug/* (chỉ từ máy chạy server, xem server/http/debugRoutes.js).
+  // Tắt thì các đường dẫn đó là 404 như chưa từng có.
+  DEBUG: flag('debug', 'GAME_DEBUG'),
+
+  // Chế độ test sự kiện (scripts/test-events.js, hoặc trang /admin-test): map cố định, mọi tab vào chung một phòng, tự sẵn sàng.
+  // `--test=1` bật thêm cách xếp sự kiện tuần tự ngay sau `--event-first-seconds` (xem events.js).
+  TEST: {
+    enabled: flag('test', 'TEST'),
+    map: arg('map') ?? process.env.MAP ?? null,
+    singleRoom: flag('single-room', 'SINGLE_ROOM'),
+    autoReady: flag('auto-ready', 'AUTO_READY'),
+  },
 
   // Trận đấu. Rút ngắn khi thử bằng --match-seconds=40.
   MATCH_DURATION_MS: (Number(arg('match-seconds') ?? process.env.MATCH_SECONDS) || 5 * 60) * 1000,
@@ -92,8 +110,13 @@ module.exports = {
     max: 3,
     firstMs: (Number(arg('event-first-seconds') ?? process.env.EVENT_FIRST_SECONDS) || 25) * 1000, // sự kiện đầu tiên không sớm hơn mốc này từ đầu trận
     tailMs: 20000, // sự kiện phải xong trước lúc hết trận ngần này
-    introMs: 6000,
+    introMs: (Number(arg('event-intro-seconds') ?? process.env.EVENT_INTRO_SECONDS) || 6) * 1000,
     retryMs: 3000, // tới hẹn mà chưa bắt đầu được (đang có bom, thiếu người sống...) thì thử lại sau ngần này
+    only: arg('event-kind') ?? process.env.EVENT_KIND ?? null, // chỉ chạy loại sự kiện này ('dog' | 'duel') để thử: --event-kind=duel
+    // Danh sách loại sự kiện được phép, theo thứ tự khi chạy chế độ test: --events=dog,duel. Rỗng = tất cả.
+    sequence: (arg('events') ?? process.env.EVENTS ?? '').split(',').map((kind) => kind.trim()).filter(Boolean),
+    count: Number(arg('event-count') ?? process.env.EVENT_COUNT) || null, // số sự kiện mỗi trận (mặc định theo độ dài trận)
+    testGapMs: (Number(arg('event-gap-seconds') ?? process.env.EVENT_GAP_SECONDS) || 1.5) * 1000, // nghỉ giữa hai sự kiện khi test
   },
   // Sự kiện "hoá chó" (server/game/dogEvent.js): một người ngẫu nhiên thành chó, mất hết vũ khí, chỉ chạy được.
   // Bị hạ: người hạ gục được `bounty` điểm (cộng thêm điểm hạ gục thường). Chạy thoát tới hết giờ: chính con chó được `bounty` điểm.
@@ -104,6 +127,27 @@ module.exports = {
     // Người săn bước vào trong `radius` mét (không nhảy cao hơn cục shit quá `jumpClear` mét) thì cục biến mất và họ bị chậm `slowMs`.
     // `radius` khớp POOP.patchRadius ở public/js/config.js (bãi shit vẽ rộng bằng vùng dính).
     poop: { max: 3, rechargeMs: 8000, gapMs: 700, radius: 1.5, jumpClear: 0.5, slowMs: 5000 },
+  },
+
+  // Sự kiện "solo võ đài" (server/game/duelEvent.js): hai người ngẫu nhiên bị nhốt trong võ đài đánh tay không BO3, những người còn lại
+  // đứng xem quanh võ đài (không đánh được) và cược điểm xem ai thắng. Mỗi giai đoạn: `betMs` cược, mỗi hiệp đánh tới khi một người cạn máu (KHÔNG giới hạn giờ;
+  // `stallMs` là lưới chống treo: không ai trúng đòn ngần đó thì hiệp kết thúc, ai còn nhiều máu hơn thắng), nghỉ `breakMs` giữa hai hiệp, `finishMs` xem người thắng sau hiệp cuối. Thắng `winsNeeded` hiệp là thắng trận
+  // (2 = BO3). Cược: đặt `stake` điểm vào một võ sĩ, đúng +stake, sai −stake (điểm không xuống dưới 0). Võ sĩ thắng nhận `prize` điểm.
+  // `roundEstimateMs` là thời gian DỰ TÍNH của một hiệp, chỉ để xếp lịch: tổng dự tính (intro + cược + 3 hiệp + 2 lần nghỉ + xem) phải vừa một "ô" sự kiện
+  // (xem planEvents trong events.js). Hiệp thật có thể dài hơn; sự kiện kết thúc khi xong trận hoặc khi hết trận (khi đó không ai mất điểm cược).
+  DUEL: {
+    betMs: (Number(arg('duel-bet-seconds') ?? process.env.DUEL_BET_SECONDS) || 20) * 1000,
+    roundEstimateMs: (Number(arg('duel-round-seconds') ?? process.env.DUEL_ROUND_SECONDS) || 25) * 1000, // dự tính, chỉ để xếp lịch (không phải giới hạn)
+    stallMs: (Number(arg('duel-stall-seconds') ?? process.env.DUEL_STALL_SECONDS) || 20) * 1000, // không ai trúng đòn ngần này thì hiệp tự kết thúc
+    breakMs: (Number(arg('duel-break-seconds') ?? process.env.DUEL_BREAK_SECONDS) || 4) * 1000,
+    finishMs: (Number(arg('duel-finish-seconds') ?? process.env.DUEL_FINISH_SECONDS) || 3) * 1000,
+    winsNeeded: 2,
+    stake: 50,
+    prize: 100,
+    fighterOffset: 3.5, // đầu mỗi hiệp mỗi võ sĩ đứng cách tâm võ đài ngần này (hai bên đối diện nhau)
+    fighterMargin: 1.2, // võ sĩ không ra sát dây hơn ngần này: cũng là cách bịt hai lối vào ở cạnh bắc / nam
+    spectatorGap: 2, // lúc bắt đầu người xem được đưa tới cách dây ít nhất ngần này
+    spectatorEdge: 0.9, // người xem không được đứng gần võ đài hơn ngần này tính từ dây
   },
 
   // Thuốc (server/game/potions.js, potionDrops.js): nằm sẵn trên sân (không máy bay, không hòm), nhặt là uống ngay.

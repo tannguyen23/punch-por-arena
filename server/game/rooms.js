@@ -1,3 +1,4 @@
+const { ROOM_MAX_PLAYERS } = require('../config');
 const { Room } = require('./Room');
 
 const rooms = new Map(); // mã phòng (chuỗi 3 chữ số) → Room
@@ -25,4 +26,18 @@ function removeIfEmpty(room) {
   if (room.players.size === 0) rooms.delete(room.code);
 }
 
-module.exports = { createRoom, getRoom, allRooms, removeIfEmpty };
+// Danh sách phòng cho menu (GET /api/rooms): phòng đông người lên trước. Chỉ có thông tin công khai, không có gì của người chơi ngoài tên người tạo.
+function listRooms() {
+  return [...rooms.values()]
+    .map((room) => ({ code: room.code, owner: room.ownerName, players: room.players.size, max: ROOM_MAX_PLAYERS, phase: room.phase, mapName: room.mapData.name }))
+    .sort((a, b) => b.players - a.players || a.code.localeCompare(b.code));
+}
+
+// Đóng mọi kết nối và xoá hết phòng (trang /admin-test áp cấu hình mới: phòng cũ còn luật cũ nên không giữ lại).
+function closeAllRooms() {
+  const open = [...rooms.values()];
+  rooms.clear();
+  for (const room of open) for (const p of room.players.values()) p.ws.close();
+}
+
+module.exports = { createRoom, getRoom, allRooms, removeIfEmpty, closeAllRooms, listRooms };

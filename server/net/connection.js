@@ -1,6 +1,8 @@
-const { MAX_HP, ROOM_MAX_PLAYERS, MIN_PLAYERS_TO_START } = require('../config');
+const config = require('../config');
+
+const { MAX_HP, ROOM_MAX_PLAYERS, TEST } = config;
 const { createPlayer, info } = require('../game/players');
-const { createRoom, getRoom, removeIfEmpty } = require('../game/rooms');
+const { createRoom, getRoom, allRooms } = require('../game/rooms');
 const { randomFreePosition } = require('../game/spawn');
 const { applyClientState } = require('../game/movement');
 const { handlePunch } = require('../game/combat');
@@ -13,12 +15,15 @@ const { handleDrop } = require('../game/drops');
 const { handleRadioCall } = require('../game/radioCall');
 const { startCharge, releaseCharge } = require('../game/bigPunch');
 const { handlePoop } = require('../game/poop');
+const { assignHost, handleKick } = require('../game/host');
+const { leaveRoom } = require('../game/leave');
+const { handleBet } = require('../game/duelEvent');
 const { selectSlot } = require('../game/inventory');
 const { sanitizeLook, sanitizeName } = require('../game/sanitize');
 const { weaponInfo } = require('../game/weapons');
 const { potionInfo } = require('../game/potions');
 const { matchInfo, setReady } = require('../game/match');
-const { send, broadcast } = require('./messaging');
+const { send } = require('./messaging');
 const { mapOptions, defaultMapIds, getMap } = require('../maps');
 
 const ROOM_CODE = /^\d{3}$/;
@@ -34,24 +39,30 @@ function selectedMaps(value) {
 // Tìm hoặc tạo phòng theo yêu cầu của client. Trả về { room } hoặc { error } (mã lỗi gửi lại cho client).
 function resolveRoom(m) {
   if (m.create) {
-    const mapIds = selectedMaps(m.mapIds);
+    if (TEST.singleRoom) { // chế độ test: mọi tab "tạo phòng" đều vào chung phòng đầu tiên
+      const shared = [...allRooms()].find((room) => room.players.size < ROOM_MAX_PLAYERS);
+      if (shared) return { room: shared, created: false };
+    }
+    const forcedMap = TEST.map ? getMap(TEST.map) : null;
+    if (TEST.map && !forcedMap) return { error: 'bad_maps' };
+    const mapIds = forcedMap ? [forcedMap.data.id] : selectedMaps(m.mapIds);
     if (!mapIds) return { error: 'bad_maps' };
-    const room = createRoom(mapIds, getMap(mapIds[0]));
-    return room ? { room } : { error: 'server_full' };
+    const room = createRoom(mapIds, forcedMap ?? getMap(mapIds[0]));
+    return room ? { room, created: true } : { error: 'server_full' };
   }
   const code = String(m.room ?? '').trim();
   if (!ROOM_CODE.test(code)) return { error: 'bad_code' };
   const room = getRoom(code);
   if (!room) return { error: 'room_not_found' };
   if (room.players.size >= ROOM_MAX_PLAYERS) return { error: 'room_full' };
-  return { room };
+  return { room, created: false };
 }
 
 function handleJoin(p, m) {
-  if (p.joined) return;
+  if (p.joined || p.kicked) return;
   const name = sanitizeName(m.name, p.id);
   const look = sanitizeLook(m.look); // làm trước khi tạo phòng: dữ liệu hỏng mà làm ném lỗi thì không để lại phòng rỗng
-  const { room, error } = resolveRoom(m);
+  const { room, error, created } = resolveRoom(m);
   if (error) {
     send(p.ws, { t: 'error', reason: error }); // giữ kết nối để client thử lại với mã khác
     return;
@@ -60,8 +71,10 @@ function handleJoin(p, m) {
   p.name = name;
   p.look = look;
   p.room = room;
+  if (created) assignHost(room, p);
   Object.assign(p, randomFreePosition(room));
   p.joined = true;
+  p.ready = TEST.autoReady; // chế độ test: khỏi phải bấm F, kể cả khi vào giữa lúc đang đếm ngược
   room.players.set(p.id, p);
   send(p.ws, {
     t: 'welcome',
@@ -78,8 +91,10 @@ function handleJoin(p, m) {
     room: {
       code: room.code,
       max: ROOM_MAX_PLAYERS,
-      minPlayers: MIN_PLAYERS_TO_START,
-      created: Boolean(m.create),
+      hostId: room.ownerId, // chủ phòng được kick người khác; đổi thì có tin 'host'
+      readyRatio: config.READY_RATIO, // client tính "cần bao nhiêu người sẵn sàng" từ đây, không có bản sao riêng
+      minPlayers: config.MIN_PLAYERS_TO_START, // đọc lúc dùng: /admin-test đổi được khi server đang chạy
+      created: Boolean(created),
       mapId: room.mapData.id,
       mapName: room.mapData.name,
     },
@@ -102,6 +117,8 @@ const gameHandlers = {
   drop: (p) => handleDrop(p.room, p),
   radio: (p) => handleRadioCall(p.room, p),
   poop: (p) => handlePoop(p.room, p),
+  bet: (p, m) => handleBet(p.room, p, m.side),
+  kick: (p, m) => handleKick(p.room, p, m.id),
   bigcharge: (p) => startCharge(p.room, p),
   bigrelease: (p) => releaseCharge(p.room, p),
 };
@@ -122,13 +139,7 @@ function handleConnection(ws) {
     }
   });
 
-  ws.on('close', () => {
-    if (!p.joined) return;
-    const { room } = p;
-    room.players.delete(p.id);
-    broadcast(room, { t: 'leave', id: p.id });
-    removeIfEmpty(room);
-  });
+  ws.on('close', () => leaveRoom(p));
 }
 
 module.exports = { handleConnection };

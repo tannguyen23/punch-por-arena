@@ -96,6 +96,9 @@ module.exports = {
   size: SIZE,
   // Bảng màu để client tô mặt đất theo độ cao và độ dốc.
   ground: { grass: '#4f7a43', grassDark: '#3d6336', sand: '#b8a878', rock: '#7d776c', bed: '#6a5a44' },
+  // Võ đài cho sự kiện solo: tâm, nửa cạnh, người xem chỉ đi được trong `leash` mét quanh tâm, `gate` = bề rộng hai lối vào ở cạnh bắc / nam
+  // (khớp khe hở giữa các đoạn dây ở trên): sự kiện solo đóng cổng ở hai chỗ đó (client: fx/ringGates.js).
+  ring: { x: 0, z: 0, half: RING, leash: 16, gate: 3 },
   terrain,
   walls,
   props: [

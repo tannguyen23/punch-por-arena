@@ -20,6 +20,8 @@ import { grenadeHandlers } from './grenadeHandlers.js';
 import { weatherHandlers } from './weatherHandlers.js';
 import { nukeHandlers } from './nukeHandlers.js';
 import { eventHandlers, applyEvent } from './eventHandlers.js';
+import { duelHandlers } from './duelHandlers.js';
+import { roomHandlers } from './roomHandlers.js';
 import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
 
@@ -59,6 +61,8 @@ const messageHandlers = {
   ...weatherHandlers,
   ...nukeHandlers,
   ...eventHandlers,
+  ...duelHandlers,
+  ...roomHandlers,
 
   welcome(m) {
     state.myId = m.id;
@@ -149,6 +153,10 @@ const messageHandlers = {
     state.me.z = m.z;
     state.me.y = groundAt(m.x, m.z, state.me.y); // đứng trên đất (hoặc mặt cầu nếu đang ở trên cầu)
     state.vy = 0;
+    if (m.yaw !== undefined) { // dịch chuyển có hướng nhìn (sự kiện solo: quay mặt vào võ đài)
+      state.yaw = m.yaw;
+      state.pitch = 0;
+    }
   },
 
   snap(m) {
@@ -159,6 +167,7 @@ const messageHandlers = {
   },
 
   leave(m) {
+    if (m.kicked) announce(`${infos.get(m.id)?.name ?? 'Một người'} bị chủ phòng mời ra khỏi phòng`);
     const r = remotes.get(m.id);
     if (r) disposeRemote(r);
     remotes.delete(m.id);

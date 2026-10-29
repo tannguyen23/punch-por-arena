@@ -11,6 +11,7 @@ function createPlayer(ws) {
     ws,
     room: null, // Room đang ở
     ready: false, // đã bấm F trong phòng chờ
+    kicked: false, // bị chủ phòng kick: kết nối này không được vào phòng nữa (host.js)
     x: 0,
     z: 0,
     y: 0, // độ cao chân (tuyệt đối)

@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { keys } from '../core/keys.js';
-import { isFrozen } from '../core/freeze.js';
+import { actionBlocked } from '../core/freeze.js';
 import { send } from '../net/socket.js';
 import { bigPunchHand } from './viewmodel.js';
 import * as Sfx from '../audio/sfx.js';
@@ -12,7 +12,7 @@ import { BIG_PUNCH } from '../config.js';
 
 const settings = () => state.potionTypes[state.potion?.id]?.bigPunch ?? null; // { chargeMs, cooldownMs } hoặc null
 
-const canUse = () => state.alive && !state.dog && !isFrozen() && state.match.phase === 'playing' && state.weapon === 'fist' && settings() !== null;
+const canUse = () => state.alive && !actionBlocked() && state.match.phase === 'playing' && state.weapon === 'fist' && settings() !== null;
 
 function startCharge(now) {
   const big = state.bigPunch;

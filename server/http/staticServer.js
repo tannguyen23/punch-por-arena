@@ -3,6 +3,8 @@ const fs = require('fs');
 const path = require('path');
 const { PUBLIC_DIR, VENDOR_FILES } = require('../config');
 const { mapOptions } = require('../maps');
+const { listRooms } = require('../game/rooms');
+const { handleDebug } = require('./debugRoutes');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -31,8 +33,13 @@ function createStaticServer() {
       res.writeHead(400).end('Bad request'); // vd: `GET //` làm new URL ném lỗi, không được để lọt ra ngoài làm sập server
       return;
     }
+    if (handleDebug(req, res, pathname)) return; // /admin-test và /api/debug/*: chỉ khi bật dev:debug
     if (pathname === '/api/maps') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(mapOptions));
+      return;
+    }
+    if (pathname === '/api/rooms') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }).end(JSON.stringify(listRooms()));
       return;
     }
     if (pathname === '/favicon.ico') {

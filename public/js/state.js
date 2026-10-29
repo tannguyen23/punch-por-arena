@@ -1,7 +1,9 @@
 // Trạng thái dùng chung giữa các module. Gói vào object để module khác ghi được (import không gán lại được).
 export const state = {
   joined: false,
-  room: null, // { code, max, minPlayers, created } khi đã vào phòng
+  room: null, // { code, max, minPlayers, readyRatio, hostId, created } khi đã vào phòng (hostId = chủ phòng, được kick người khác)
+  kicked: false, // vừa bị chủ phòng kick: đang về menu, đừng báo "mất kết nối"
+  roster: [], // người trong snapshot gần nhất: { id, kills, score, dead, ... } (danh sách người chơi bấm Tab)
   ready: false, // mình đã bấm F
   readyIds: new Set(), // id những người đã sẵn sàng (từ snapshot)
   myId: null,
@@ -11,6 +13,7 @@ export const state = {
   arena: 20,
   colliders: [], // vật phẩm chặn đường: { x, z, r }
   walls: [], // tường chặn đường: { x, z, w, d }
+  ring: null, // võ đài của map: { x, z, half, leash, gate } (null nếu map không có), xem fx/ringGates.js
 
   me: { x: 0, y: 0, z: 0 }, // y là độ cao của chân (0 khi đứng trên sân)
   vy: 0,
@@ -37,7 +40,7 @@ export const state = {
   potion: null, // thuốc mình đang uống: { id, endsAt } (mốc performance.now()), null = không; chỉ số từng loại ở potionTypes
   potionTypes: {}, // id → { name, scale, hpMult, speedMult, collision, durationMs } do server gửi (server/game/potions.js)
   dog: false, // mình đang hoá chó (từ snapshot): chạy nhanh, không đánh / cầm vũ khí được
-  event: null, // sự kiện đang chạy: { kind, targetId, targetName, bounty, introEndsAt, endsAt } (mốc performance.now()), xem net/eventHandlers.js
+  event: null, // sự kiện đang chạy: { kind, targetId, targetName, bounty, duel?, introEndsAt, endsAt } (mốc performance.now()), xem net/eventHandlers.js; `duel` của sự kiện solo xem core/duel.js
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
   ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
   lastFireAt: 0, // mốc performance.now() lần bắn gần nhất (xem AMMO_SYNC_GRACE_MS)
