@@ -23,6 +23,8 @@ function buildSnapshot(room) {
       dead: p.dead,
       kills: p.kills,
       ks: p.streak, // chuỗi hạ gục liên tiếp
+      score: p.score,
+      dg: p.dog ? 1 : 0, // đang hoá chó
       w: p.weapon,
       a: p.ammo, // số đạn còn lại (null = dùng mãi)
       s: slotsView(p), // túi đồ: [vũ khí, đạn] hoặc 0 từng ô

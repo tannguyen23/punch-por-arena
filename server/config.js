@@ -22,6 +22,7 @@ module.exports = {
   RESPAWN_MS: 2000,
   REGEN_DELAY_MS: 5000, // không bị trúng đòn ngần này thì bắt đầu hồi máu
   REGEN_PER_SEC: 8, // máu hồi mỗi giây (tới đầy)
+  KILL_SCORE: 50, // điểm cộng cho mỗi lần hạ gục
   TICK_MS: 50,
   MIN_DIST: 1.0, // khoảng cách tối thiểu giữa hai người chơi (bán kính 0.5 mỗi người)
   PLAYER_RADIUS: 0.5,
@@ -82,6 +83,23 @@ module.exports = {
     restSpeed: 0.8, // nảy yếu hơn ngần này (m/giây) thì nằm xuống lăn
     rollDrag: 2.5, // đang lăn trên đất thì chậm dần theo ngần này mỗi giây
     waterDrag: 4, // dưới nước bị cản mạnh, chìm từ từ
+  },
+
+  // Sự kiện ngẫu nhiên trong trận (server/game/events.js): cứ mỗi `perMatchMs` thời gian trận thì có một sự kiện, kẹp trong [1, max].
+  // Mỗi sự kiện mở đầu bằng `introMs` đứng hình để mọi người đọc luật. Thử nhanh: --event-first-seconds=5 --dog-seconds=15.
+  EVENTS: {
+    perMatchMs: 120000,
+    max: 3,
+    firstMs: (Number(arg('event-first-seconds') ?? process.env.EVENT_FIRST_SECONDS) || 25) * 1000, // sự kiện đầu tiên không sớm hơn mốc này từ đầu trận
+    tailMs: 20000, // sự kiện phải xong trước lúc hết trận ngần này
+    introMs: 6000,
+    retryMs: 3000, // tới hẹn mà chưa bắt đầu được (đang có bom, thiếu người sống...) thì thử lại sau ngần này
+  },
+  // Sự kiện "hoá chó" (server/game/dogEvent.js): một người ngẫu nhiên thành chó, mất hết vũ khí, chỉ chạy được.
+  // Bị hạ: người hạ gục được `bounty` điểm (cộng thêm điểm hạ gục thường). Chạy thoát tới hết giờ: chính con chó được `bounty` điểm.
+  DOG_EVENT: {
+    durationMs: (Number(arg('dog-seconds') ?? process.env.DOG_SECONDS) || 45) * 1000, // thời gian chạy trốn, tính sau phần mở đầu
+    bounty: 150,
   },
 
   // Bão (server/game/weather.js): chỉ có khi đang 'playing', mưa là hình ảnh, sét gây sát thương (server/game/lightning.js).

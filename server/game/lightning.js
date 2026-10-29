@@ -70,7 +70,7 @@ function strike(room, s) {
     const dist = Math.hypot(p.x - s.x, p.z - s.z);
     if (dist >= LIGHTNING.radius || sheltered(room, p)) continue;
     const falloff = 1 - (1 - LIGHTNING.edgeMult) * (dist / LIGHTNING.radius);
-    applyDamage(room, null, p, LIGHTNING.damage * falloff);
+    applyDamage(room, null, p, LIGHTNING.damage * falloff, 'lightning');
   }
 }
 

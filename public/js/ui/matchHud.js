@@ -63,23 +63,23 @@ function updateBanner(now) {
   bannerEl.className = mode;
 }
 
-function row(className, name, kills) {
+function row(className, name, score) {
   const el = document.createElement('div');
   el.className = className;
   const nameEl = document.createElement('span');
   nameEl.textContent = name; // tên do người chơi tự nhập nên dùng textContent
-  const killsEl = document.createElement('span');
-  killsEl.textContent = `${kills}`;
-  el.append(nameEl, killsEl);
+  const scoreEl = document.createElement('span');
+  scoreEl.textContent = `${score}`;
+  el.append(nameEl, scoreEl);
   return el;
 }
 
-// Người thắng là người nhiều kill nhất; hoà thì liệt kê hết. Trận kết thúc bằng bom hạt nhân thì người gọi bom thắng.
+// Người thắng là người nhiều điểm nhất; hoà thì liệt kê hết. Trận kết thúc bằng bom hạt nhân thì người gọi bom thắng.
 function winnerText(ranking, result) {
   if (result?.reason === 'nuke') return `Người thắng: ${result.winnerName} (gọi bom hạt nhân)`;
-  const top = ranking[0]?.kills ?? 0;
+  const top = ranking[0]?.score ?? 0;
   if (top === 0) return 'Không ai hạ gục ai';
-  const names = ranking.filter((p) => p.kills === top).map((p) => p.name);
+  const names = ranking.filter((p) => p.score === top).map((p) => p.name);
   return `${names.length > 1 ? 'Hoà: ' : 'Người thắng: '}${names.join(', ')}`;
 }
 
@@ -91,7 +91,7 @@ function updateEndScreen(now) {
     return;
   }
   const seconds = Math.max(0, Math.ceil((state.match.endsAt - now) / 1000));
-  const signature = `${state.match.ranking.map((p) => `${p.id}:${p.kills}`).join(',')}|${seconds}`;
+  const signature = `${state.match.ranking.map((p) => `${p.id}:${p.score}`).join(',')}|${seconds}`;
   if (signature === lastEndSignature) return;
   lastEndSignature = signature;
 
@@ -101,7 +101,7 @@ function updateEndScreen(now) {
   const winner = document.createElement('div');
   winner.className = 'winner';
   winner.textContent = winnerText(ranking, result);
-  const rows = ranking.map((p, i) => row(p.id === state.myId ? 'rank me' : 'rank', `${i + 1}. ${p.name}`, p.kills));
+  const rows = ranking.map((p, i) => row(p.id === state.myId ? 'rank me' : 'rank', `${i + 1}. ${p.name}`, p.score));
   const next = document.createElement('div');
   next.className = 'next';
   next.textContent = `Trận mới sau ${seconds}s`;

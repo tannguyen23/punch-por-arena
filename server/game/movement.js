@@ -4,6 +4,7 @@ const { send } = require('../net/messaging');
 const { tryPickup } = require('./pickups');
 const { checkHazardContact } = require('./hazards');
 const { applyDamage } = require('./damage');
+const { isFrozen } = require('./restrictions');
 
 // Lưới an toàn: nếu client báo vị trí chồng sâu vào người khác thì đẩy ra và bắt client cập nhật lại.
 function separate(room, p) {
@@ -23,7 +24,7 @@ function separate(room, p) {
 
 // Áp trạng thái client báo lên (đã kiểm tra số hợp lệ và giới hạn trong sân).
 function applyClientState(room, p, m) {
-  if (p.dead) return;
+  if (p.dead || isFrozen(room)) return; // đứng hình: bỏ qua vị trí client báo (client cũng đã đứng yên)
   if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || !Number.isFinite(m.yaw)) return;
   p.x = clamp(m.x, -room.mapData.size, room.mapData.size);
   p.z = clamp(m.z, -room.mapData.size, room.mapData.size);

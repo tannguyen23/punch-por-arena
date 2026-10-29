@@ -49,6 +49,16 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #banner.wave { color: #fd3; }
 #banner.urgent { color: #f55; font-size: 46px; animation: pulse .5s infinite; }
 @keyframes pulse { 50% { opacity: .55; } }
+#event-status { position: fixed; top: 52px; left: 50%; transform: translateX(-50%); color: #fff; font-size: 16px; font-weight: 700; text-shadow: 0 2px 6px #000; white-space: nowrap; pointer-events: none; }
+#event-status:not(:empty) { padding: 4px 14px; border-radius: 6px; background: rgba(160,50,30,.75); }
+#event-status.me { background: rgba(210,120,20,.85); animation: pulse 1s infinite; }
+#event-result { position: fixed; top: 34%; left: 0; right: 0; text-align: center; font-size: 26px; font-weight: 800; color: #fd3; text-shadow: 0 3px 10px #000; pointer-events: none; }
+#event-intro { position: fixed; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 0 24px; background: rgba(0,0,0,.8); color: #fff; text-align: center; pointer-events: none; z-index: 4; }
+#event-intro .event-title { font-size: 46px; font-weight: 900; color: #fd3; text-shadow: 0 4px 16px #000; }
+#event-intro .event-headline { font-size: 30px; font-weight: 800; color: #f77; }
+#event-intro .event-rule { max-width: 720px; font-size: 20px; line-height: 1.45; }
+#event-intro .event-note { margin-top: 10px; font-size: 15px; color: #bcc; }
+#event-intro .event-count { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
 #match-end { display: none; pointer-events: none; gap: 6px; background: rgba(0,0,0,.72); }
 #match-end h1 { margin: 0; font-size: 44px; }
 #match-end .winner { font-size: 22px; color: #fd3; margin-bottom: 10px; }

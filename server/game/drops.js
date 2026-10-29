@@ -1,12 +1,13 @@
 const { broadcast } = require('../net/messaging');
 const { isPlaying } = require('./match');
 const { takeActive } = require('./inventory');
+const { cantAct } = require('./restrictions');
 const { pickupView } = require('./pickups');
 
 // Phím G: vứt vũ khí đang cầm xuống chân, về tay không. Còn đạn thì nằm lại trên sân cho người khác nhặt;
 // hết đạn / dao gãy thì vứt luôn (không ai cần nhặt vũ khí rỗng).
 function handleDrop(room, p) {
-  if (!isPlaying(room) || p.dead) return;
+  if (!isPlaying(room) || p.dead || cantAct(room, p)) return;
   const slot = takeActive(p);
   if (!slot || slot.ammo === 0) return;
   const now = Date.now();

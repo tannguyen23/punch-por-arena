@@ -4,6 +4,18 @@ export const MOVE_SPEED = 6;
 export const EYE_HEIGHT = 1.7;
 export const CROUCH_EYE_HEIGHT = 1.15;
 export const SPRINT_MULT = 1.6;
+// Sự kiện hoá chó (entities/dogForm.js, ui/eventHud.js, player/localPlayer.js). Điểm thưởng và thời gian do server quyết định.
+export const DOG = {
+  speedMult: 1.5, // người hoá chó chạy nhanh hơn ngần này lần (server không kiểm tốc độ)
+  eyeHeight: 0.85, // mắt chó thấp sát đất
+  barHeight: 1.45, // thanh máu + tên của chó treo ở độ cao này (người là 2.3)
+  markerHeight: 2.2, // mũi tên đỏ trên đầu chó để cả sân thấy
+  fur: [0.66, 0.44, 0.24],
+  furDark: [0.42, 0.27, 0.14],
+  nose: [0.08, 0.08, 0.08],
+  marker: [1, 0.15, 0.1],
+};
+export const EVENT_RESULT_MS = 6000; // thông báo kết quả sự kiện hiện ngần này
 export const SPRINT = { duration: 5, recovery: 4, delay: 1, restart: 0.2 };
 export const SPRINT_CAMERA = { fovBoost: 0.2, easeIn: 10, easeOut: 5 };
 export const SPRINT_FX = {

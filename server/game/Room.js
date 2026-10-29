@@ -26,6 +26,9 @@ class Room {
     this.icePatches = []; // vũng băng do lựu đạn băng tạo ra: { id, x, z, r, endsAt } (ice.js)
     this.nuke = null; // quả bom hạt nhân đang tới: { id, ownerId, at, view (tin 'nuke' đã gửi), startedAt, timer }
     this.nextNukeId = 1;
+    this.event = null; // sự kiện đang chạy: { kind, targetId, bounty, introEndsAt, endsAt } (events.js)
+    this.eventPlan = []; // các sự kiện sẽ xảy ra trong trận: { kind, at } (events.js)
+    this.frozenUntil = 0; // mốc Date.now() hết đứng hình (restrictions.js)
     this.phase = 'lobby';
     this.endsAt = 0; // mốc Date.now() hết pha hiện tại (countdown / playing / ended)
     this.nextAirdropAt = 0; // mốc Date.now() máy bay tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing')

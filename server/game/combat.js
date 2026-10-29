@@ -3,6 +3,7 @@ const { broadcast } = require('../net/messaging');
 const { WEAPONS } = require('./weapons');
 const { useAmmo, hasAmmo } = require('./inventory');
 const { isPlaying } = require('./match');
+const { cantAct } = require('./restrictions');
 const { applyDamage } = require('./damage');
 const { wallBetween } = require('./raycast');
 
@@ -34,7 +35,7 @@ function handlePunch(room, p, hand) {
   const now = Date.now();
   const weapon = WEAPONS[p.weapon];
   if (weapon.kind !== 'melee' || !hasAmmo(p)) return;
-  if (!isPlaying(room) || p.dead || now - p.lastAttack < weapon.cooldown) return; // phòng chờ / hết giờ thì không đánh
+  if (!isPlaying(room) || p.dead || cantAct(room, p) || now - p.lastAttack < weapon.cooldown) return; // phòng chờ / hết giờ / hoá chó / đứng hình thì không đánh
   p.lastAttack = now;
   broadcast(room, { t: 'punch', id: p.id, hand });
   const target = findPunchTarget(room, p, weapon.range);

@@ -1,6 +1,7 @@
 import { state, remotes, infos } from '../state.js';
 import { createRemote, disposeRemote } from '../entities/remotePlayer.js';
 import { equipLoadout, thirdPersonTilt } from '../entities/weapons/index.js';
+import { setDogForm } from '../entities/dogForm.js';
 import { updateHud } from '../ui/hud.js';
 import { AMMO_SYNC_GRACE_MS, SLOT_SYNC_GRACE_MS } from '../config.js';
 import { playAt } from './positional.js';
@@ -21,6 +22,7 @@ function syncLocalPlayer(p) {
   state.hp = p.hp;
   state.streak = p.ks;
   state.alive = !p.dead;
+  state.dog = p.dg === 1;
   state.inventory = p.s.map((s) => (s ? { weapon: s[0], ammo: s[1] } : null));
   syncHeld(p);
 }
@@ -40,6 +42,7 @@ function syncRemote(p) {
   r.sprinting = p.sp === 1;
   r.tyaw = p.yaw;
   r.hp = p.hp;
+  setDogForm(r, p.dg === 1);
   if (!r.dead && p.dead) {
     playAt('ko', r.root.position);
     r.knockOut();

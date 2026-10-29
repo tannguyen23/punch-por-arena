@@ -3,6 +3,7 @@ const { randomFreePosition } = require('./spawn');
 const { randomDropWeapon, rollAmmo } = require('./weapons');
 const { addToInventory } = require('./inventory');
 const { broadcast } = require('../net/messaging');
+const { cantAct } = require('./restrictions');
 
 // Từ lúc máy bay xuất hiện tới lúc hòm chạm đất (mili giây).
 const AIRDROP_LEAD_MS = (PLANE_APPROACH / PLANE_SPEED) * 1000 + PARACHUTE_MS;
@@ -57,7 +58,7 @@ function blockedFor(pickup, p, near) {
 
 // Đi tới gần hòm đã chạm đất thì nhặt luôn vào túi đồ và cầm lên (cùng loại thì cộng dồn đạn). Túi đầy thì hòm nằm lại.
 function tryPickup(room, p) {
-  if (p.dead) return;
+  if (p.dead || cantAct(room, p)) return; // chó không cầm được gì
   const now = Date.now();
   for (const pickup of room.pickups.values()) {
     const near = Math.hypot(pickup.x - p.x, pickup.z - p.z) < PICKUP_RADIUS;

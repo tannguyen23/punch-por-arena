@@ -4,6 +4,7 @@ import { updateRemote } from './entities/remotePlayer.js';
 import { updatePickup } from './entities/pickup.js';
 import { updateMatchHud } from './ui/matchHud.js';
 import { updateLobbyHud } from './ui/lobbyHud.js';
+import { updateEventHud } from './ui/eventHud.js';
 import { updateStamina } from './ui/stamina.js';
 import { updateWater } from './world/arena.js';
 import { updateLocalPlayer } from './player/localPlayer.js';
@@ -51,6 +52,7 @@ scene.onBeforeRenderObservable.add(() => {
   updateSprintEffects(dt);
   for (const pickup of pickups.values()) updatePickup(pickup, dt);
   updateMatchHud();
+  updateEventHud();
   updateLobbyHud();
   updateWater(dt);
   updateRockets(dt);

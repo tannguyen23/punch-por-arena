@@ -9,6 +9,7 @@ const { clearGrenades } = require('./grenades');
 const { startWeather, stopWeather, tickWeather, weatherView } = require('./weather');
 const { clearNuke } = require('./nuke');
 const { clearIce } = require('./ice');
+const { planEvents, tickEvents, clearEvents, eventView } = require('./events');
 const { regenerate } = require('./regen');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
@@ -18,13 +19,15 @@ const { getMap } = require('../maps');
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
 
-// Bỏ mọi thứ đang bay / chờ nổ trên sân khi đổi pha (tên lửa, lựu đạn, vũng băng, bom hạt nhân, sét đã báo) và cho trời tạnh.
+// Bỏ mọi thứ đang bay / chờ nổ trên sân khi đổi pha (tên lửa, lựu đạn, vũng băng, bom hạt nhân, sét đã báo), cho trời tạnh
+// và huỷ sự kiện đang chạy.
 function clearProjectiles(room) {
   clearRockets(room);
   clearGrenades(room);
   clearIce(room);
   clearNuke(room);
   stopWeather(room);
+  clearEvents(room);
 }
 
 const isPlaying = (room) => room.phase === 'playing';
@@ -40,6 +43,8 @@ function resetPlayers(room) {
   for (const p of room.players.values()) {
     p.kills = 0;
     p.streak = 0;
+    p.score = 0;
+    p.dog = false;
     clearInventory(p);
     p.ready = false;
     respawn(room, p);
@@ -74,6 +79,7 @@ function startMatch(room) {
   room.result = null;
   room.nextAirdropAt = now + AIRDROP_FIRST_MS;
   startWeather(room, now);
+  planEvents(room, now);
   broadcast(room, { t: 'start', duration: MATCH_DURATION_MS });
 }
 
@@ -84,8 +90,8 @@ function endMatch(room, { winner = null, showIn = 0 } = {}) {
   room.phase = 'ended';
   room.endsAt = Date.now() + showIn + MATCH_INTERMISSION_MS;
   room.ranking = [...room.players.values()]
-    .sort((a, b) => (b.id === winner?.id) - (a.id === winner?.id) || b.kills - a.kills) // người thắng bom đứng đầu bảng
-    .map((p) => ({ id: p.id, name: p.name, kills: p.kills }));
+    .sort((a, b) => (b.id === winner?.id) - (a.id === winner?.id) || b.score - a.score) // người thắng bom đứng đầu bảng
+    .map((p) => ({ id: p.id, name: p.name, kills: p.kills, score: p.score }));
   room.result = winner ? { reason: 'nuke', winnerId: winner.id, winnerName: winner.name, showIn } : { reason: 'time', showIn: 0 };
   broadcast(room, { t: 'end', ranking: room.ranking, intermission: showIn + MATCH_INTERMISSION_MS, result: room.result });
 }
@@ -133,6 +139,7 @@ function tickRoom(room) {
         runAirdrops(room, now);
         regenerate(room, now);
         tickWeather(room, now);
+        tickEvents(room, now);
       }
       break;
     case 'ended':
@@ -144,7 +151,7 @@ function tickRoom(room) {
 // Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ, đang bão không
 // (hòm tiếp tế nằm trong 'pickups').
 function matchInfo(room) {
-  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, result: room.result, weather: weatherView(room) };
+  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, result: room.result, weather: weatherView(room), event: eventView(room) };
 }
 
 function startMatchLoop() {

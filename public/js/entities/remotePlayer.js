@@ -5,6 +5,7 @@ import { JUMP_AIR_TIME, AIRBORNE_HEIGHT } from '../config.js';
 import { createPlayerAvatar } from './avatar.js';
 import { createNameTag } from './nameTag.js';
 import { releaseWeapon } from './weapons/index.js';
+import { updateDogForm } from './dogForm.js';
 
 const { Color3, MeshBuilder, TransformNode } = BABYLON;
 
@@ -66,6 +67,7 @@ export function updateRemote(r, dt) {
   r.setRunning(!r.dead && !r.tc && r.sprinting);
   r.update(dt);
   r.pose(r.crouch, r.dead ? 0 : Math.sin(r.phase) * 0.7 * Math.min(speed / 3, 1) * (1 - 0.7 * r.crouch));
+  updateDogForm(r, speed, dt);
   const pct = Math.max(0, r.hp) / state.maxHp;
   r.fill.scaling.x = Math.max(pct, 0.001);
   r.fill.position.x = -0.5 * (1 - pct);
