@@ -48,7 +48,7 @@ function vertexColor(palette, wet, shoreDistance, height, slope, noise) {
 }
 
 // Mặt đất dựng từ lưới độ cao của server. Hai tam giác mỗi ô theo đúng đường chéo mà core/terrain.js nội suy.
-export function createGround(terrain, palette) {
+export function createGround(terrain, palette, parent) {
   const { count, size, step, heights, waterLevel } = terrain;
   const positions = new Float32Array(count * count * 3);
   for (let j = 0; j < count; j++) {
@@ -61,12 +61,22 @@ export function createGround(terrain, palette) {
   }
 
   const indices = [];
+  const isIslandVertex = (n) => {
+    const x = positions[n * 3];
+    const z = positions[n * 3 + 2];
+    return terrain.islands.some((island) => Math.hypot(x - island.x, z - island.z) <= island.radius);
+  };
   for (let j = 0; j < count - 1; j++) {
     for (let i = 0; i < count - 1; i++) {
       const a = j * count + i;
       const b = a + 1;
       const c = a + count;
       const d = c + 1;
+      if (terrain.floating) {
+        if (isIslandVertex(a) && isIslandVertex(b) && isIslandVertex(c)) indices.push(a, b, c);
+        if (isIslandVertex(d) && isIslandVertex(c) && isIslandVertex(b)) indices.push(d, c, b);
+        continue;
+      }
       indices.push(a, b, c, d, c, b); // tam giác (a,b,c) và (d,c,b), quay mặt lên trời (hệ trục tay trái của Babylon)
     }
   }
@@ -92,6 +102,7 @@ export function createGround(terrain, palette) {
   data.colors = colors;
   const mesh = new Mesh('terrain', scene);
   data.applyToMesh(mesh);
+  mesh.parent = parent;
 
   const material = new StandardMaterial('terrain', scene);
   material.diffuseColor = Color3.White(); // màu đến từ màu đỉnh
@@ -100,4 +111,3 @@ export function createGround(terrain, palette) {
   mesh.freezeWorldMatrix();
   return mesh;
 }
-

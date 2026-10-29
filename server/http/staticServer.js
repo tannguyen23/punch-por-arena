@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { PUBLIC_DIR, VENDOR_FILES } = require('../config');
+const { mapOptions } = require('../maps');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -22,6 +23,10 @@ function resolveFile(pathname) {
 function createStaticServer() {
   return http.createServer((req, res) => {
     const { pathname } = new URL(req.url, 'http://localhost');
+    if (pathname === '/api/maps') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(mapOptions));
+      return;
+    }
     if (pathname === '/favicon.ico') {
       res.writeHead(204).end();
       return;

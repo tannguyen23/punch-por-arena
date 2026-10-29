@@ -1,4 +1,4 @@
-// Sinh địa hình từ mô tả (spec): lưới độ cao, một con sông uốn quanh tâm sân và các cây cầu bắc qua nó.
+// Sinh lưới độ cao từ spec: có thể có sông/cầu hoặc địa hình cồn cát riêng.
 // Lưới độ cao (đơn vị cm, số nguyên) là nguồn duy nhất: server dùng nó để kiểm tra, client nhận nguyên lưới này để
 // dựng mặt đất và tính độ cao khi di chuyển. Hàm `interpolate` phải khớp từng chữ với public/js/world/terrain.js.
 const { clamp } = require('../utils/math');
@@ -58,17 +58,20 @@ const padRect = (b) => {
 function buildTerrain(spec) {
   const { size, step, seed, waterLevel, plateau, hills, bumps, river } = spec;
   const count = Math.round((size * 2) / step) + 1;
+  const islands = spec.islands ?? [];
 
-  // Sông là một vòng uốn lượn quanh tâm: bán kính thay đổi theo góc.
-  const riverRadius = (theta) => river.radius + river.wobble.reduce((sum, [amp, k, phase]) => sum + amp * Math.sin(k * theta + phase), 0);
-  const riverDistance = (x, z) => Math.abs(Math.hypot(x, z) - riverRadius(Math.atan2(z, x)));
+  const riverRadius = river
+    ? (theta) => river.radius + river.wobble.reduce((sum, [amp, k, phase]) => sum + amp * Math.sin(k * theta + phase), 0)
+    : () => 0;
+  const riverDistance = river
+    ? (x, z) => Math.abs(Math.hypot(x, z) - riverRadius(Math.atan2(z, x)))
+    : () => Infinity;
 
-  // Cầu bắc ở các góc đã cho, dọc theo trục x hoặc z (trùng các đại lộ của sân).
-  const halfLength = river.halfWidth + river.bank + 1; // hai đầu cầu chạm đất ở chỗ bờ đã bằng
-  const bridges = spec.bridges.angles.map((deg) => {
+  const bridges = river ? (spec.bridges?.angles ?? []).map((deg) => {
     const theta = (deg * Math.PI) / 180;
     const r = riverRadius(theta);
     const axis = Math.abs(Math.cos(theta)) > 0.5 ? 'x' : 'z';
+    const halfLength = river.halfWidth + river.bank + 1;
     return {
       axis,
       x: axis === 'x' ? +(Math.sign(Math.cos(theta)) * r).toFixed(2) : 0,
@@ -78,22 +81,43 @@ function buildTerrain(spec) {
       deckY: spec.bridges.deckY,
       bedY: river.bedY,
     };
-  });
+  }) : [];
+  bridges.push(...(spec.floatingBridges ?? []).map((bridge) => ({ ...bridge, floating: true })));
+  const islandAt = (x, z) => islands.find((island) =>
+    Math.hypot(x - island.x, z - island.z) <= island.radius) ?? null;
 
   // Độ cao giải tích tại một điểm: đồi → mặt bằng cầu → lòng sông.
   function analyticHeight(x, z) {
+    if (islands.length) {
+      const nearest = islands.reduce((best, island) =>
+        Math.hypot(x - island.x, z - island.z) < Math.hypot(x - best.x, z - best.z) ? island : best);
+      return nearest.y + 0.45 * valueNoise(x / 8, z / 8, seed + 7)
+        + 0.2 * valueNoise(x / 3, z / 3, seed + 8);
+    }
+
     const r = Math.hypot(x, z);
     const noise = valueNoise(x / 38, z / 38, seed) + 0.5 * valueNoise(x / 17, z / 17, seed + 1);
     const amplitude = hills.inner * smoothstep(plateau.inner, plateau.outer, r)
-      + hills.outer * smoothstep(river.radius - 6, river.radius + 14, r);
+      + hills.outer * (river ? smoothstep(river.radius - 6, river.radius + 14, r) : 1);
     // Nền được nâng lên (noise dao động quanh 0 nên cộng thêm) để đất không bao giờ trũng xuống dưới mực nước, trừ lòng sông.
     let h = amplitude * (0.55 * noise + 0.9);
     for (const b of bumps) h += b.h * Math.exp(-((x - b.x) ** 2 + (z - b.z) ** 2) / (2 * (b.r / 2) ** 2));
+
+    if (spec.dunes) {
+      const { angle, spacing, height, inner, outer, drift } = spec.dunes;
+      const along = x * Math.cos(angle) + z * Math.sin(angle);
+      const across = -x * Math.sin(angle) + z * Math.cos(angle);
+      const phaseShift = drift * valueNoise(across / 24, along / 40, seed + 3);
+      const ridge = (1 + Math.cos(((along + phaseShift) * Math.PI * 2) / spacing)) / 2;
+      h += height * smoothstep(inner, outer, r) * (ridge - 0.35);
+    }
 
     // Hai đầu cầu nằm trên đất bằng phẳng nên san mặt bằng quanh cầu về một độ cao (trước khi đào sông).
     for (const bridge of bridges) {
       h = lerp(h, spec.bridges.padY, 1 - smoothstep(0, 4, distToRect(x, z, padRect(bridge))));
     }
+
+    if (!river) return h;
 
     // Đào lòng sông: giữa dòng là đáy, hai bên là bờ thoải dần lên đất.
     const bank = smoothstep(river.halfWidth, river.halfWidth + river.bank, riverDistance(x, z));
@@ -113,30 +137,47 @@ function buildTerrain(spec) {
     }
   }
 
-  const heightAt = (x, z) => interpolate(heights, count, size, step, x, z);
   const bridgeAt = (x, z) => bridges.find((b) => distToRect(x, z, deckRect(b)) === 0) ?? null;
+  const isSupported = (x, z) => !islands.length || islandAt(x, z) !== null || bridgeAt(x, z) !== null;
+  const heightAt = (x, z) => {
+    const bridge = bridgeAt(x, z);
+    if (bridge?.floating) return bridge.deckY;
+    if (islands.length && !islandAt(x, z)) return -100;
+    return interpolate(heights, count, size, step, x, z);
+  };
+  const isLandAt = (x, z) => !islands.length || islandAt(x, z) !== null;
 
   return {
     // Phần gửi cho client trong 'welcome'.
-    data: { size, step, count, waterLevel, heights, bridges },
+    data: { size, step, count, waterLevel, heights, bridges, islands, floating: islands.length > 0 },
     waterLevel,
     bridges,
+    islands,
     minHeight,
     maxHeight,
     heightAt,
     bridgeAt,
+    isSupported,
+    isLandAt,
+    islandAt,
     riverDistance,
     riverRadius,
     padRect,
     deckRect,
     // Mặt đất mà người đứng ở độ cao chân `feetY` sẽ giẫm lên: mặt cầu nếu đã đủ cao để bước lên, ngược lại là đất.
     groundAt(x, z, feetY) {
+      if (islands.length) {
+        const bridge = bridgeAt(x, z);
+        if (bridge && feetY >= bridge.deckY - 0.5) return bridge.deckY;
+        if (!islandAt(x, z)) return -Infinity;
+        return heightAt(x, z);
+      }
       const ground = heightAt(x, z);
       const bridge = bridgeAt(x, z);
       return bridge && feetY >= bridge.deckY - 0.5 ? Math.max(ground, bridge.deckY) : ground;
     },
     // Chỗ khô ráo, đủ xa mép nước để đặt người hoặc vật phẩm.
-    isDry: (x, z) => heightAt(x, z) > waterLevel + 0.3,
+    isDry: (x, z) => isSupported(x, z) && heightAt(x, z) > waterLevel + 0.3,
   };
 }
 

@@ -16,7 +16,7 @@ const wobble = (angle, spread) => angle + (Math.random() * 2 - 1) * spread;
 function fireBullet(room, p, weapon, yaw, pitch) {
   const origin = eyeOf(p);
   const dir = aimDirection(wobble(yaw, weapon.spread), wobble(pitch, weapon.spread));
-  const reach = Math.min(weapon.range, obstacleDistance(origin, dir, weapon.range));
+  const reach = Math.min(weapon.range, obstacleDistance(room, origin, dir, weapon.range));
   const hit = firstBodyHit(room, origin, dir, reach, p);
   const dist = hit ? hit.dist : reach;
   const impact = !hit && reach < weapon.range;

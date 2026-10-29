@@ -1,5 +1,4 @@
 const { MAX_HP, ROOM_MAX_PLAYERS, MIN_PLAYERS_TO_START } = require('../config');
-const { currentMap } = require('../maps');
 const { createPlayer, info } = require('../game/players');
 const { createRoom, getRoom, removeIfEmpty } = require('../game/rooms');
 const { randomFreePosition } = require('../game/spawn');
@@ -13,13 +12,24 @@ const { sanitizeLook, sanitizeName } = require('../game/sanitize');
 const { weaponInfo } = require('../game/weapons');
 const { matchInfo, setReady } = require('../game/match');
 const { send, broadcast } = require('./messaging');
+const { mapOptions, defaultMapIds, getMap } = require('../maps');
 
 const ROOM_CODE = /^\d{3}$/;
+
+function selectedMaps(value) {
+  if (value === undefined) return defaultMapIds;
+  if (!Array.isArray(value) || value.length === 0) return null;
+  const ids = [...new Set(value)];
+  if (ids.length !== value.length || ids.some((id) => !getMap(id))) return null;
+  return mapOptions.map(({ id }) => id).filter((id) => ids.includes(id));
+}
 
 // Tìm hoặc tạo phòng theo yêu cầu của client. Trả về { room } hoặc { error } (mã lỗi gửi lại cho client).
 function resolveRoom(m) {
   if (m.create) {
-    const room = createRoom();
+    const mapIds = selectedMaps(m.mapIds);
+    if (!mapIds) return { error: 'bad_maps' };
+    const room = createRoom(mapIds, getMap(mapIds[0]));
     return room ? { room } : { error: 'server_full' };
   }
   const code = String(m.room ?? '').trim();
@@ -49,11 +59,18 @@ function handleJoin(p, m) {
     id: p.id,
     x: p.x,
     z: p.z,
-    map: currentMap,
+    map: room.mapData,
     weapons: weaponInfo(),
     pickups: [...room.pickups.values()].map((pickup) => pickupView(pickup)),
     match: matchInfo(room),
-    room: { code: room.code, max: ROOM_MAX_PLAYERS, minPlayers: MIN_PLAYERS_TO_START, created: Boolean(m.create) },
+    room: {
+      code: room.code,
+      max: ROOM_MAX_PLAYERS,
+      minPlayers: MIN_PLAYERS_TO_START,
+      created: Boolean(m.create),
+      mapId: room.mapData.id,
+      mapName: room.mapData.name,
+    },
     maxHp: MAX_HP,
     players: [...room.players.values()].map(info),
   });

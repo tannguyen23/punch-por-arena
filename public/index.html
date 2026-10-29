@@ -10,6 +10,7 @@
   <canvas id="c"></canvas>
   <div id="crosshair"></div>
   <div id="flash"></div>
+  <div id="damage-notice" aria-live="polite"></div>
   <div id="dead">Bạn bị hạ gục!</div>
   <div id="hud">
     <div id="hpbar"><div id="hpfill"></div></div>
@@ -31,6 +32,10 @@
     <div class="panel">
       <canvas id="preview"></canvas>
       <input id="name" maxlength="16" placeholder="Tên của bạn" autocomplete="off">
+      <div class="map-picker">
+        <div class="map-picker-head"><strong>Map xoay vòng</strong><span>Đổi lần lượt sau mỗi round</span></div>
+        <div id="map-options" class="map-options">Đang tải danh sách map…</div>
+      </div>
       <div class="row"><label>Áo</label><div class="opts" id="opt-shirt"></div></div>
       <div class="row"><label>Họa tiết áo</label><div class="opts" id="opt-pattern"></div></div>
       <div class="row"><label>Quần</label><div class="opts" id="opt-pants"></div></div>

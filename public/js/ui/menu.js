@@ -7,6 +7,7 @@ const ERRORS = {
   room_not_found: 'Không tìm thấy phòng này',
   room_full: 'Phòng đã đầy',
   bad_code: 'Mã phòng gồm 3 chữ số',
+  bad_maps: 'Hãy chọn ít nhất một map hợp lệ',
   server_full: 'Máy chủ đã hết phòng, thử lại sau',
 };
 
@@ -69,6 +70,43 @@ export function initMenu(onJoin) {
   const roomInput = document.getElementById('room-code');
   const joinButton = document.getElementById('join');
   const errorEl = document.getElementById('menu-error');
+  const createButton = document.getElementById('create');
+  const mapOptionsEl = document.getElementById('map-options');
+  const selectedMaps = new Set();
+  createButton.disabled = true;
+
+  fetch('/api/maps')
+    .then((response) => {
+      if (!response.ok) throw new Error(`Không tải được danh sách map (${response.status})`);
+      return response.json();
+    })
+    .then((maps) => {
+      if (!Array.isArray(maps) || maps.length === 0) throw new Error('Máy chủ chưa có map nào');
+      mapOptionsEl.replaceChildren();
+      for (const map of maps) {
+        const label = document.createElement('label');
+        label.className = 'map-option';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = map.id;
+        checkbox.checked = true;
+        selectedMaps.add(map.id);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedMaps.add(map.id);
+          else selectedMaps.delete(map.id);
+          createButton.disabled = selectedMaps.size === 0;
+        });
+        const name = document.createElement('span');
+        name.textContent = map.name;
+        label.append(checkbox, name);
+        mapOptionsEl.append(label);
+      }
+      createButton.disabled = false;
+    })
+    .catch((error) => {
+      mapOptionsEl.textContent = 'Không tải được danh sách map. Hãy tải lại trang.';
+      errorEl.textContent = error.message;
+    });
 
   // Mở link mời (?room=427): điền sẵn mã phòng và làm nổi nút "Vào phòng".
   const invited = (new URLSearchParams(location.search).get('room') ?? '').replace(/\D/g, '').slice(0, 3);
@@ -95,12 +133,19 @@ export function initMenu(onJoin) {
     submit({ room: roomInput.value });
   };
 
-  document.getElementById('create').addEventListener('click', () => submit({ create: true }));
+  const createRoom = () => {
+    if (selectedMaps.size === 0) {
+      errorEl.textContent = ERRORS.bad_maps;
+      return;
+    }
+    submit({ create: true, mapIds: [...selectedMaps] });
+  };
+  createButton.addEventListener('click', createRoom);
   joinButton.addEventListener('click', joinRoom);
   roomInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') joinRoom();
   });
   nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') (roomInput.value ? joinRoom : () => submit({ create: true }))();
+    if (e.key === 'Enter') (roomInput.value ? joinRoom : createRoom)();
   });
 }
