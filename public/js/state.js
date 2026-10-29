@@ -23,21 +23,25 @@ export const state = {
   match: {
     phase: 'lobby', // 'lobby' (phòng chờ) | 'countdown' (3-2-1) | 'playing' | 'ended' (xem bảng xếp hạng)
     endsAt: 0, // mốc performance.now() khi hết trận (hoặc hết giờ nghỉ)
-    wave: null, // đợt vũ khí sắp rơi: { at: mốc performance.now(), count }
+    wave: null, // hòm tiếp tế sắp chạm đất: { at: mốc performance.now() }
     ranking: [], // bảng xếp hạng khi hết trận: [{ id, name, kills }]
   },
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
+  ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
+  lastFireAt: 0, // mốc performance.now() lần bắn gần nhất (xem AMMO_SYNC_GRACE_MS)
   inventory: [], // id vũ khí ở từng ô của thanh vũ khí (null/thiếu = ô trống)
   activeSlot: 0, // ô đang cầm
-  weaponTypes: {}, // id → { name, damage } do server gửi
+  weaponTypes: {}, // id → { kind, name, damage, range, cooldown, splash } do server gửi
 
   attacking: false, // đang giữ chuột đánh
   cooldown: 0,
   sprintFov: 0,
   fovKick: 0,
+  recoil: 0, // độ giật của súng, giảm dần về 0 (súng lùi lại và hếch lên)
+  muzzle: null, // { x, y, z } đầu nòng súng của mình trong thế giới (player/gunView.js), null khi không cầm súng
   shake: 0,
 };
 
 export const remotes = new Map(); // id → người chơi khác đang hiển thị trong sân
-export const infos = new Map();
-export const pickups = new Map(); // id → vũ khí đang nằm trên sân // id → { id, name, look } của mọi người chơi trong sân
+export const infos = new Map(); // id → { id, name, look } của mọi người chơi trong sân
+export const pickups = new Map(); // id → hòm tiếp tế (đang rơi hoặc đã nằm trên sân)

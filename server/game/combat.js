@@ -1,13 +1,9 @@
-const { PUNCH_COS, PUNCH_VERTICAL, RESPAWN_MS } = require('../config');
+const { PUNCH_COS, PUNCH_VERTICAL } = require('../config');
 const { broadcast } = require('../net/messaging');
-const { respawn } = require('./spawn');
-const { WEAPONS, DEFAULT_WEAPON } = require('./weapons');
+const { WEAPONS, useAmmo } = require('./weapons');
 const { isPlaying } = require('./match');
-const { punchBlockers } = require('../maps');
-const { segmentIntersectsRect } = require('../utils/geometry');
-
-// Có bức tường nào nằm giữa hai người không (đòn đấm không xuyên tường).
-const wallBetween = (a, b) => punchBlockers.some((w) => segmentIntersectsRect(a.x, a.z, b.x, b.z, w));
+const { applyDamage } = require('./damage');
+const { wallBetween } = require('./raycast');
 
 // Người gần nhất trong phòng nằm trong tầm `range` của vũ khí, trong góc 35° phía trước mặt người đấm,
 // không chênh độ cao quá `PUNCH_VERTICAL` và không bị tường chắn.
@@ -32,24 +28,17 @@ function findPunchTarget(room, p, range) {
   return target;
 }
 
+// Đòn cận chiến (tay không, dao...). Súng và tên lửa đi đường 'fire' (shooting.js). Dao mỗi lần chém mất một độ bền.
 function handlePunch(room, p, hand) {
   const now = Date.now();
   const weapon = WEAPONS[p.weapon];
-  if (!isPlaying(room) || p.dead || now - p.lastPunch < weapon.cooldown) return; // phòng chờ / hết giờ thì không đánh
-  p.lastPunch = now;
+  if (weapon.kind !== 'melee') return;
+  if (!isPlaying(room) || p.dead || now - p.lastAttack < weapon.cooldown) return; // phòng chờ / hết giờ thì không đánh
+  p.lastAttack = now;
   broadcast(room, { t: 'punch', id: p.id, hand });
-
   const target = findPunchTarget(room, p, weapon.range);
-  if (!target) return;
-
-  target.hp = Math.max(0, target.hp - weapon.damage);
-  broadcast(room, { t: 'hit', id: target.id, by: p.id, hand, dmg: weapon.damage });
-  if (target.hp === 0) {
-    target.dead = true;
-    target.weapon = DEFAULT_WEAPON; // chết thì mất vũ khí
-    p.kills++;
-    setTimeout(() => room.players.has(target.id) && respawn(room, target), RESPAWN_MS);
-  }
+  useAmmo(p);
+  if (target) applyDamage(room, p, target, weapon.damage);
 }
 
 module.exports = { handlePunch };

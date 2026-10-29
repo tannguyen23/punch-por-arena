@@ -5,10 +5,10 @@ const timerEl = document.getElementById('match-timer');
 const bannerEl = document.getElementById('banner');
 const endEl = document.getElementById('match-end');
 
-const MESSAGE_MS = 2500; // thời gian hiện thông báo ngắn ("Vũ khí đã rơi!")
+const MESSAGE_MS = 2500; // thời gian hiện thông báo ngắn ("Hòm tiếp tế đã rơi!")
 const LOW_TIME_S = 30; // đồng hồ chuyển vàng
 const URGENT_TIME_S = 10; // đồng hồ đỏ nhấp nháy và bíp mỗi giây
-const WAVE_BEEP_S = 5; // bíp mỗi giây khi đợt vũ khí chỉ còn ngần này giây
+const WAVE_BEEP_S = 5; // bíp mỗi giây khi hòm tiếp tế chỉ còn ngần này giây nữa là chạm đất
 
 let message = null; // { text, until }
 let lastTimeBeep = null;
@@ -51,7 +51,7 @@ function updateBanner(now) {
     text = message.text;
   } else if (phase === 'playing' && wave) {
     const seconds = Math.ceil((wave.at - now) / 1000);
-    text = seconds > 0 ? `VŨ KHÍ RƠI SAU ${seconds}s · ${wave.count} món` : 'VŨ KHÍ ĐANG RƠI...';
+    text = seconds > 0 ? `HÒM TIẾP TẾ CHẠM ĐẤT SAU ${seconds}s` : 'HÒM TIẾP TẾ ĐANG RƠI...';
     mode = seconds <= WAVE_BEEP_S ? 'wave urgent' : 'wave';
     if (seconds > 0 && seconds <= WAVE_BEEP_S && seconds !== lastWaveBeep) {
       lastWaveBeep = seconds;
@@ -106,7 +106,7 @@ function updateEndScreen(now) {
   endEl.replaceChildren(title, winner, ...rows, next);
 }
 
-// Gọi mỗi khung hình: đồng hồ, đếm ngược đợt vũ khí, thông báo, bảng xếp hạng cuối trận.
+// Gọi mỗi khung hình: đồng hồ, đếm ngược hòm tiếp tế, thông báo, bảng xếp hạng cuối trận.
 export function updateMatchHud() {
   const now = performance.now();
   updateTimer(now);

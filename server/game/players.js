@@ -16,10 +16,13 @@ function createPlayer(ws) {
     c: 0, // 1 khi đang ngồi
     yaw: 0,
     hp: MAX_HP,
+    lastHurtAt: 0, // mốc Date.now() lần bị trúng đòn gần nhất (tính hồi máu, xem regen.js)
+    regenCarry: 0,
     dead: false,
     kills: 0,
-    lastPunch: 0,
+    lastAttack: 0, // mốc Date.now() của đòn đánh / phát bắn gần nhất (tính hồi chiêu)
     weapon: DEFAULT_WEAPON,
+    ammo: null, // số đạn còn lại của vũ khí đang cầm; null = dùng mãi (tay không, vũ khí cận chiến cũ)
     joined: false,
     name: '',
     look: null,

@@ -1,21 +1,34 @@
 const { PUNCH_RANGE, PUNCH_COOLDOWN } = require('../config');
 
 // Vũ khí và chỉ số của nó:
-//   damage   - sát thương mỗi đòn
-//   range    - tầm đánh (mét)
-//   cooldown - thời gian giữa hai đòn (mili giây), càng nhỏ càng nhanh
-//   dropWeight - độ hiếm khi rơi ngẫu nhiên; càng lớn càng hay rơi, 0 = không bao giờ rơi (tay không)
+//   kind     - 'melee' (đánh gần, tin nhắn 'punch'), 'gun' (đạn bay tức thì, 'fire') hoặc 'rocket' (tên lửa bay, nổ lan, 'fire')
+//   damage   - sát thương mỗi đòn / mỗi viên (tên lửa: sát thương ở tâm vụ nổ)
+//   range    - tầm đánh / tầm bắn (mét)
+//   cooldown - thời gian giữa hai đòn / hai phát (mili giây), càng nhỏ càng nhanh
+//   ammo     - [ít nhất, nhiều nhất] số đạn (dao: số lần chém) khi nhặt từ hòm; không có = dùng mãi
+//   spread   - độ lệch ngẫu nhiên của đường đạn (radian), chỉ súng
+//   splash, speed - bán kính nổ (mét) và tốc độ bay (m/giây), chỉ tên lửa
+//   dropWeight - độ hiếm khi rơi trong hòm tiếp tế; càng lớn càng hay rơi, 0 = không bao giờ rơi
 // Thêm vũ khí mới: thêm vào bảng này, rồi thêm model trong public/js/entities/weapons/.
 // Giao diện (thanh chỉ số) tự đọc các chỉ số này từ 'welcome', không cần sửa client.
-const base = { range: PUNCH_RANGE, cooldown: PUNCH_COOLDOWN };
+const base = { kind: 'melee', range: PUNCH_RANGE, cooldown: PUNCH_COOLDOWN, dropWeight: 0 };
 const WEAPONS = {
-  fist: { ...base, name: 'Tay không', damage: 10, dropWeight: 0 },
-  sword: { ...base, name: 'Kiếm', damage: 25, dropWeight: 1 },
-  dagger: { name: 'Dao găm', damage: 10, range: 1.8, cooldown: 200, dropWeight: 1.5 }, // yếu nhưng cực nhanh, tầm ngắn
-  axe: { name: 'Rìu', damage: 40, range: 2.6, cooldown: 800, dropWeight: 0.6 }, // mạnh, chậm
-  spear: { name: 'Giáo', damage: 22, range: 3.6, cooldown: 600, dropWeight: 0.8 }, // đánh từ xa
-  thunder: { name: 'Găng sấm sét', damage: 5, range: 2.0, cooldown: 100, dropWeight: 0.35 }, // đấm liên tục 10 đòn/giây
-  gauntlet: { name: 'Găng tay vô cực', damage: 45, range: 2.0, cooldown: 900, dropWeight: 0.2 }, // mạnh nhất, hiếm
+  fist: { ...base, name: 'Tay không', damage: 10 },
+  // Vũ khí cận chiến cũ: vẫn dùng được nhưng không còn rơi (hòm tiếp tế chỉ có 4 món bên dưới).
+  sword: { ...base, name: 'Kiếm', damage: 25 },
+  dagger: { ...base, name: 'Dao găm', damage: 10, range: 1.8, cooldown: 200 },
+  axe: { ...base, name: 'Rìu', damage: 40, range: 2.6, cooldown: 800 },
+  spear: { ...base, name: 'Giáo', damage: 22, range: 3.6, cooldown: 600 },
+  thunder: { ...base, name: 'Găng sấm sét', damage: 5, range: 2.0, cooldown: 100 },
+  gauntlet: { ...base, name: 'Găng tay vô cực', damage: 45, range: 2.0, cooldown: 900 },
+
+  // Hòm tiếp tế: mỗi món 25%.
+  knife: { ...base, name: 'Dao chiến đấu', damage: 25, range: 2.0, cooldown: 300, ammo: [10, 20], dropWeight: 1 },
+  pistol: { kind: 'gun', name: 'Súng lục', damage: 25, range: 60, cooldown: 300, spread: 0.012, ammo: [10, 20], dropWeight: 1 },
+  ak47: { kind: 'gun', name: 'AK-47', damage: 16, range: 80, cooldown: 110, spread: 0.03, ammo: [10, 20], dropWeight: 1 },
+  rocket: {
+    kind: 'rocket', name: 'Súng phóng tên lửa', damage: 90, range: 80, cooldown: 1200, splash: 4, speed: 35, ammo: [2, 4], dropWeight: 1,
+  },
 };
 
 const DEFAULT_WEAPON = 'fist';
@@ -32,10 +45,34 @@ function randomDropWeapon() {
   return droppable.at(-1)[0];
 }
 
-// Phần client cần biết để hiển thị (tên và các chỉ số, không có độ hiếm); gửi trong 'welcome'.
+// Số đạn ngẫu nhiên trong khoảng `ammo` của vũ khí; null = vũ khí dùng mãi không hết.
+function rollAmmo(id) {
+  const range = WEAPONS[id]?.ammo;
+  if (!range) return null;
+  const [min, max] = range;
+  return min + Math.floor(Math.random() * (max - min + 1));
+}
+
+// Đưa vũ khí vào tay người chơi kèm số đạn (null = dùng mãi).
+function equip(p, id, ammo = null) {
+  p.weapon = id;
+  p.ammo = ammo;
+}
+
+// Dùng một viên đạn (một lần chém với dao). Hết đạn thì về tay không.
+function useAmmo(p) {
+  if (p.ammo === null) return;
+  p.ammo -= 1;
+  if (p.ammo <= 0) equip(p, DEFAULT_WEAPON);
+}
+
+// Phần client cần biết để hiển thị và tính thời gian hồi (không có độ hiếm, độ lệch); gửi trong 'welcome'.
 const weaponInfo = () =>
   Object.fromEntries(
-    Object.entries(WEAPONS).map(([id, { name, damage, range, cooldown }]) => [id, { name, damage, range, cooldown }]),
+    Object.entries(WEAPONS).map(([id, { kind, name, damage, range, cooldown, splash }]) => [
+      id,
+      { kind, name, damage, range, cooldown, splash },
+    ]),
   );
 
-module.exports = { WEAPONS, DEFAULT_WEAPON, randomDropWeapon, weaponInfo };
+module.exports = { WEAPONS, DEFAULT_WEAPON, randomDropWeapon, rollAmmo, equip, useAmmo, weaponInfo };

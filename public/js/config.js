@@ -22,6 +22,42 @@ export const MOUSE_SENSITIVITY = 0.0022;
 export const SENSITIVITY_MIN = 0.0005; // radian/pixel, giới hạn thanh chỉnh độ nhạy chuột
 export const SENSITIVITY_MAX = 0.006;
 export const STATE_SEND_MS = 50;
+export const PITCH_LIMIT = 1.4; // góc ngẩng/cúi tối đa (radian), khớp PITCH_LIMIT ở server/config.js
+
+// Súng: số đạn hiện trên màn hình trừ ngay khi bắn; snapshot của server chỉ ghi đè khi đã ngừng bắn ngần này mili giây
+// (nếu không con số sẽ nhảy lên xuống vì snapshot tới chậm hơn phát bắn).
+export const AMMO_SYNC_GRACE_MS = 400;
+export const RECOIL_RECOVER = 12; // tốc độ tay/súng trở về chỗ cũ sau khi giật (càng lớn càng nhanh)
+// Lửa đầu nòng của mình: lệch khỏi mắt theo hệ camera (phải, xuống, ra trước), khớp chỗ đầu nòng của súng cầm ở tay phải.
+export const MUZZLE_OFFSET = { right: 0.2, down: 0.2, forward: 1.0 };
+export const GUN_FX = {
+  tracerWidth: 0.035,
+  tracerLife: 0.08, // giây
+  muzzleLife: 0.06,
+  explosionLife: 0.5,
+  smokeEvery: 0.03, // tên lửa nhả khói mỗi chừng này giây
+  rocketMaxAge: 5, // phòng khi mất tin nhắn 'boom'
+};
+
+// Máy bay và hòm tiếp tế (thời điểm, vị trí, tốc độ do server gửi; ở đây chỉ là phần hình).
+export const AIRDROP = {
+  planeVisible: 220, // máy bay đã bay qua điểm thả quá ngần này (mét) thì xoá
+  crateHover: 1.6, // vũ khí trong hòm lơ lửng cao ngần này trên mặt đất sau khi hòm chạm đất
+  sway: 0.18, // hòm đung đưa dưới dù (radian)
+  smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì cột khói dựng sẵn cả cột
+  // Cột khói đỏ ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.
+  smoke: {
+    color: [0.92, 0.12, 0.1],
+    rate: 40, // cụm khói mỗi giây
+    capacity: 700, // ≥ rate × life
+    speed: 8, // tốc độ bốc lên lúc đầu (m/giây), chậm dần còn 35%
+    life: 13, // giây mỗi cụm khói tồn tại
+    startSize: 1.6, // cụm khói nở từ cỡ này (mét)...
+    endSize: 12, // ...tới cỡ này khi lên tới đỉnh
+    wind: [0.35, 0, 0.15], // gió đẩy khói lệch sang một bên (m/giây²)
+    prewarmCycles: 90,
+  },
+};
 
 // Nhân vật dựng từ model .glb. "kinds" gán tên khối trong file → bộ phận để tô màu theo lựa chọn của người chơi
 // (khối đặt tên theo tiền tố shirt_/pants_/glove_/skin_/hair_ thì khỏi cần ghi vào đây). Khối không có trong bảng giữ màu trắng.
@@ -54,7 +90,26 @@ export const VIEWMODEL = {
   scale: 0.65, // co tay lại cho vừa tầm nhìn
   offset: { x: 0, y: 0.25, z: 0.6 }, // vị trí của MẮT model trong hệ camera (sau khi co); tăng y để tay lên cao, tăng z để tay ra xa
   renderingGroup: 1, // nhóm vẽ đè sau cùng (xoá bộ đệm độ sâu trước khi vẽ)
-  meshes: ['left_foream', 'right_foream', 'left_hand', 'right_hand'], // chỉ các khối này hiện, còn lại (vai, thân, đầu, tóc...) ẩn
+  // Chỉ hai bàn tay hiện, còn lại (cẳng tay, vai, thân, đầu, tóc...) ẩn. Không hiện cẳng tay vì ở thế thủ mắt nhìn dọc cẳng tay từ phía khuỷu,
+  // cẳng tay che mất bàn tay và vũ khí đang cầm (dao, kiếm chỉ lòi ra đầu mũi).
+  meshes: ['left_hand', 'right_hand'],
+  raiseDrop: 0.35, // vừa đổi vũ khí thì tay hạ xuống ngần này (mét) rồi đưa lên
+};
+
+export const EQUIP_RAISE_TIME = 0.3; // giây để vũ khí mới đưa từ dưới màn hình lên
+
+// Súng ở góc nhìn thứ nhất (player/gunView.js); chỗ đặt từng súng nằm ở `viewHold` trong định nghĩa súng.
+export const GUN_VIEW = {
+  glove: [0.07, 0.085, 0.08], // kích thước găng (mét)
+  forearm: 0.07, // đường kính cẳng tay
+  forearmLength: 0.3,
+  sleeve: 0.1, // đường kính tay áo
+  sleeveLength: 0.5,
+  arms: [[0.35, -1, 0.9], [-0.8, -1, 0.8]], // hướng cẳng tay từ găng về phía người: tay cầm báng (phải), tay đỡ (trái)
+  recoilBack: 0.08, // súng lùi lại khi giật (mét)
+  recoilLift: 0.12, // nòng hếch lên khi giật (radian)
+  raiseDrop: 0.3, // vừa đổi súng thì súng hạ xuống ngần này rồi đưa lên
+  raiseTilt: 0.5, // và chúc nòng xuống ngần này (radian)
 };
 
 // Khung xem trước nhân vật trong menu.
