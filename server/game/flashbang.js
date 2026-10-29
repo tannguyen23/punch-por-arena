@@ -14,7 +14,7 @@ function flashTargets(room, at, radius) {
     const dist = Math.hypot(d.x, d.y, d.z);
     if (dist >= radius) continue;
     const dir = dist > 1e-6 ? { x: d.x / dist, y: d.y / dist, z: d.z / dist } : { x: 0, y: 1, z: 0 };
-    if (obstacleDistance(from, dir, dist) < dist) continue;
+    if (obstacleDistance(room, from, dir, dist) < dist) continue;
     hits.push([o.id, +(1 - dist / radius).toFixed(2)]);
   }
   return hits;

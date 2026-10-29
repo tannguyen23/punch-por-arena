@@ -13,6 +13,7 @@ const { regenerate } = require('./regen');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
 const { clearInventory } = require('./inventory');
+const { getMap } = require('../maps');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
@@ -45,11 +46,15 @@ function resetPlayers(room) {
   }
 }
 
-function enterLobby(room, { cancelled = false } = {}) {
+function enterLobby(room, { cancelled = false, mapChanged = false } = {}) {
   room.phase = 'lobby';
   room.endsAt = 0;
   room.nextAirdropAt = 0;
-  broadcast(room, { t: 'lobby', cancelled });
+  broadcast(room, {
+    t: 'lobby',
+    cancelled,
+    ...(mapChanged ? { map: room.mapData } : {}),
+  });
 }
 
 function beginCountdown(room) {
@@ -87,12 +92,14 @@ function endMatch(room, { winner = null, showIn = 0 } = {}) {
 
 // Hết giờ xem bảng xếp hạng: dọn sân, mọi người về phòng chờ và phải bấm F lại để chơi ván mới.
 function returnToLobby(room) {
+  const mapChanged = room.mapIds.length > 1;
+  room.advanceMap(getMap);
   resetPlayers(room);
   clearPickups(room);
   clearProjectiles(room);
   room.ranking = [];
   room.result = null;
-  enterLobby(room);
+  enterLobby(room, { mapChanged });
 }
 
 // Người chơi bấm F (hoặc bấm lại để huỷ). Chỉ có tác dụng ở phòng chờ và lúc đếm ngược.

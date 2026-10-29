@@ -35,7 +35,7 @@ function createRippleTexture() {
 
 // Mặt nước: một lưới phủ những ô có chỗ thấp hơn mực nước. Chỗ nông trong suốt và nhạt, chỗ sâu đậm và đặc,
 // mép bờ mờ dần nhờ alpha theo từng đỉnh.
-export function createWater(terrain) {
+export function createWater(terrain, parent) {
   const { count, size, step, heights, waterLevel } = terrain;
   const positions = new Float32Array(count * count * 3);
   const uvs = new Float32Array(count * count * 2);
@@ -78,6 +78,7 @@ export function createWater(terrain) {
   data.colors = colors;
   const mesh = new Mesh('water', scene);
   data.applyToMesh(mesh);
+  mesh.parent = parent;
   mesh.hasVertexAlpha = true;
 
   const ripple = createRippleTexture();
@@ -97,6 +98,10 @@ export function createWater(terrain) {
     update(dt) {
       ripple.uOffset += dt * FLOW_U;
       ripple.vOffset += dt * FLOW_V;
+    },
+    dispose() {
+      mesh.dispose();
+      material.dispose(false, true);
     },
   };
 }

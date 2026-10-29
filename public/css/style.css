@@ -71,6 +71,9 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #flash { position: fixed; inset: 0; background: red; opacity: 0; pointer-events: none; transition: opacity .25s; }
 #blind { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
 #nuke-flash { position: fixed; inset: 0; background: #fff; opacity: 0; pointer-events: none; z-index: 5; }
+#damage-notice { position: fixed; top: 58%; left: 50%; transform: translate(-50%, 8px); color: #ff7468; font-size: 24px; font-weight: 800; text-shadow: 0 2px 6px #000; opacity: 0; pointer-events: none; white-space: nowrap; }
+#damage-notice.show { animation: damage-notice .75s ease-out forwards; }
+@keyframes damage-notice { 15% { opacity: 1; transform: translate(-50%, 0); } 75% { opacity: 1; } 100% { opacity: 0; transform: translate(-50%, -12px); } }
 #dead { position: fixed; left: 0; right: 0; top: 35%; text-align: center; color: #fff; font-size: 40px; font-weight: bold; text-shadow: 0 2px 8px #000; display: none; pointer-events: none; }
 
 /* ---------- Màn hình phủ (menu, tạm dừng) ---------- */
@@ -92,6 +95,13 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-f
 #menu .panel { background: rgba(20,24,32,.9); border: 1px solid rgba(255,255,255,.15); border-radius: 12px; padding: 20px 24px; width: min(440px, 90vw); text-align: left; max-height: calc(100vh - 110px); overflow-y: auto; }
 #preview { display: block; width: 100%; height: 190px; margin-bottom: 14px; border-radius: 8px; background: radial-gradient(circle at 50% 32%, #33415c, #11151d 72%); }
 #name { width: 100%; box-sizing: border-box; padding: 10px 12px; font-size: 16px; border-radius: 8px; border: 1px solid #556; background: #0d1117; color: #fff; margin-bottom: 4px; }
+.map-picker { margin: 0 0 16px; padding: 10px 12px; border: 1px solid rgba(255,255,255,.14); border-radius: 8px; background: rgba(0,0,0,.2); }
+.map-picker-head { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; font-size: 13px; }
+.map-picker-head span { color: #9aa8b8; }
+.map-options { display: flex; flex-wrap: wrap; gap: 8px 14px; color: #ddd; font-size: 14px; }
+.map-option { display: flex; align-items: center; gap: 5px; cursor: pointer; }
+.map-option input { accent-color: #4af; }
+.map-option input:disabled { cursor: wait; }
 .row { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
 .row label { width: 88px; font-size: 14px; color: #bcc; flex: none; }
 .opts { display: flex; flex-wrap: wrap; gap: 6px; }

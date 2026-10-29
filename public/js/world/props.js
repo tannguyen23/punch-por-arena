@@ -24,6 +24,17 @@ const builders = {
     rock.scaling.set(1, 0.6, 0.85);
   },
 
+  cactus(root) {
+    const green = mat('#477143');
+    const trunk = part(cylinder(0.27, 0.38, 3.1), root, 0, 1.55, 0, green);
+    trunk.rotation.z = 0.04;
+    for (const side of [-1, 1]) {
+      const armX = side * 0.55;
+      part(cylinder(0.18, 0.2, 0.75), root, side * 0.28, 1.55, 0, green).rotation.z = Math.PI / 2;
+      part(cylinder(0.2, 0.24, 1.0), root, armX, 2.05, 0, green);
+    }
+  },
+
   crate(root) {
     part(box(1, 1, 1), root, 0, 0.5, 0, mat(WOOD));
     for (const y of [0.04, 0.96]) part(box(1.04, 0.1, 1.04), root, 0, y, 0, mat(WOOD_DARK));
@@ -52,17 +63,18 @@ const builders = {
   },
 
   // Sàn võ đài: nền thấp, thảm xanh và vòng tròn ở giữa. Chỉ nhô lên vài cm nên đi lên thẳng được.
-  ringMat(root) {
+  ringMat(root, { color = '#2f5fa8' }) {
     part(box(13.2, 0.06, 13.2), root, 0, 0.03, 0, mat('#2b2b2b'));
-    part(box(12.4, 0.04, 12.4), root, 0, 0.08, 0, mat('#2f5fa8'));
+    part(box(12.4, 0.04, 12.4), root, 0, 0.08, 0, mat(color));
     part(cylinder(4, 4, 0.02), root, 0, 0.11, 0, mat('#e8e8e8'));
-    part(cylinder(3.6, 3.6, 0.02), root, 0, 0.12, 0, mat('#2f5fa8'));
+    part(cylinder(3.6, 3.6, 0.02), root, 0, 0.12, 0, mat(color));
   },
 };
 
-export function createProp(prop) {
+export function createProp(prop, parent) {
   const { type, x, z, rot = 0 } = prop;
   const root = new BABYLON.TransformNode(type, scene);
+  root.parent = parent;
   root.position.set(x, heightAt(x, z), z);
   root.rotation.y = rot;
   builders[type]?.(root, prop);

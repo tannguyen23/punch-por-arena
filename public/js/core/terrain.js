@@ -29,8 +29,6 @@ function interpolate({ heights, count, size, step }, x, z) {
 }
 
 // Độ cao mặt đất (không tính cầu). 0 nếu chưa có địa hình.
-export const heightAt = (x, z) => (terrain ? interpolate(terrain, x, z) : 0);
-
 export function bridgeAt(x, z) {
   return terrain?.bridges.find((b) => {
     const halfX = (b.axis === 'x' ? b.length : b.width) / 2;
@@ -39,8 +37,28 @@ export function bridgeAt(x, z) {
   }) ?? null;
 }
 
+export function islandAt(x, z) {
+  return terrain?.islands?.find((island) => Math.hypot(x - island.x, z - island.z) <= island.radius) ?? null;
+}
+
+export function isSupported(x, z) {
+  return !terrain?.floating || islandAt(x, z) !== null || bridgeAt(x, z) !== null;
+}
+
+export const heightAt = (x, z) => {
+  const bridge = bridgeAt(x, z);
+  if (bridge?.floating) return bridge.deckY;
+  if (terrain?.floating && !islandAt(x, z)) return -100;
+  return terrain ? interpolate(terrain, x, z) : 0;
+};
+
 // Mặt đất mà người có độ cao chân `feetY` sẽ giẫm lên: mặt cầu nếu đã đủ cao để bước lên, ngược lại là đất.
 export function groundAt(x, z, feetY) {
+  if (terrain?.floating) {
+    const bridge = bridgeAt(x, z);
+    if (bridge && feetY >= bridge.deckY - 0.5) return bridge.deckY;
+    return islandAt(x, z) ? heightAt(x, z) : -Infinity;
+  }
   const ground = heightAt(x, z);
   const bridge = bridgeAt(x, z);
   return bridge && feetY >= bridge.deckY - 0.5 ? Math.max(ground, bridge.deckY) : ground;

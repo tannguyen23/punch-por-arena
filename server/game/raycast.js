@@ -1,7 +1,6 @@
 const {
   EYE_HEIGHT, CROUCH_EYE_HEIGHT, BODY_RADIUS, BODY_HEIGHT, CROUCH_BODY_HEIGHT, WALL_HEIGHT, TERRAIN_RAY_STEP,
 } = require('../config');
-const { punchBlockers, terrain } = require('../maps');
 const { segmentRectEntry, segmentIntersectsRect } = require('../utils/geometry');
 
 // Dò đường đạn / tên lửa trong 3D. Tia gồm `origin` {x, y, z} và hướng đơn vị `dir`; các hàm trả về khoảng cách
@@ -48,28 +47,29 @@ function bodyDistance(o, origin, dir, maxDist) {
 }
 
 // Tường chặn đòn (dây võ đài thì không). Tường cao WALL_HEIGHT tính từ mặt đất chỗ đạn chạm vào.
-function wallDistance(origin, dir, maxDist) {
+function wallDistance(room, origin, dir, maxDist) {
   const end = pointAt(origin, dir, maxDist);
   let best = Infinity;
-  for (const wall of punchBlockers) {
+  for (const wall of room.punchBlockers) {
     const k = segmentRectEntry(origin.x, origin.z, end.x, end.z, wall);
     if (k === null) continue;
     const hit = pointAt(origin, dir, k * maxDist);
-    if (hit.y <= terrain.heightAt(hit.x, hit.z) + WALL_HEIGHT) best = Math.min(best, k * maxDist);
+    if (hit.y <= room.terrain.heightAt(hit.x, hit.z) + WALL_HEIGHT) best = Math.min(best, k * maxDist);
   }
   return best;
 }
 
 // Đồi và bờ sông: dò từng bước dọc tia xem đã chui xuống dưới mặt đất chưa (mặt cầu không chặn).
-function terrainDistance(origin, dir, maxDist) {
+function terrainDistance(room, origin, dir, maxDist) {
   for (let t = TERRAIN_RAY_STEP; t <= maxDist + 1e-9; t += TERRAIN_RAY_STEP) {
     const p = pointAt(origin, dir, t);
-    if (p.y < terrain.heightAt(p.x, p.z)) return t - TERRAIN_RAY_STEP / 2;
+    if (p.y < room.terrain.heightAt(p.x, p.z)) return t - TERRAIN_RAY_STEP / 2;
   }
   return Infinity;
 }
 
-const obstacleDistance = (origin, dir, maxDist) => Math.min(wallDistance(origin, dir, maxDist), terrainDistance(origin, dir, maxDist));
+const obstacleDistance = (room, origin, dir, maxDist) =>
+  Math.min(wallDistance(room, origin, dir, maxDist), terrainDistance(room, origin, dir, maxDist));
 
 // Người còn sống gần nhất mà tia chạm vào (bỏ qua `ignore`). { target, dist } hoặc null.
 function firstBodyHit(room, origin, dir, maxDist, ignore = null) {
@@ -83,7 +83,7 @@ function firstBodyHit(room, origin, dir, maxDist, ignore = null) {
 }
 
 // Có bức tường nào nằm giữa hai điểm trên mặt sân không (đòn đấm, sức nổ không xuyên tường).
-const wallBetween = (a, b) => punchBlockers.some((w) => segmentIntersectsRect(a.x, a.z, b.x, b.z, w));
+const wallBetween = (room, a, b) => room.punchBlockers.some((w) => segmentIntersectsRect(a.x, a.z, b.x, b.z, w));
 
 // Khoảng cách từ một điểm tới bề mặt thân người (0 nếu nằm trong), để tính sức nổ: trúng thẳng người là đủ sát thương.
 function distanceToBody(o, point) {

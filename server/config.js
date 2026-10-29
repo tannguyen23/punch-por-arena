@@ -24,9 +24,14 @@ module.exports = {
   REGEN_PER_SEC: 8, // máu hồi mỗi giây (tới đầy)
   TICK_MS: 50,
   MIN_DIST: 1.0, // khoảng cách tối thiểu giữa hai người chơi (bán kính 0.5 mỗi người)
+  PLAYER_RADIUS: 0.5,
   HARD_OVERLAP: 0.6, // chồng lấn sâu hơn mức này thì server mới can thiệp
   SPAWN_CLEARANCE: 2,
   MAP_MARGIN: 3, // chỗ hồi sinh / sét đánh chỗ trống cách mép sân ít nhất ngần này
+  CACTUS_DAMAGE: 2,
+  CACTUS_DAMAGE_COOLDOWN_MS: 1200,
+  CACTUS_CONTACT_TOLERANCE: 0.1,
+  VOID_FALL_DEATH_MS: 2200,
 
   // Vũ khí trên sân
   PICKUP_RADIUS: 1.2, // đi vào trong bán kính này là nhặt

@@ -60,7 +60,7 @@ function stepGrenades(room, dt, now) {
   if (room.grenades.length === 0) return;
   room.grenades = room.grenades.filter((grenade) => {
     if (now < grenade.explodeAt) {
-      moveGrenade(grenade, dt);
+      moveGrenade(room, grenade, dt);
       return true;
     }
     detonate(room, grenade);

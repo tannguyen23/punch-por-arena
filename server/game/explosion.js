@@ -8,7 +8,7 @@ function blast(room, owner, at, damage, radius) {
   for (const o of room.players.values()) {
     if (o.dead) continue;
     const dist = distanceToBody(o, at);
-    if (dist >= radius || wallBetween(at, o)) continue;
+    if (dist >= radius || wallBetween(room, at, o)) continue;
     applyDamage(room, owner, o, damage * (1 - dist / radius) * (o === owner ? SELF_SPLASH_MULT : 1));
   }
 }

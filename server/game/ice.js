@@ -1,5 +1,4 @@
 const { GRENADE } = require('../config');
-const { terrain } = require('../maps');
 const { broadcast } = require('../net/messaging');
 
 // Lựu đạn băng (effect 'ice' trong grenades.js): hết ngòi thì mặt đất chỗ quả đang nằm biến thành vũng băng trong `duration` ms.
@@ -13,8 +12,8 @@ const pack = (v) => [v.x, v.y, v.z].map((n) => +n.toFixed(2));
 // Gửi 'detonate' như mọi lựu đạn, kèm `ice` = { frozen, life } cho client dựng vũng băng.
 function freezeGround(room, grenade, weapon) {
   const { x, z } = grenade.pos;
-  const ground = terrain.heightAt(x, z);
-  const frozen = terrain.isDry(x, z) && Math.abs(grenade.pos.y - GRENADE.radius - ground) < ON_TERRAIN_TOLERANCE;
+  const ground = room.terrain.heightAt(x, z);
+  const frozen = room.terrain.isDry(x, z) && Math.abs(grenade.pos.y - GRENADE.radius - ground) < ON_TERRAIN_TOLERANCE;
   if (frozen) room.icePatches.push({ id: grenade.id, x, z, r: weapon.splash, endsAt: Date.now() + weapon.duration });
   broadcast(room, {
     t: 'detonate',
@@ -32,7 +31,7 @@ function iceView(room) {
   room.icePatches = room.icePatches.filter((patch) => patch.endsAt > now);
   return room.icePatches.map((patch) => ({
     id: patch.id,
-    at: pack({ x: patch.x, y: terrain.heightAt(patch.x, patch.z), z: patch.z }),
+    at: pack({ x: patch.x, y: room.terrain.heightAt(patch.x, patch.z), z: patch.z }),
     r: patch.r,
     left: patch.endsAt - now,
   }));

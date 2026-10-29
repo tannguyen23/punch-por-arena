@@ -22,7 +22,7 @@ function explode(room, rocket, at) {
 // Bay thêm một đoạn; chạm người (trừ người bắn), tường, đất hoặc hết tầm thì nổ. Trả về false khi đã nổ.
 function stepRocket(room, rocket, dt) {
   const step = Math.min(rocket.weapon.speed * dt, rocket.weapon.range - rocket.traveled);
-  const blocked = obstacleDistance(rocket.pos, rocket.dir, step);
+  const blocked = obstacleDistance(room, rocket.pos, rocket.dir, step);
   const hit = firstBodyHit(room, rocket.pos, rocket.dir, Math.min(step, blocked), room.players.get(rocket.ownerId));
   const dist = hit ? hit.dist : blocked;
   if (dist <= step) {

@@ -9,6 +9,7 @@ const ERRORS = {
   room_not_found: 'Không tìm thấy phòng này',
   room_full: 'Phòng đã đầy',
   bad_code: 'Mã phòng gồm 3 chữ số',
+  bad_maps: 'Hãy chọn ít nhất một map hợp lệ',
   server_full: 'Máy chủ đã hết phòng, thử lại sau',
 };
 const NAME_REQUIRED = 'Hãy nhập tên trước khi chơi';
@@ -61,6 +62,46 @@ export function initMenu(onJoin) {
     }
     return name;
   };
+
+  // Map xoay vòng: danh sách map lấy từ server, người tạo phòng chọn những map sẽ xoay vòng sau mỗi round.
+  const createButton = document.getElementById('create');
+  const mapOptionsEl = document.getElementById('map-options');
+  const selectedMaps = new Set();
+  createButton.disabled = true;
+
+  fetch('/api/maps')
+    .then((response) => {
+      if (!response.ok) throw new Error(`Không tải được danh sách map (${response.status})`);
+      return response.json();
+    })
+    .then((maps) => {
+      if (!Array.isArray(maps) || maps.length === 0) throw new Error('Máy chủ chưa có map nào');
+      mapOptionsEl.replaceChildren();
+      for (const map of maps) {
+        const label = document.createElement('label');
+        label.className = 'map-option';
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.value = map.id;
+        checkbox.checked = true;
+        selectedMaps.add(map.id);
+        checkbox.addEventListener('change', () => {
+          if (checkbox.checked) selectedMaps.add(map.id);
+          else selectedMaps.delete(map.id);
+          createButton.disabled = selectedMaps.size === 0;
+        });
+        const name = document.createElement('span');
+        name.textContent = map.name;
+        label.append(checkbox, name);
+        mapOptionsEl.append(label);
+      }
+      createButton.disabled = false;
+    })
+    .catch((error) => {
+      mapOptionsEl.textContent = 'Không tải được danh sách map. Hãy tải lại trang.';
+      errorEl.textContent = error.message;
+    });
+
   const submit = (intent) => {
     const name = requireName();
     if (!name) return;
@@ -75,6 +116,15 @@ export function initMenu(onJoin) {
       return;
     }
     submit({ room: roomInput.value });
+  };
+
+  // Tạo phòng mới với các map đã chọn (xoay vòng sau mỗi round).
+  const createRoom = () => {
+    if (selectedMaps.size === 0) {
+      errorEl.textContent = ERRORS.bad_maps;
+      return;
+    }
+    submit({ create: true, mapIds: [...selectedMaps] });
   };
 
   // Mở link mời: "Bắt đầu" vào thẳng phòng được mời (vẫn điền sẵn mã ở màn hình chọn phòng nếu vào không được).
@@ -100,7 +150,7 @@ export function initMenu(onJoin) {
     openCustomize();
   });
   document.getElementById('play-back').addEventListener('click', () => showPanel('home'));
-  document.getElementById('create').addEventListener('click', () => submit({ create: true }));
+  createButton.addEventListener('click', createRoom);
   document.getElementById('join').addEventListener('click', joinRoom);
   roomInput.addEventListener('input', () => {
     roomInput.value = roomInput.value.replace(/\D/g, '').slice(0, 3); // chỉ nhận chữ số

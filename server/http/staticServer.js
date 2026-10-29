@@ -2,6 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const { PUBLIC_DIR, VENDOR_FILES } = require('../config');
+const { mapOptions } = require('../maps');
 
 const MIME = {
   '.html': 'text/html; charset=utf-8',
@@ -28,6 +29,10 @@ function createStaticServer() {
       pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
     } catch {
       res.writeHead(400).end('Bad request'); // vd: `GET //` làm new URL ném lỗi, không được để lọt ra ngoài làm sập server
+      return;
+    }
+    if (pathname === '/api/maps') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(mapOptions));
       return;
     }
     if (pathname === '/favicon.ico') {

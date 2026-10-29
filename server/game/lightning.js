@@ -1,5 +1,4 @@
 const { LIGHTNING, MAP_MARGIN } = require('../config');
-const { currentMap, terrain } = require('../maps');
 const { broadcast } = require('../net/messaging');
 const { applyDamage } = require('./damage');
 
@@ -7,7 +6,8 @@ const { applyDamage } = require('./damage');
 // đứng tụm lại, đứng giữa sông, đứng trên cao thì dễ bị nhắm hơn. Mỗi tia báo trước LIGHTNING.warnMs (client vẽ vòng sáng)
 // rồi mới đánh, nên chạy ra khỏi vòng là thoát. Đứng dưới gầm cầu thì không bị sét đánh. Sét không tính điểm cho ai.
 
-const highGround = terrain.minHeight + (terrain.maxHeight - terrain.minHeight) * LIGHTNING.highFraction;
+// Độ cao tính là "trên cao" theo địa hình của bản đồ phòng đang chơi.
+const highGroundOf = (room) => room.terrain.minHeight + (room.terrain.maxHeight - room.terrain.minHeight) * LIGHTNING.highFraction;
 
 const alive = (room) => [...room.players.values()].filter((p) => !p.dead);
 
@@ -17,12 +17,12 @@ function nextGap(count) {
   return Math.max(LIGHTNING.minGapMs, (60000 / perMin) * (0.5 + Math.random()));
 }
 
-function weightOf(p, players) {
+function weightOf(room, p, players) {
   const neighbours = players.filter((o) => o !== p && Math.hypot(o.x - p.x, o.z - p.z) < LIGHTNING.crowdRadius).length;
   let weight = 1 + LIGHTNING.crowdWeight * neighbours;
-  const ground = terrain.heightAt(p.x, p.z);
-  if (ground < terrain.waterLevel) weight *= LIGHTNING.waterWeight;
-  if (ground > highGround) weight *= LIGHTNING.highWeight;
+  const ground = room.terrain.heightAt(p.x, p.z);
+  if (ground < room.terrain.waterLevel) weight *= LIGHTNING.waterWeight;
+  if (ground > highGroundOf(room)) weight *= LIGHTNING.highWeight;
   return weight;
 }
 
@@ -31,7 +31,7 @@ function pickTarget(room, now) {
   if (Math.random() < LIGHTNING.missChance) return null;
   const players = alive(room);
   const ready = players.filter((p) => now - (room.lastTargetedAt.get(p.id) ?? -Infinity) >= LIGHTNING.targetCooldownMs);
-  const weights = ready.map((p) => weightOf(p, players));
+  const weights = ready.map((p) => weightOf(room, p, players));
   let roll = Math.random() * weights.reduce((sum, w) => sum + w, 0);
   for (let i = 0; i < ready.length; i++) {
     roll -= weights[i];
@@ -40,8 +40,8 @@ function pickTarget(room, now) {
   return null;
 }
 
-function strikePoint(target) {
-  const range = currentMap.size - MAP_MARGIN;
+function strikePoint(room, target) {
+  const range = room.mapData.size - MAP_MARGIN;
   if (!target) return { x: (Math.random() * 2 - 1) * range, z: (Math.random() * 2 - 1) * range };
   const angle = Math.random() * Math.PI * 2;
   const offset = Math.random() * LIGHTNING.jitter;
@@ -52,23 +52,23 @@ function strikePoint(target) {
 function announceStrike(room, now) {
   const target = pickTarget(room, now);
   if (target) room.lastTargetedAt.set(target.id, now);
-  const { x, z } = strikePoint(target);
-  const strike = { id: room.nextStrikeId++, x, z, y: terrain.groundAt(x, z, Infinity), at: now + LIGHTNING.warnMs };
+  const { x, z } = strikePoint(room, target);
+  const strike = { id: room.nextStrikeId++, x, z, y: room.terrain.groundAt(x, z, Infinity), at: now + LIGHTNING.warnMs };
   room.strikes.push(strike);
   const pos = [strike.x, strike.y, strike.z].map((v) => +v.toFixed(2));
   broadcast(room, { t: 'lightning', id: strike.id, at: pos, in: LIGHTNING.warnMs, r: LIGHTNING.radius });
 }
 
 // Dưới gầm cầu: có mặt cầu ngay trên đầu.
-function sheltered(p) {
-  const bridge = terrain.bridgeAt(p.x, p.z);
+function sheltered(room, p) {
+  const bridge = room.terrain.bridgeAt(p.x, p.z);
   return Boolean(bridge) && p.y < bridge.deckY - 0.5;
 }
 
 function strike(room, s) {
   for (const p of alive(room)) {
     const dist = Math.hypot(p.x - s.x, p.z - s.z);
-    if (dist >= LIGHTNING.radius || sheltered(p)) continue;
+    if (dist >= LIGHTNING.radius || sheltered(room, p)) continue;
     const falloff = 1 - (1 - LIGHTNING.edgeMult) * (dist / LIGHTNING.radius);
     applyDamage(room, null, p, LIGHTNING.damage * falloff);
   }

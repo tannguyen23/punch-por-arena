@@ -7,6 +7,7 @@ module.exports = {
   chair: { radius: 0.35 },
   crate: { radius: 0.7 },
   post: { radius: 0.2 },
+  cactus: { radius: 0.55, hazard: 'spikes' },
   bush: { radius: 0 },
   ringMat: { radius: 0 },
 };

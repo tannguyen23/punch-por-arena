@@ -11,6 +11,7 @@
   <div id="crosshair"></div>
   <div id="flash"></div>
   <div id="blind"></div>
+  <div id="damage-notice" aria-live="polite"></div>
   <div id="nuke-flash"></div>
   <div id="dead">Bạn bị hạ gục!</div>
   <div id="hud">
@@ -39,11 +40,15 @@
       <button id="start" class="menu-main">Bắt đầu</button>
       <button id="customize-open" class="menu-second">Tuỳ chỉnh nhân vật</button>
       <button class="settings-open menu-settings">Cài đặt</button>
-      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Lựu đạn: chuột trái ném xa · chuột phải tung nhẹ<br>Hòm tiếp tế thả dù định kỳ: chạy tới nhặt, vũ khí có ít đạn · Không bị trúng đòn 5 giây thì tự hồi máu<br>Bão: thấy vòng sáng dưới chân thì chạy ra, đứng tụm lại dễ bị sét đánh<br>1–4: đổi ô · G: vứt · M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè</p>
+      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Lựu đạn: chuột trái ném xa · chuột phải tung nhẹ<br>Hòm tiếp tế thả dù định kỳ: chạy tới nhặt, vũ khí có ít đạn · Không bị trúng đòn 5 giây thì tự hồi máu<br>Hạ gục liên tiếp 3 lần không chết: R gọi máy bay thả radio gọi bom hạt nhân (hòm khói vàng)<br>Bão: thấy vòng sáng dưới chân thì chạy ra, đứng tụm lại dễ bị sét đánh<br>1–4: đổi ô · G: vứt · M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè</p>
     </div>
 
     <div class="panel" id="menu-play" hidden>
       <h2>Vào chơi</h2>
+      <div class="map-picker">
+        <div class="map-picker-head"><strong>Map xoay vòng</strong><span>Đổi lần lượt sau mỗi round</span></div>
+        <div id="map-options" class="map-options">Đang tải danh sách map…</div>
+      </div>
       <button id="create" class="menu-main">Tạo phòng mới</button>
       <div class="join-row">
         <input id="room-code" inputmode="numeric" maxlength="3" placeholder="Mã phòng" autocomplete="off">

@@ -1,7 +1,6 @@
 const {
   NUKE_RADIO_MS, NUKE_PLANE_IN_MS, NUKE_PLANE_SPEED, NUKE_PLANE_APPROACH, NUKE_PLANE_ALTITUDE, NUKE_FALL_MS, NUKE_END_SCREEN_MS,
 } = require('../config');
-const { terrain } = require('../maps');
 const { broadcast } = require('../net/messaging');
 const { applyDamage } = require('./damage');
 
@@ -18,7 +17,7 @@ function startNuke(room, p) {
   const dropIn = planeIn + (NUKE_PLANE_APPROACH / NUKE_PLANE_SPEED) * 1000;
   const boomIn = dropIn + NUKE_FALL_MS;
   const id = room.nextNukeId++;
-  const ground = terrain.heightAt(DROP_POINT.x, DROP_POINT.z);
+  const ground = room.terrain.heightAt(DROP_POINT.x, DROP_POINT.z);
   const at = [DROP_POINT.x, +ground.toFixed(2), DROP_POINT.z]; // chỗ bom rơi, trên mặt đất
   const view = {
     t: 'nuke',

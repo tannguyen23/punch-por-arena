@@ -6,8 +6,11 @@
 //   'playing'   - đang đánh, cứ định kỳ có máy bay thả hòm tiếp tế, thỉnh thoảng có bão (mưa, sét)
 //   'ended'     - hết giờ, xem bảng xếp hạng rồi quay về phòng chờ
 class Room {
-  constructor(code) {
+  constructor(code, mapIds, initialMap) {
     this.code = code;
+    this.mapIds = mapIds;
+    this.mapIndex = 0;
+    this.setMap(initialMap);
     this.players = new Map(); // id → người chơi đã vào phòng
     this.pickups = new Map(); // id → hòm tiếp tế (đang rơi hoặc đã nằm trên sân)
     this.nextPickupId = 1;
@@ -28,6 +31,17 @@ class Room {
     this.nextAirdropAt = 0; // mốc Date.now() máy bay tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing')
     this.ranking = []; // bảng xếp hạng của trận vừa kết thúc
     this.result = null; // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (match.js)
+  }
+
+  setMap(map) {
+    this.mapData = map.data;
+    this.terrain = map.terrain;
+    this.punchBlockers = map.punchBlockers;
+  }
+
+  advanceMap(getMap) {
+    this.mapIndex = (this.mapIndex + 1) % this.mapIds.length;
+    this.setMap(getMap(this.mapIds[this.mapIndex]));
   }
 }
 

@@ -21,7 +21,7 @@ function findPunchTarget(room, p, range) {
     if (dist > range || dist < 1e-6) continue;
     if (Math.abs(o.y - p.y) > PUNCH_VERTICAL) continue;
     if ((dx * fx + dz * fz) / dist < PUNCH_COS) continue;
-    if (dist < best && !wallBetween(p, o)) {
+    if (dist < best && !wallBetween(room, p, o)) {
       best = dist;
       target = o;
     }

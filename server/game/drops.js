@@ -1,4 +1,3 @@
-const { terrain } = require('../maps');
 const { broadcast } = require('../net/messaging');
 const { isPlaying } = require('./match');
 const { takeActive } = require('./inventory');
@@ -17,7 +16,7 @@ function handleDrop(room, p) {
     ammo: slot.ammo,
     x: +p.x.toFixed(2),
     z: +p.z.toFixed(2),
-    y: +terrain.heightAt(p.x, p.z).toFixed(2),
+    y: +room.terrain.heightAt(p.x, p.z).toFixed(2),
     heading: 0,
     releaseAt: now,
     landsAt: now,
