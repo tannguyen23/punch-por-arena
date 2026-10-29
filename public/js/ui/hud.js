@@ -10,11 +10,13 @@ const deadText = document.getElementById('dead');
 const board = document.getElementById('board');
 const crosshair = document.getElementById('crosshair');
 const hpBar = document.getElementById('hpbar');
+const damageNotice = document.getElementById('damage-notice');
 
 const HEAL_GLOW_MS = 600; // thanh máu sáng xanh ngần này sau mỗi lần máu tăng (đang tự hồi)
 
 let lastHp = null;
 let healTimer = null;
+let damageNoticeTimer = null;
 
 export function showPause(title, text) {
   document.getElementById('pause-title').textContent = title;
@@ -39,6 +41,16 @@ export function flashDamage() {
     flash.style.transition = 'opacity .25s';
     flash.style.opacity = 0;
   });
+}
+
+export function showDamageNotice(damage, source) {
+  const reason = source === 'cactus' ? 'Gai xương rồng' : source === 'fall' ? 'Rơi khỏi đảo' : '';
+  damageNotice.textContent = reason ? `${reason} -${damage} HP` : `-${damage} HP`;
+  damageNotice.classList.remove('show');
+  void damageNotice.offsetWidth;
+  damageNotice.classList.add('show');
+  clearTimeout(damageNoticeTimer);
+  damageNoticeTimer = setTimeout(() => damageNotice.classList.remove('show'), 750);
 }
 
 // Tâm ngắm phình ra đỏ khi mình đấm trúng người khác.

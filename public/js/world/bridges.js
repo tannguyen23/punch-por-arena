@@ -10,7 +10,7 @@ const FRAME = '#5a3b20';
 // Cầu gỗ: ván lát xen hai màu, hai thanh dầm dưới, lan can có trụ và các cột chống xuống đáy sông.
 // Dữ liệu b = { axis, x, z, length, width, deckY, bedY } do server gửi. Dựng theo trục z rồi xoay nếu cầu nằm dọc trục x.
 // Các mảnh cùng màu được gộp thành một mesh để cả cây cầu chỉ tốn vài lần vẽ.
-export function createBridge(b) {
+export function createBridge(b, parent) {
   const { length, width, deckY, bedY } = b;
   const groups = { [PLANK_LIGHT]: [], [PLANK_DARK]: [], [FRAME]: [] };
   const add = (color, mesh, x, y, z) => {
@@ -38,6 +38,7 @@ export function createBridge(b) {
   }
 
   const root = new TransformNode('bridge', scene);
+  root.parent = parent;
   root.position.set(b.x, 0, b.z);
   root.rotation.y = b.axis === 'x' ? Math.PI / 2 : 0;
   for (const meshes of Object.values(groups)) {

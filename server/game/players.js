@@ -18,6 +18,8 @@ function createPlayer(ws) {
     yaw: 0,
     hp: MAX_HP,
     lastHurtAt: 0, // mốc Date.now() lần bị trúng đòn gần nhất (tính hồi máu, xem regen.js)
+    lastCactusDamageAt: 0,
+    fallStartedAt: 0,
     regenCarry: 0,
     dead: false,
     kills: 0,

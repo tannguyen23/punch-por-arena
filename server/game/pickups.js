@@ -1,5 +1,4 @@
 const { PICKUP_RADIUS, PICKUP_MIN_GAP, PLANE_SPEED, PLANE_APPROACH, PLANE_ALTITUDE, PARACHUTE_MS } = require('../config');
-const { terrain } = require('../maps');
 const { randomFreePosition } = require('./spawn');
 const { randomDropWeapon, rollAmmo } = require('./weapons');
 const { addToInventory } = require('./inventory');
@@ -39,7 +38,7 @@ function launchAirdrop(room) {
     ammo: rollAmmo(weapon),
     x: +pos.x.toFixed(2),
     z: +pos.z.toFixed(2),
-    y: +(terrain.heightAt(pos.x, pos.z) + PLANE_ALTITUDE).toFixed(2),
+    y: +(room.terrain.heightAt(pos.x, pos.z) + PLANE_ALTITUDE).toFixed(2),
     heading: +(Math.random() * Math.PI * 2).toFixed(3),
     releaseAt,
     landsAt: releaseAt + PARACHUTE_MS,

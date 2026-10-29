@@ -65,11 +65,20 @@ const messageHandlers = {
   // Về phòng chờ: sau khi hết giờ nghỉ, hoặc đếm ngược bị huỷ (có người bỏ sẵn sàng / vào thêm / thoát).
   lobby(m) {
     state.match.phase = 'lobby';
+    if (m.map) {
+      buildArena(m.map);
+      state.room.mapId = m.map.id;
+      state.room.mapName = m.map.name;
+      state.me.y = groundAt(state.me.x, state.me.z, Infinity);
+      state.vy = 0;
+    }
     if (!m.cancelled) {
       clearField();
       state.match.ranking = [];
     }
-    announce(m.cancelled ? 'Đã huỷ đếm ngược' : 'Về phòng chờ. Bấm F khi sẵn sàng');
+    announce(m.map
+      ? `Map mới: ${m.map.name} · Bấm F khi sẵn sàng`
+      : m.cancelled ? 'Đã huỷ đếm ngược' : 'Về phòng chờ. Bấm F khi sẵn sàng');
   },
 
   start(m) {

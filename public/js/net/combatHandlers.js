@@ -4,7 +4,7 @@ import { spawnHitEffects } from '../fx/hitEffects.js';
 import { tracer, muzzleFlash, bulletImpact, explosion } from '../fx/gunEffects.js';
 import { launchRocket, removeRocket } from '../fx/rockets.js';
 import { muzzlePosition } from '../player/aim.js';
-import { flashDamage, flashCrosshairHit } from '../ui/hud.js';
+import { flashDamage, flashCrosshairHit, showDamageNotice } from '../ui/hud.js';
 import { positionOf, playAt } from './positional.js';
 
 const REMOTE_MUZZLE = 0.7; // đạn của người khác bắt đầu cách mắt họ ngần này (mét) theo hướng bắn, cho khỏi như bắn ra từ mặt
@@ -27,6 +27,7 @@ export const combatHandlers = {
     if (m.id === state.myId) {
       state.shake = Math.max(state.shake, 0.12);
       flashDamage();
+      showDamageNotice(m.dmg, m.source);
       return;
     }
     const target = remotes.get(m.id);

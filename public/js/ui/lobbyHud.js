@@ -54,7 +54,7 @@ function drawLobby() {
   const players = [...infos.values()];
   const ready = players.filter((p) => state.readyIds.has(p.id)).length;
   const { minPlayers } = state.room;
-  const signature = `${state.match.phase}|${state.room.code}|${players.map((p) => `${p.id}:${state.readyIds.has(p.id)}`).join(',')}`;
+  const signature = `${state.match.phase}|${state.room.code}|${state.room.mapName}|${players.map((p) => `${p.id}:${state.readyIds.has(p.id)}`).join(',')}`;
   if (signature === lastLobby) return;
   lastLobby = signature;
 
@@ -67,6 +67,7 @@ function drawLobby() {
 
   lobbyEl.replaceChildren(
     row(`Phòng ${state.room.code}`, 'lobby-title'),
+    row(`Map: ${state.room.mapName}`, 'lobby-hint'),
     row(roomLink(), 'lobby-link'),
     row('L: sao chép link để mời bạn bè', 'lobby-hint'),
     ...players.map((p) => row(`${state.readyIds.has(p.id) ? '✔' : '…'} ${p.name}${p.id === state.myId ? ' (bạn)' : ''}`, state.readyIds.has(p.id) ? 'lobby-player ready' : 'lobby-player')),

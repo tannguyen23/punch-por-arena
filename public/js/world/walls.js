@@ -23,8 +23,9 @@ const builders = {
   },
 };
 
-export function createWall(wall) {
+export function createWall(wall, parent) {
   const root = new BABYLON.TransformNode(wall.kind, scene);
+  root.parent = parent;
   const { min, max } = footprintHeights(wall.x, wall.z, wall.w, wall.d);
   root.position.set(wall.x, min, wall.z);
   builders[wall.kind]?.(root, wall, max - min);
