@@ -4,7 +4,7 @@ import { equipLoadout, thirdPersonTilt } from '../entities/weapons/index.js';
 import { setDogForm } from '../entities/dogForm.js';
 import { potionChanged } from '../fx/potionFx.js';
 import { updateHud } from '../ui/hud.js';
-import { AMMO_SYNC_GRACE_MS, SLOT_SYNC_GRACE_MS } from '../config.js';
+import { AMMO_SYNC_GRACE_MS, SLOT_SYNC_GRACE_MS, REMOTE_SNAP_DIST } from '../config.js';
 import { playAt } from './positional.js';
 import * as Sfx from '../audio/sfx.js';
 
@@ -41,6 +41,7 @@ function syncRemote(p) {
     r = createRemote(p.id, info);
     remotes.set(p.id, r);
   }
+  if (r.initialised && Math.hypot(p.x - r.tx, p.z - r.tz) > REMOTE_SNAP_DIST) r.root.position.set(p.x, p.y, p.z);
   r.tx = p.x;
   r.ty = p.y;
   r.tz = p.z;
@@ -71,6 +72,7 @@ function syncRemote(p) {
 }
 
 export function applySnapshot(list) {
+  state.roster = list;
   state.readyIds = new Set(list.filter((p) => p.r).map((p) => p.id));
   state.ready = state.readyIds.has(state.myId);
   const seen = new Set();

@@ -1,6 +1,7 @@
 // Va chạm của người chơi cục bộ: đẩy `state.me` ra khỏi người khác, vật phẩm, tường và biên sân.
 import { state, remotes } from '../state.js';
 import { radiusOf } from '../core/bodySize.js';
+import { confineToDuelZone } from './duelZone.js';
 
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -78,5 +79,6 @@ export function resolveCollisions() {
     pushOutOfProps();
     pushOutOfWalls();
   }
+  confineToDuelZone(); // sự kiện solo: võ sĩ trong võ đài, người xem trong vòng bo
   clampToArena();
 }

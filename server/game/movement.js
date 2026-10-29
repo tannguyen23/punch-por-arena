@@ -4,8 +4,9 @@ const { send } = require('../net/messaging');
 const { tryPickup } = require('./pickups');
 const { checkHazardContact } = require('./hazards');
 const { applyDamage } = require('./damage');
-const { isFrozen } = require('./restrictions');
+const { isFrozen, isHeld } = require('./restrictions');
 const { checkPoopContact } = require('./poop');
+const { confinedSpot } = require('./duelRing');
 
 // Lưới an toàn: nếu client báo vị trí chồng sâu vào người khác thì đẩy ra và bắt client cập nhật lại.
 function separate(room, p) {
@@ -25,7 +26,7 @@ function separate(room, p) {
 
 // Áp trạng thái client báo lên (đã kiểm tra số hợp lệ và giới hạn trong sân).
 function applyClientState(room, p, m) {
-  if (p.dead || isFrozen(room)) return; // đứng hình: bỏ qua vị trí client báo (client cũng đã đứng yên)
+  if (p.dead || isFrozen(room) || isHeld(room, p)) return; // đứng hình / võ sĩ giữa các hiệp: bỏ qua vị trí client báo (client cũng đã đứng yên)
   if (!Number.isFinite(m.x) || !Number.isFinite(m.z) || !Number.isFinite(m.yaw)) return;
   p.x = clamp(m.x, -room.mapData.size, room.mapData.size);
   p.z = clamp(m.z, -room.mapData.size, room.mapData.size);
@@ -46,6 +47,11 @@ function applyClientState(room, p, m) {
   p.c = m.c ? 1 : 0;
   p.sprinting = m.s === 1 && !p.c;
   separate(room, p);
+  const spot = confinedSpot(room, p); // sự kiện solo: võ sĩ bị nhốt trong võ đài, người xem không vào được và không đi xa
+  if (spot) {
+    Object.assign(p, spot);
+    send(p.ws, { t: 'setpos', ...spot });
+  }
   checkHazardContact(room, p);
   tryPickup(room, p);
   checkPoopContact(room, p);

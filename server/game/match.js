@@ -1,7 +1,8 @@
 const {
-  MATCH_DURATION_MS, MATCH_INTERMISSION_MS, MATCH_TICK_MS, AIRDROP_FIRST_MS, AIRDROP_INTERVAL_MS, COUNTDOWN_MS,
-  MIN_PLAYERS_TO_START, POTION,
+  MATCH_INTERMISSION_MS, MATCH_TICK_MS, AIRDROP_FIRST_MS, AIRDROP_INTERVAL_MS, COUNTDOWN_MS,
+  POTION, TEST,
 } = require('../config');
+const config = require('../config'); // MATCH_DURATION_MS và MIN_PLAYERS_TO_START đọc lúc dùng: /admin-test đổi được khi server đang chạy
 const { broadcast } = require('../net/messaging');
 const { AIRDROP_LEAD_MS, clearPickups, launchAirdrop } = require('./pickups');
 const { clearRockets } = require('./rockets');
@@ -9,7 +10,7 @@ const { clearGrenades } = require('./grenades');
 const { startWeather, stopWeather, tickWeather, weatherView } = require('./weather');
 const { clearNuke } = require('./nuke');
 const { clearIce } = require('./ice');
-const { planEvents, tickEvents, clearEvents, eventView } = require('./events');
+const { planEvents, tickEvents, clearEvents, eventView, isPaused } = require('./events');
 const { regenerate } = require('./regen');
 const { runPotionDrops } = require('./potionDrops');
 const { tickPotions } = require('./potions');
@@ -35,9 +36,10 @@ function clearProjectiles(room) {
 const isPlaying = (room) => room.phase === 'playing';
 const timeLeft = (room) => (room.phase === 'lobby' ? 0 : Math.max(0, room.endsAt - Date.now()));
 
-// Đủ người tối thiểu và ai cũng đã bấm F.
-function allReady(room) {
-  return room.players.size >= MIN_PLAYERS_TO_START && [...room.players.values()].every((p) => p.ready);
+// Đủ người tối thiểu và hơn `READY_RATIO` (một nửa) số người đã bấm F. Công thức này phải khớp `readyNeeded` ở public/js/ui/lobbyHud.js.
+function enoughReady(room) {
+  const ready = [...room.players.values()].filter((p) => p.ready).length;
+  return room.players.size >= config.MIN_PLAYERS_TO_START && ready > room.players.size * config.READY_RATIO;
 }
 
 // Đưa mọi người về trạng thái đầu trận: hết kill, vũ khí về tay không, máu đầy, đứng chỗ mới, chưa sẵn sàng.
@@ -77,14 +79,14 @@ function startMatch(room) {
   clearPickups(room);
   clearProjectiles(room);
   room.phase = 'playing';
-  room.endsAt = now + MATCH_DURATION_MS;
+  room.endsAt = now + config.MATCH_DURATION_MS;
   room.ranking = [];
   room.result = null;
   room.nextAirdropAt = now + AIRDROP_FIRST_MS;
   room.nextPotionAt = now + POTION.firstMs;
   startWeather(room, now);
   planEvents(room, now);
-  broadcast(room, { t: 'start', duration: MATCH_DURATION_MS });
+  broadcast(room, { t: 'start', duration: config.MATCH_DURATION_MS });
 }
 
 // Kết thúc trận. Hết giờ thì thắng là người nhiều kill nhất (client tự xét từ bảng xếp hạng); bom hạt nhân nổ (`winner` = người gọi bom,
@@ -121,6 +123,10 @@ function setReady(room, p, ready) {
 // Cứ AIRDROP_INTERVAL_MS lại có một máy bay thả hòm tiếp tế. Hòm không kịp chạm đất trước khi hết trận thì thôi không thả.
 function runAirdrops(room, now) {
   if (now < room.nextAirdropAt) return;
+  if (isPaused(room, 'airdrop')) { // sự kiện đang chạy ngưng thả hòm: dời hẹn để hết sự kiện mới tới lượt, không dồn một loạt hòm
+    room.nextAirdropAt = now + config.EVENTS.retryMs;
+    return;
+  }
   room.nextAirdropAt += AIRDROP_INTERVAL_MS;
   if (now + AIRDROP_LEAD_MS < room.endsAt) launchAirdrop(room);
 }
@@ -129,11 +135,13 @@ function tickRoom(room) {
   const now = Date.now();
   switch (room.phase) {
     case 'lobby':
-      if (allReady(room)) beginCountdown(room);
+      if (TEST.autoReady) for (const p of room.players.values()) p.ready = true; // chế độ test: tự sẵn sàng, chơi lặp liên tục
+      if (enoughReady(room)) beginCountdown(room);
       break;
     case 'countdown':
-      // Có người bỏ sẵn sàng / thêm người mới / có người thoát làm thiếu người: huỷ đếm ngược.
-      if (!allReady(room)) enterLobby(room, { cancelled: true });
+      // Có người bỏ sẵn sàng / thêm người mới / có người thoát làm không còn đủ người sẵn sàng: huỷ đếm ngược.
+      if (TEST.autoReady) for (const p of room.players.values()) p.ready = true;
+      if (!enoughReady(room)) enterLobby(room, { cancelled: true });
       else if (now >= room.endsAt) startMatch(room);
       break;
     case 'playing':
@@ -141,7 +149,7 @@ function tickRoom(room) {
         endMatch(room);
       } else {
         runAirdrops(room, now);
-        runPotionDrops(room, now);
+        runPotionDrops(room, now, isPaused(room, 'potion'));
         tickPotions(room, now);
         regenerate(room, now);
         tickWeather(room, now);

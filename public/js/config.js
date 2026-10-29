@@ -64,6 +64,34 @@ export const BODY_VIEW = {
   stepRate: 3, // chân đung đưa nhanh cỡ này theo tốc độ đi (khớp remotePlayer.js); người to bước chậm, người nhỏ bước dồn (chia cho căn bậc hai kích thước)
 };
 export const EVENT_RESULT_MS = 6000; // thông báo kết quả sự kiện hiện ngần này
+// Cổng khoá võ đài trong sự kiện solo (fx/ringGates.js): song sắt cao `height` mét, rộng đúng `ring.gate` của map, hạ từ độ cao `lift` xuống trong
+// `closeSeconds` (kéo lên trong `openSeconds` khi sự kiện kết thúc). `depth` cũng là độ dày va chạm khi cổng đã đóng.
+export const RING_GATE = {
+  height: 2.6,
+  depth: 0.3,
+  barGap: 0.25,
+  railHeight: 0.14,
+  lift: 4,
+  closeSeconds: 0.45,
+  openSeconds: 1,
+  colors: { frame: '#2c2f36', bar: '#5d636e', lock: '#d4a017' },
+};
+// Vòng bo của sự kiện solo (fx/ringZone.js): tường năng lượng cao `height` mét ở bán kính `ring.leash` của map, vạch dọc `repeat` lần quanh vòng chạy ngang
+// với tốc độ `scroll`, lấp lánh `pulse` (0–1), hiện / tan trong `fadeSeconds` và lúc hiện thu dần từ `shrinkFrom` lần bán kính vào.
+export const DUEL_ZONE = {
+  height: 40,
+  tessellation: 96,
+  color: '#3b8bff',
+  edgeColor: '#9fd8ff',
+  edgeThickness: 0.35,
+  repeat: 28,
+  scroll: 0.03,
+  pulse: 0.25,
+  fadeSeconds: 1.4,
+  shrinkFrom: 1.6,
+};
+export const KICKED_NOTICE_KEY = 'kickedFromRoom'; // khoá sessionStorage: vừa bị chủ phòng kick, menu báo lý do một lần
+export const REMOTE_SNAP_DIST = 12; // người khác nhảy xa hơn ngần này giữa hai snapshot (bị dịch chuyển, vd. đưa vào võ đài) thì đặt thẳng tới chỗ mới thay vì trượt qua
 export const SPRINT = { duration: 5, recovery: 4, delay: 1, restart: 0.2 };
 export const SPRINT_CAMERA = { fovBoost: 0.2, easeIn: 10, easeOut: 5 };
 export const SPRINT_FX = {

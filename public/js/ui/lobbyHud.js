@@ -53,7 +53,8 @@ let lastLobby = null;
 function drawLobby() {
   const players = [...infos.values()];
   const ready = players.filter((p) => state.readyIds.has(p.id)).length;
-  const { minPlayers } = state.room;
+  const { minPlayers, readyRatio } = state.room;
+  const needed = Math.floor(players.length * readyRatio) + 1; // hơn một nửa; khớp enoughReady ở server/game/match.js
   const signature = `${state.match.phase}|${state.room.code}|${state.room.mapName}|${players.map((p) => `${p.id}:${state.readyIds.has(p.id)}`).join(',')}`;
   if (signature === lastLobby) return;
   lastLobby = signature;
@@ -62,7 +63,7 @@ function drawLobby() {
     ? 'Chuẩn bị vào trận...'
     : players.length < minPlayers
       ? `Cần ít nhất ${minPlayers} người để bắt đầu (${players.length}/${minPlayers})`
-      : `${ready}/${players.length} người đã sẵn sàng`;
+      : `${ready}/${players.length} người đã sẵn sàng · cần ${needed} để bắt đầu`;
   const own = state.ready ? 'Bạn đã sẵn sàng. Bấm F để huỷ' : 'Bấm F khi bạn sẵn sàng';
 
   lobbyEl.replaceChildren(

@@ -6,7 +6,7 @@ import { swingHand } from './viewmodel.js';
 import { muzzlePosition } from './aim.js';
 import { announce } from '../ui/matchHud.js';
 import { nukeActive } from '../fx/nuke.js';
-import { isFrozen } from '../core/freeze.js';
+import { actionBlocked } from '../core/freeze.js';
 import * as Sfx from '../audio/sfx.js';
 import { PUNCH_COOLDOWN, PITCH_LIMIT, FIST_SLOT } from '../config.js';
 
@@ -95,7 +95,7 @@ function callNuke() {
 export function attack(button) {
   if (!state.alive || state.cooldown > 0 || state.match.phase !== 'playing') return false;
   if (state.bigPunch.charging) return false; // đang tích lực đấm lớn: tay đang giữ tư thế lấy đà
-  if (state.dog || isFrozen()) return false; // chó chỉ chạy; đứng hình thì không ai đánh được
+  if (actionBlocked()) return false; // chó chỉ chạy; đứng hình thì không ai đánh được; sự kiện solo chỉ hai võ sĩ trong hiệp mới đánh
   if (button !== 0 && button !== 2) return false;
   const kind = kindOf(state.weapon);
   if (state.ammo === 0) dryAttack();

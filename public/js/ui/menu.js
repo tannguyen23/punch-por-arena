@@ -3,7 +3,8 @@
 import { loadProfile, saveProfile } from './profileStorage.js';
 import { initCustomize, openCustomize } from './customize.js';
 import { stopPreview } from './preview.js';
-import { DEFAULT_LOOK } from '../config.js';
+import { initRoomList, setRoomListActive } from './roomList.js';
+import { DEFAULT_LOOK, KICKED_NOTICE_KEY } from '../config.js';
 
 const ERRORS = {
   room_not_found: 'Không tìm thấy phòng này',
@@ -11,6 +12,7 @@ const ERRORS = {
   bad_code: 'Mã phòng gồm 3 chữ số',
   bad_maps: 'Hãy chọn ít nhất một map hợp lệ',
   server_full: 'Máy chủ đã hết phòng, thử lại sau',
+  kicked: 'Bạn đã bị chủ phòng mời ra khỏi phòng',
 };
 const NAME_REQUIRED = 'Hãy nhập tên trước khi chơi';
 const PANELS = ['home', 'play', 'customize'];
@@ -19,6 +21,7 @@ const errorEl = document.getElementById('menu-error');
 
 function showPanel(name) {
   for (const panel of PANELS) document.getElementById(`menu-${panel}`).hidden = panel !== name;
+  setRoomListActive(name === 'play'); // chỉ hỏi server danh sách phòng khi đang xem nó
 }
 
 // Server từ chối cho vào phòng: hiện lý do ở màn hình chọn phòng để người chơi thử lại.
@@ -127,6 +130,8 @@ export function initMenu(onJoin) {
     submit({ create: true, mapIds: [...selectedMaps] });
   };
 
+  initRoomList((code) => submit({ room: code })); // bấm "Vào" ở một phòng trong danh sách
+
   // Mở link mời: "Bắt đầu" vào thẳng phòng được mời (vẫn điền sẵn mã ở màn hình chọn phòng nếu vào không được).
   const invited = invitedCode();
   roomInput.value = invited;
@@ -156,4 +161,19 @@ export function initMenu(onJoin) {
     roomInput.value = roomInput.value.replace(/\D/g, '').slice(0, 3); // chỉ nhận chữ số
   });
   roomInput.addEventListener('keydown', (e) => e.key === 'Enter' && joinRoom());
+
+  // Vừa bị chủ phòng kick (net/roomHandlers.js tải lại trang về menu): báo lý do ở màn hình chọn phòng, một lần.
+  try {
+    if (sessionStorage.getItem(KICKED_NOTICE_KEY)) {
+      sessionStorage.removeItem(KICKED_NOTICE_KEY);
+      showMenuError('kicked');
+    }
+  } catch { /* trình duyệt chặn sessionStorage: không báo */ }
+
+  // Chế độ test (?autoplay): vào thẳng phòng mới, không cần nhập tên hay bấm nút. Server test (scripts/test-events.js)
+  // cho mọi tab vào chung một phòng, tự xếp map và tự sẵn sàng.
+  if (new URLSearchParams(location.search).has('autoplay')) {
+    const base = (saved?.name?.trim() || 'Tester').slice(0, 12);
+    onJoin(`${base} ${10 + Math.floor(Math.random() * 90)}`, { ...look }, { create: true });
+  }
 }

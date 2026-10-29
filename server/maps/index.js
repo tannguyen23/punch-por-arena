@@ -14,6 +14,7 @@ function buildMap(def) {
     name: def.name,
     size: def.size,
     boundary: def.boundary,
+    ring: def.ring ?? null, // võ đài cho sự kiện solo (duelEvent.js); map không khai báo thì không có sự kiện này
     ground: def.ground,
     terrain: def.terrain.data,
     walls: def.walls,

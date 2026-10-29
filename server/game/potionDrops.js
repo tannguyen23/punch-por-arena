@@ -1,4 +1,4 @@
-const { POTION } = require('../config');
+const { POTION, EVENTS } = require('../config');
 const { broadcast } = require('../net/messaging');
 const { randomPotion } = require('./potions');
 const { pickupView, findPickupPosition } = require('./pickups');
@@ -23,9 +23,14 @@ function spawnPotion(room, now) {
   broadcast(room, { t: 'potiondrop', pickup: pickupView(pickup, now) });
 }
 
-// Gọi mỗi nhịp khi đang 'playing'. Trên sân đã đủ lọ chưa ai nhặt thì bỏ lượt này.
-function runPotionDrops(room, now) {
+// Gọi mỗi nhịp khi đang 'playing'. Trên sân đã đủ lọ chưa ai nhặt thì bỏ lượt này. `paused`: sự kiện đang chạy ngưng thuốc rơi (events.js `isPaused`),
+// tới hẹn thì dời hẹn thay vì rơi, để hết sự kiện mới tới lượt.
+function runPotionDrops(room, now, paused = false) {
   if (now < room.nextPotionAt) return;
+  if (paused) {
+    room.nextPotionAt = now + EVENTS.retryMs;
+    return;
+  }
   room.nextPotionAt = now + POTION.intervalMs;
   const onField = [...room.pickups.values()].filter((pickup) => pickup.potion).length;
   if (onField < POTION.maxOnField) spawnPotion(room, now);

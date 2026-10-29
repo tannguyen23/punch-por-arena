@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin test</title>
+  <link rel="stylesheet" href="/admin-test/app.css">
+</head>
+<body>
+  <main>
+    <h1>Admin test</h1>
+    <p class="lead">Chọn sự kiện sẽ xuất hiện rồi vào trận. Chỉ có khi chạy <code>npm run dev:debug</code>.</p>
+
+    <section>
+      <h2>Sự kiện</h2>
+      <div id="catalog" class="catalog"></div>
+      <div id="bulk" class="row"></div>
+      <h2 class="sub">Thứ tự xuất hiện trong trận</h2>
+      <div id="chips" class="row chips"></div>
+    </section>
+
+    <section>
+      <h2>Map</h2>
+      <select id="map"></select>
+    </section>
+
+    <section>
+      <h2>Thời gian (giây)</h2>
+      <div id="general" class="grid"></div>
+      <div id="settings"></div>
+      <div class="grid">
+        <label class="field"><span>Độ dài trận</span><input id="match" type="number" step="1"></label>
+        <label class="field"><span>Người tối thiểu</span><input id="players" type="number" min="1" step="1"></label>
+        <label class="check"><input id="match-auto" type="checkbox"> Tự tính độ dài trận</label>
+        <label class="check"><input id="players-auto" type="checkbox"> Tự chọn số người</label>
+      </div>
+      <p id="summary" class="summary"></p>
+    </section>
+
+    <div class="row actions">
+      <button id="go" class="primary" type="button">VÀO TRẬN</button>
+      <button id="more" type="button">Mở thêm tab người chơi</button>
+    </div>
+    <p id="status" class="status"></p>
+    <p class="note">Bấm VÀO TRẬN sẽ ngắt các tab đang chơi và tạo phòng mới theo cấu hình này. Sự kiện cần nhiều người thì bấm "Mở thêm tab" cho đủ.</p>
+  </main>
+  <script type="module" src="/admin-test/app.js"></script>
+</body>
+</html>

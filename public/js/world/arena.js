@@ -46,6 +46,7 @@ export function buildArena(map) {
   state.arena = map.size;
   state.colliders = map.props.filter((p) => p.r > 0);
   state.walls = map.walls;
+  state.ring = map.ring;
   setTerrain(map.terrain); // phải có trước khi đặt tường, vật phẩm lên mặt đất
   ground = createGround(map.terrain, map.ground, arenaRoot);
   water = map.terrain.floating ? null : createWater(map.terrain, arenaRoot);

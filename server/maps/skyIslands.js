@@ -84,6 +84,7 @@ module.exports = {
     rock: '#675c61',
     bed: '#675c61',
   },
+  ring: { x: ringCenter.x, z: ringCenter.z, half: RING, leash: 11.5, gate: 3 }, // đảo bán kính 13: người xem không được đi ra sát mép
   terrain,
   walls: ringWalls,
   props: [

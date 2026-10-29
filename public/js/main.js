@@ -6,6 +6,13 @@ import { updateMatchHud } from './ui/matchHud.js';
 import { updateLobbyHud } from './ui/lobbyHud.js';
 import { updateEventHud } from './ui/eventHud.js';
 import { updateDogTracker } from './ui/dogTracker.js';
+import { updateDuelHud } from './ui/duelHud.js';
+import { initBetFrame, updateBetFrame } from './ui/betFrame.js';
+import { updateRingGates } from './fx/ringGates.js';
+import { updateRingZone } from './fx/ringZone.js';
+import { betOn } from './player/duelBet.js';
+import { initPlayerList, updatePlayerList } from './ui/playerList.js';
+import { kickPlayer } from './player/kickPlayer.js';
 import { updateStamina } from './ui/stamina.js';
 import { updateBigPunchHud } from './ui/bigPunchHud.js';
 import { updatePoopHud } from './ui/poopHud.js';
@@ -39,6 +46,11 @@ loadSettings();
 initSettings();
 loadCharacter(scene);
 initInput();
+initBetFrame(betOn);
+initPlayerList(kickPlayer);
+
+// ?autoplay: vào thẳng phòng test (scripts/test-events.js); ở mode này không có cú click nào để xin khoá chuột.
+const autoplay = new URLSearchParams(location.search).has('autoplay');
 
 initMenu((name, look, intent) => {
   state.joined = true;
@@ -46,7 +58,7 @@ initMenu((name, look, intent) => {
   Sfx.init();
   preloadNukeSounds();
   connect(name, look, intent);
-  canvas.requestPointerLock();
+  if (!autoplay) canvas.requestPointerLock(); // ?autoplay không có cú click nào để xin khoá chuột; bấm vào sân để khoá
 });
 
 scene.onBeforeRenderObservable.add(() => {
@@ -62,6 +74,11 @@ scene.onBeforeRenderObservable.add(() => {
   for (const pickup of pickups.values()) updatePickup(pickup, dt);
   updateMatchHud();
   updateEventHud();
+  updateDuelHud();
+  updateBetFrame();
+  updatePlayerList();
+  updateRingGates(dt);
+  updateRingZone(dt);
   updateDogTracker();
   updatePoop();
   updatePoopHud();

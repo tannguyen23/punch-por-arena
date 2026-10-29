@@ -2,12 +2,14 @@
 //
 // phase (pha của phòng):
 //   'lobby'     - phòng chờ: đi lại được nhưng chưa đánh được; mọi người bấm F (sẵn sàng)
-//   'countdown' - đủ người và ai cũng sẵn sàng: đếm ngược 3-2-1
+//   'countdown' - đủ người và hơn một nửa số người sẵn sàng (READY_RATIO): đếm ngược 3-2-1
 //   'playing'   - đang đánh, cứ định kỳ có máy bay thả hòm tiếp tế, thỉnh thoảng có bão (mưa, sét)
 //   'ended'     - hết giờ, xem bảng xếp hạng rồi quay về phòng chờ
 class Room {
   constructor(code, mapIds, initialMap) {
     this.code = code;
+    this.ownerId = null; // chủ phòng: id người tạo phòng, chuyển cho người vào sớm nhất còn lại khi chủ thoát (host.js, leave.js)
+    this.ownerName = ''; // tên chủ phòng hiện tại, hiện trong danh sách phòng
     this.mapIds = mapIds;
     this.mapIndex = 0;
     this.setMap(initialMap);

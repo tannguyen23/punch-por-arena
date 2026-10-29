@@ -71,6 +71,7 @@ module.exports = {
     rock: '#74604a',
     bed: '#806044',
   },
+  ring: { x: 0, z: 0, half: RING, leash: 16, gate: 3 },
   terrain,
   walls,
   props: [

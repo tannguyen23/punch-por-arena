@@ -6,7 +6,9 @@
   "scripts": {
     "start": "node server/index.js",
     "dev": "node --watch server/index.js",
-    "dev:solo": "node --watch server/index.js --min-players=1"
+    "dev:solo": "node --watch server/index.js --min-players=1",
+    "dev:debug": "node --watch server/index.js --debug=1",
+    "test:events": "node scripts/test-events.js"
   },
   "dependencies": {
     "babylonjs": "^9.32.1",
