@@ -68,6 +68,13 @@ export const pickupHandlers = {
     announce('MÁY BAY TIẾP TẾ ĐANG TỚI!');
   },
 
+  // Có người vứt vũ khí (còn đạn) xuống đất: ai cũng thấy và nhặt được.
+  drop(m) {
+    addPickup(m.pickup);
+    if (m.by === state.myId) Sfx.thud(0, 0.5);
+    else playAt('thud', pickups.get(m.pickup.id).root.position);
+  },
+
   pickup(m) {
     const pickup = pickups.get(m.id);
     if (pickup) {

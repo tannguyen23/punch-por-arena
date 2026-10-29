@@ -12,7 +12,7 @@ server/                 CommonJS
   config.js             MỌI hằng số của server
   http/                 phục vụ file tĩnh
   net/                  WebSocket: connection.js (dispatch message), messaging.js (send/broadcast)
-  game/                 luật chơi: players, spawn, movement, Room, rooms, combat (cận chiến), shooting (súng), rockets (tên lửa bay + nổ), raycast (dò đường đạn 3D), damage (trừ máu, hạ gục), weapons, pickups (hòm tiếp tế), match, sanitize, snapshot
+  game/                 luật chơi: players, spawn, movement, Room, rooms, combat (cận chiến), shooting (súng), rockets (tên lửa bay + nổ), raycast (dò đường đạn 3D), damage (trừ máu, hạ gục), weapons, inventory (túi đồ, ô đang cầm, đạn), pickups (hòm tiếp tế), drops (vứt vũ khí), match, sanitize, snapshot
   maps/                 dữ liệu map (1 file/map), terrain.js (sinh địa hình/sông/cầu), propTypes.js, wallKinds.js, layout.js (công cụ dựng bố cục)
   utils/                hàm thuần dùng chung (math, geometry)
 public/
@@ -25,7 +25,7 @@ public/
     core/               scene/engine, keys, meshes (helper dựng mesh, material dùng chung), terrain (độ cao đất, cầu, nước)
     world/              sân đấu: arena.js, ground.js (mặt đất), water.js, bridges.js, props.js (cây/bàn ghế/võ đài...), walls.js (tường, dây ring)
     entities/           nhân vật, vũ khí, vật nhặt (Fist, Arm, avatar, character, remotePlayer, pickup, weapons/)
-    player/             người chơi cục bộ: localPlayer.js (di chuyển, cập nhật camera), camera.js, viewmodel.js (tay + vũ khí góc nhìn thứ nhất), gunView.js (súng góc nhìn thứ nhất), attack.js (đấm / bắn), aim.js (hướng ngắm, đầu nòng), collision.js (va chạm)
+    player/             người chơi cục bộ: localPlayer.js (di chuyển, cập nhật camera), camera.js, viewmodel.js (tay + vũ khí góc nhìn thứ nhất), gunView.js (súng góc nhìn thứ nhất), attack.js (đấm / bắn), aim.js (hướng ngắm, đầu nòng), inventory.js (đổi ô, vứt), pickupHint.js (nhắc túi đầy), collision.js (va chạm)
     net/                socket.js (kết nối), handlers.js (xử lý message, ghép các file *Handlers), pickupHandlers (hòm tiếp tế), combatHandlers (đấm, bắn, nổ), snapshot.js
     ui/                 DOM: hud, weaponPanel (thanh chỉ số vũ khí), hotbar (các ô vũ khí), matchHud (đồng hồ, đếm ngược, bảng xếp hạng), lobbyHud (phòng chờ, 3-2-1, nhãn phòng), menu (tạo/vào phòng), lựa chọn ngoại hình
     fx/                 hiệu ứng hình ảnh: effects.js (tia lửa, ngôi sao, số sát thương), gunEffects.js (vệt đạn, lửa đầu nòng, vụ nổ), rockets.js (tên lửa đang bay)
@@ -71,9 +71,11 @@ public/
 ## Vũ khí
 
 - **Server quyết định tất cả.** Bảng `WEAPONS` trong `server/game/weapons.js` giữ tên, loại (`kind`: `melee` / `gun` / `rocket`), các chỉ số (`damage` sát thương, `range` tầm đánh, `cooldown` ms giữa hai đòn), số đạn khi nhặt (`ammo: [min, max]`, không có = dùng mãi) và độ hiếm khi rơi (`dropWeight`, 0 = không rơi). Client nhận tên, loại và các chỉ số trong `welcome` để hiển thị và tính thời gian hồi, không có bản sao riêng. Hiện chỉ dao, súng lục, AK-47 và súng phóng tên lửa rơi (25% mỗi món); các vũ khí cận chiến cũ vẫn còn trong bảng với `dropWeight: 0`.
-- **Nhặt:** vũ khí nằm trong hòm tiếp tế (xem mục Trận đấu). Hòm đã chạm đất thì đi vào bán kính `PICKUP_RADIUS` là tự nhặt, thay vũ khí đang cầm (cùng loại thì cộng dồn đạn). Chết thì về tay không (`fist`). Đổi vũ khí của người chơi luôn qua `equip(p, id, ammo)` để số đạn đi kèm.
-- **Đạn:** `p.ammo` (null = dùng mãi). Mỗi phát bắn / mỗi lần chém dao trừ một (`useAmmo`), về 0 thì server tự đổi về tay không. Client trừ ngay khi bắn (`player/attack.js`) và chỉ nhận số từ snapshot khi đã ngừng bắn `AMMO_SYNC_GRACE_MS`, để con số không nhảy lên xuống.
-- **Đồng bộ:** message `airdrop` (một hòm, kèm đường bay của máy bay) và `pickup` (bị nhặt); vũ khí và số đạn mỗi người nằm trong snapshot (`w`, `a`). Client dựa vào `w` để cầm đúng model cho mọi người.
+- **Túi đồ** (`server/game/inventory.js`): `p.slots` có `INVENTORY_SLOTS` ô vũ khí (`{ weapon, ammo }` hoặc null) cộng một ô tay không cố định ở cuối (`FIST_SLOT`, phím 4); `p.activeSlot` là ô đang cầm. `p.weapon` / `p.ammo` luôn là bản sao của ô đang cầm (`syncHeld`) nên combat / shooting / rockets chỉ đọc hai trường đó. **Mọi thay đổi vũ khí phải qua các hàm của `inventory.js`** (`addToInventory`, `selectSlot`, `takeActive`, `useAmmo`, `clearInventory`), không gán thẳng `p.weapon`.
+- **Nhặt:** vũ khí nằm trong hòm tiếp tế (xem mục Trận đấu) hoặc do người khác vứt ra. Đã chạm đất thì đi vào bán kính `PICKUP_RADIUS` là tự nhặt vào túi và cầm luôn: cùng loại thì cộng dồn đạn vào ô đó, không thì vào ô trống đầu tiên; túi đầy thì vũ khí nằm lại (client tự nhắc "túi đầy", `player/pickupHint.js`). Chết hoặc sang trận mới thì mất hết vũ khí.
+- **Đổi ô / vứt:** phím 1–3 chọn ô vũ khí (ô trống bị bỏ qua), 4 là tay không: client gửi `{ t: 'slot', slot }` và cầm ngay trên máy mình, snapshot chỉ ghi đè ô / vũ khí sau `SLOT_SYNC_GRACE_MS`. Phím G gửi `{ t: 'drop' }` (`server/game/drops.js`): vũ khí đang cầm rời túi, về tay không; còn đạn thì nằm dưới chân thành vật nhặt (`dropped: true`, không máy bay / hòm / khói), người vứt phải bước ra khỏi bán kính nhặt rồi mới nhặt lại được (`ignore`); hết đạn thì vứt luôn.
+- **Đạn:** `p.ammo` (null = dùng mãi). Mỗi phát bắn / mỗi lần chém dao trừ một (`useAmmo`). Về 0 thì vũ khí **vẫn nằm trong ô** (không đánh / bắn được, client báo "bấm G để vứt"), người chơi tự vứt. Client trừ ngay khi bắn (`player/attack.js`) và chỉ nhận số từ snapshot khi đã ngừng bắn `AMMO_SYNC_GRACE_MS`, để con số không nhảy lên xuống.
+- **Đồng bộ:** message `airdrop` (một hòm, kèm đường bay của máy bay), `drop` (vũ khí bị vứt) và `pickup` (bị nhặt); vũ khí và số đạn đang cầm của mỗi người nằm trong snapshot (`w`, `a`), túi đồ trong `s` (`[vũ khí, đạn]` hoặc 0 từng ô) và ô đang cầm trong `as`. Client dựa vào `w` để cầm đúng model cho mọi người.
 - **Thêm vũ khí mới:**
   1. Thêm một dòng vào `WEAPONS` (`server/game/weapons.js`): tên, `kind`, `damage`, `range`, `cooldown`, `ammo`, `dropWeight` (súng thêm `spread`, tên lửa thêm `splash`, `speed`).
   2. Tạo `public/js/entities/weapons/<tên>.js` rồi đăng ký trong `weapons/index.js` (id phải trùng với server). Định nghĩa có `icon`, `firstPersonTilt` và một trong hai cách có hình:
@@ -84,7 +86,7 @@ public/
   Chưa làm bước 2 thì vũ khí vẫn rơi và gây sát thương đúng, chỉ là chưa có hình (vòng sáng vẫn hiện, tay không cầm gì).
 
 - Server dùng `damage`, `range`, `cooldown` của vũ khí đang cầm trong `combat.js`. Thanh chỉ số (`ui/weaponPanel.js`) đọc đúng các trường này; thanh dài theo tỉ lệ so với vũ khí mạnh nhất về chỉ số đó nên vũ khí mới tự vừa. Thêm chỉ số mới: thêm trường vào `WEAPONS` + `weaponInfo()`, thêm một dòng vào `STATS` trong `weaponPanel.js`, và đọc nó trong `combat.js`.
-- **Thanh các ô vũ khí** (`ui/hotbar.js`, `HOTBAR_SLOTS` ô): đọc `state.inventory[i]` (id vũ khí hoặc null) và `state.activeSlot`. Hiện server mới cho cầm một vũ khí nên `net/handlers.js` tạm đặt nó vào ô 1; khi làm túi đồ nhiều ô (nhặt vào ô trống, phím 1–3 đổi ô, phím vứt) thì server giữ danh sách ô, gửi trong snapshot/welcome, và client chỉ việc điền `state.inventory`/`state.activeSlot` từ đó. Chuột bị khoá khi chơi nên thao tác dùng phím, không phải click.
+- **Thanh các ô vũ khí** (`ui/hotbar.js`, `HOTBAR_SLOTS` ô vũ khí + ô tay không): đọc `state.inventory[i]` (`{ weapon, ammo }` hoặc null, điền từ snapshot trong `net/snapshot.js`) và `state.activeSlot`; ô đang cầm lấy số đạn từ `state.ammo`, ô hết đạn hiện mờ với số đỏ. `HOTBAR_SLOTS` (client) phải khớp `INVENTORY_SLOTS` (server). Chuột bị khoá khi chơi nên thao tác dùng phím, không phải click.
 - Dùng `equipLoadout(hands, id, tilt)` để cầm vũ khí cho cả hai tay của một người (tự xử lý vũ khí hai tay) và `releaseWeapon(hand)` để bỏ. Các bản vũ khí dùng chung material nên phải `releaseWeapon` cả hai tay trước khi `dispose(false, true)` nhân vật. Hiệu ứng động của vũ khí (vd: tia điện của găng sấm sét) phải tự gỡ khi bị huỷ (`root.onDisposeObservable`); Babylon gỡ observer trễ một nhịp nên đừng kiểm tra ngay sau `dispose()`.
 
 ## Súng và tên lửa
@@ -127,7 +129,7 @@ public/
 - **Vào phòng:** client gửi `join` kèm `{ create: true }` (tạo mới) hoặc `{ room: '427' }`. Sai thì server trả `{ t: 'error', reason }` (`bad_code`, `room_not_found`, `room_full`, `server_full`) và **giữ kết nối** để thử lại; đúng thì trả `welcome` kèm `room: { code, max, minPlayers, created }`. Thêm lý do lỗi mới: thêm vào `ERRORS` trong `ui/menu.js`.
 - **Link mời** là `/?room=<mã>`: menu đọc tham số này để điền sẵn mã; sau khi vào, client đổi thanh địa chỉ thành link đó. Phím **L** (`copyRoomLink` trong `ui/lobbyHud.js`) sao chép link; người tạo phòng được sao chép tự động.
 - **Sẵn sàng:** phím **F** gửi `{ t: 'ready', ready }` (chỉ có tác dụng ở `lobby`/`countdown`); cờ `r` của từng người nằm trong snapshot, pha phòng ở `ph`, thời gian còn lại của pha ở `mt`. Client dựng bảng phòng chờ từ `infos` (danh sách người) + `state.readyIds`.
-- **Message theo phòng:** `lobby` (về phòng chờ, `cancelled: true` nếu chỉ là huỷ đếm ngược), `countdown`, `start`, `end`, `airdrop`, `pickup`, `shot`, `rocket`, `boom`, `hit`, `join`, `leave`.
+- **Message theo phòng:** `drop`, `lobby` (về phòng chờ, `cancelled: true` nếu chỉ là huỷ đếm ngược), `countdown`, `start`, `end`, `airdrop`, `pickup`, `shot`, `rocket`, `boom`, `hit`, `join`, `leave`.
 - **Chạy thử:** `npm run dev:solo` hạ ngưỡng xuống 1 người để thử một mình. Tham số: `--min-players=N`, `--match-seconds=S` (hoặc biến môi trường `MIN_PLAYERS`, `MATCH_SECONDS`).
 
 ## Bảo mật và đồng bộ

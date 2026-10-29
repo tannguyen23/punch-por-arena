@@ -42,21 +42,23 @@ function addMarker(root) {
 // (x, y, z) đúng lúc thả (`releaseIn` ms nữa); hòm rơi dù thẳng xuống, chạm đất sau `landIn` ms. Số âm = đã qua, nên người vào
 // giữa chừng thấy đúng chỗ máy bay / hòm đang ở. Vũ khí trong hòm chỉ hiện (xoay trên nóc hòm) sau khi chạm đất.
 // `hooks.onLand(pickup)`: hòm vừa chạm đất; `hooks.onPlane(pickup, position | null)`: máy bay di chuyển / biến mất (để phát tiếng).
-export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releaseIn, landIn }, hooks = {}) {
+// `dropped`: vũ khí người chơi vứt ra, chỉ có vũ khí lơ lửng sát đất và vòng sáng (không máy bay, hòm, khói).
+export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false }, hooks = {}) {
   const now = performance.now();
   const ground = heightAt(x, z);
   const root = new TransformNode('pickup' + id, scene);
   root.position.set(x, ground, z);
   addMarker(root);
 
-  const crate = createCrate();
-  crate.root.parent = root;
+  const crate = dropped ? null : createCrate();
+  if (crate) crate.root.parent = root;
   const spin = new TransformNode('pickupSpin', scene);
   spin.parent = root;
-  spin.position.y = AIRDROP.crateHover;
+  const hover = dropped ? AIRDROP.dropHover : AIRDROP.crateHover;
+  spin.position.y = hover;
 
   const pickup = {
-    id, weapon, ammo, root, crate, spin, hooks, speed, heading,
+    id, weapon, ammo, root, crate, spin, hooks, speed, heading, dropped, hover,
     dropHeight: y - ground,
     releaseAt: now + releaseIn,
     landAt: now + landIn,
@@ -79,6 +81,7 @@ export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releas
 
 function land(pickup) {
   pickup.landed = true;
+  if (!pickup.crate) return;
   pickup.crate.root.position.y = 0;
   pickup.crate.root.rotation.set(0, 0, 0);
   pickup.crate.chute.dispose();
@@ -93,6 +96,7 @@ function removePlane(pickup) {
 
 // Máy bay cách điểm thả `s` mét theo hướng bay (âm = chưa tới). Bay qua đủ xa thì xoá.
 function updatePlane(pickup, now, dt) {
+  if (pickup.dropped) return;
   const s = (pickup.speed * (now - pickup.releaseAt)) / 1000;
   if (s > AIRDROP.planeVisible) {
     removePlane(pickup);
@@ -128,7 +132,7 @@ function updateFalling(pickup, now) {
 
 // Cột khói đỏ bốc lên ở chỗ hòm sẽ rơi ngay khi hòm rời máy bay, cho cả sân thấy từ xa.
 function updateSmoke(pickup, now) {
-  if (pickup.smoke || now < pickup.releaseAt) return;
+  if (pickup.dropped || pickup.smoke || now < pickup.releaseAt) return;
   pickup.smoke = createSmoke(pickup.root.position, { prewarm: pickup.lateJoin });
 }
 
@@ -143,7 +147,7 @@ export function updatePickup(pickup, dt) {
   pickup.spin.setEnabled(true);
   pickup.t += dt;
   pickup.spin.rotation.y += dt * 1.5;
-  pickup.spin.position.y = AIRDROP.crateHover + 0.15 * Math.sin(pickup.t * 2);
+  pickup.spin.position.y = pickup.hover + 0.15 * Math.sin(pickup.t * 2);
 }
 
 // Material và mesh mẫu dùng chung nên không huỷ kèm.

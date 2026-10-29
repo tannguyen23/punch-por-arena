@@ -30,6 +30,7 @@ module.exports = {
   // Vũ khí trên sân
   PICKUP_RADIUS: 1.2, // đi vào trong bán kính này là nhặt
   PICKUP_MIN_GAP: 4, // khoảng cách tối thiểu giữa hai vũ khí
+  INVENTORY_SLOTS: 3, // số ô vũ khí trong túi (chưa kể ô tay không cố định), khớp HOTBAR_SLOTS ở public/js/config.js
 
   // Phòng và phòng chờ
   ROOM_MAX_PLAYERS: 8, // số người tối đa trong một phòng

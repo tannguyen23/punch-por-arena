@@ -1,6 +1,7 @@
 const { PUNCH_COS, PUNCH_VERTICAL } = require('../config');
 const { broadcast } = require('../net/messaging');
-const { WEAPONS, useAmmo } = require('./weapons');
+const { WEAPONS } = require('./weapons');
+const { useAmmo, hasAmmo } = require('./inventory');
 const { isPlaying } = require('./match');
 const { applyDamage } = require('./damage');
 const { wallBetween } = require('./raycast');
@@ -28,11 +29,11 @@ function findPunchTarget(room, p, range) {
   return target;
 }
 
-// Đòn cận chiến (tay không, dao...). Súng và tên lửa đi đường 'fire' (shooting.js). Dao mỗi lần chém mất một độ bền.
+// Đòn cận chiến (tay không, dao...). Súng và tên lửa đi đường 'fire' (shooting.js). Dao mỗi lần chém mất một độ bền, gãy rồi thì không chém được.
 function handlePunch(room, p, hand) {
   const now = Date.now();
   const weapon = WEAPONS[p.weapon];
-  if (weapon.kind !== 'melee') return;
+  if (weapon.kind !== 'melee' || !hasAmmo(p)) return;
   if (!isPlaying(room) || p.dead || now - p.lastAttack < weapon.cooldown) return; // phòng chờ / hết giờ thì không đánh
   p.lastAttack = now;
   broadcast(room, { t: 'punch', id: p.id, hand });

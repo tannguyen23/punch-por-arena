@@ -2,6 +2,7 @@ const { TICK_MS } = require('../config');
 const { broadcast } = require('../net/messaging');
 const { timeLeft } = require('./match');
 const { allRooms } = require('./rooms');
+const { slotsView } = require('./inventory');
 
 function buildSnapshot(room) {
   return {
@@ -20,6 +21,8 @@ function buildSnapshot(room) {
       kills: p.kills,
       w: p.weapon,
       a: p.ammo, // số đạn còn lại (null = dùng mãi)
+      s: slotsView(p), // túi đồ: [vũ khí, đạn] hoặc 0 từng ô
+      as: p.activeSlot, // ô đang cầm (bằng số ô vũ khí = ô tay không)
       r: p.ready ? 1 : 0,
     })),
   };
