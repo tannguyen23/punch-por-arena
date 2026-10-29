@@ -15,7 +15,7 @@ function startStateSync() {
   setInterval(() => {
     if (state.myId === null || !state.alive) return;
     const { me } = state;
-    send({ t: 'state', x: me.x, z: me.z, yaw: state.yaw, y: me.y, c: state.crouching ? 1 : 0 });
+    send({ t: 'state', x: me.x, z: me.z, yaw: state.yaw, y: me.y, c: state.crouching ? 1 : 0, s: state.sprinting ? 1 : 0 });
   }, STATE_SEND_MS);
 }
 

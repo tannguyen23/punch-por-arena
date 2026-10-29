@@ -35,7 +35,7 @@ export function createRemote(id, { name, look }) {
     ...avatar,
     fill,
     phase: 0, crouch: 0, tx: 0, ty: 0, tz: 0, tc: 0, tyaw: 0,
-    hp: 100, dead: false, initialised: false, weapon: 'fist',
+    hp: 100, dead: false, initialised: false, weapon: 'fist', sprinting: false,
   };
 }
 
@@ -58,13 +58,14 @@ export function updateRemote(r, dt) {
   // Ngồi: hạ thân trên xuống 0.35
   r.crouch += (r.tc - r.crouch) * f;
   r.upper.position.y = -0.35 * r.crouch;
-  r.pose(r.crouch, Math.sin(r.phase) * 0.7 * Math.min(speed / 3, 1) * (1 - 0.7 * r.crouch));
   let dy = r.tyaw - r.root.rotation.y;
   dy = Math.atan2(Math.sin(dy), Math.cos(dy));
   r.root.rotation.y += dy * f;
-  r.update(dt);
   // Cao hơn mặt đất (hoặc mặt cầu) dưới chân thì đang nhảy / rơi → hoạt ảnh nhảy.
   r.setAirborne(!r.dead && r.ty > groundAt(r.tx, r.tz, r.ty) + AIRBORNE_HEIGHT, JUMP_AIR_TIME);
+  r.setRunning(!r.dead && !r.tc && r.sprinting);
+  r.update(dt);
+  r.pose(r.crouch, r.dead ? 0 : Math.sin(r.phase) * 0.7 * Math.min(speed / 3, 1) * (1 - 0.7 * r.crouch));
   const pct = Math.max(0, r.hp) / state.maxHp;
   r.fill.scaling.x = Math.max(pct, 0.001);
   r.fill.position.x = -0.5 * (1 - pct);

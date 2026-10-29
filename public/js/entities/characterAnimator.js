@@ -116,6 +116,8 @@ export class CharacterAnimator {
     this.airborne = false;
     this.airT = 0; // thời gian đã ở trên không
     this.jumpSpeed = 1;
+    this.running = false;
+    this.runT = 0;
     for (const [key, v] of this.base) this.apply(key, v);
   }
 
@@ -165,6 +167,13 @@ export class CharacterAnimator {
     }
   }
 
+  setRunning(running) {
+    if (this.running === running) return;
+    this.running = running;
+    this.runT = 0;
+    if (this.stage === 'idle') this.begin('idle');
+  }
+
   // Bị hạ: ngã một lần rồi giữ tư thế nằm dưới đất. `reset()` khi hồi sinh để đứng dậy.
   knockOut() {
     if (!this.sets.K || this.stage === 'ko') return;
@@ -175,10 +184,13 @@ export class CharacterAnimator {
   // Hồi sinh: trả mọi nút về tư thế đứng yên và chạy lại vòng lặp idle.
   reset() {
     this.airborne = false;
+    this.running = false;
+    this.runT = 0;
     this.t = 0;
     this.idleT = 0;
     this.blendT = 0;
     this.stage = 'idle';
+    this.from.clear();
     for (const [key, v] of this.base) this.apply(key, v);
   }
 
@@ -188,17 +200,29 @@ export class CharacterAnimator {
   }
 
   updateIdle(dt) {
-    const clip = this.sets.I;
+    const running = this.running && this.sets.Run;
+    const clip = running ? this.sets.Run : this.sets.I;
     if (!clip) return;
-    this.idleT = (this.idleT + dt * this.idleSpeed) % clip.duration;
+    this.blendT += dt;
+    const blend = smooth(clamp01(this.blendT / RETURN));
+    if (running) this.runT = (this.runT + dt) % clip.duration;
+    else this.idleT = (this.idleT + dt * this.idleSpeed) % clip.duration;
+    const time = running ? this.runT : this.idleT;
     const fade = Math.min(IDLE_FADE, clip.duration * 0.5);
     const end = clip.duration - fade;
-    const w = this.idleT < end ? 0 : smooth((this.idleT - end) / fade);
+    const w = time < end ? 0 : smooth((time - end) / fade);
     for (const track of clip) {
       const { path } = track;
-      const value = sample(track, this.idleT, KINDS[path].create());
+      const value = sample(track, time, KINDS[path].create());
       if (w > 0) KINDS[path].blend(value, sample(track, 0, KINDS[path].create()), w, value);
-      this.apply(keyOf(track), value);
+      if (this.from.size) this.blendTo(keyOf(track), value, blend);
+      else this.apply(keyOf(track), value);
+    }
+    for (const [key, base] of this.base) {
+      if (!clip.keys.has(key)) {
+        if (this.from.size) this.blendTo(key, base, blend);
+        else this.apply(key, base);
+      }
     }
   }
 
@@ -224,7 +248,7 @@ export class CharacterAnimator {
       const blend = smooth(clamp01(this.t / RETURN));
       for (const [key, base] of this.base) this.blendTo(key, base, blend);
       if (blend >= 1) {
-        this.stage = 'idle';
+        this.begin('idle');
         this.idleT = 0; // vào vòng lặp idle từ khung đầu
       }
       return;
@@ -267,6 +291,8 @@ export function createCharacterAnimator(body, groups, options) {
       ? 'K'
       : /idle/i.test(group.name)
         ? 'I'
+        : /run|sprint/i.test(group.name)
+          ? 'Run'
         : /jump/i.test(group.name)
           ? 'J'
           : /slide/i.test(group.name)

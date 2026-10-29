@@ -36,6 +36,7 @@ function syncRemote(p) {
   r.ty = p.y;
   r.tz = p.z;
   r.tc = p.c;
+  r.sprinting = p.sp === 1;
   r.tyaw = p.yaw;
   r.hp = p.hp;
   if (!r.dead && p.dead) {

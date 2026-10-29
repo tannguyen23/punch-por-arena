@@ -16,6 +16,7 @@ function buildSnapshot(room) {
       yaw: +p.yaw.toFixed(3),
       y: +p.y.toFixed(2),
       c: p.c,
+      sp: !p.dead && !!p.sprinting ? 1 : 0, // cờ chạy; `s` bên dưới là túi đồ
       hp: p.hp,
       dead: p.dead,
       kills: p.kills,

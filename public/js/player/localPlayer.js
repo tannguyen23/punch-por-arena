@@ -5,10 +5,11 @@ import { resolveCollisions } from './collision.js';
 import { eyeHeight } from './aim.js';
 import { camera } from './camera.js';
 import { updateViewmodel } from './viewmodel.js';
+import { updateSprint } from './sprint.js';
 import { groundAt, waterLevel } from '../core/terrain.js';
 import * as Sfx from '../audio/sfx.js';
 import {
-  MOVE_SPEED, SPRINT_MULT, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT,
+  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT,
 } from '../config.js';
 
 export function look(movementX, movementY, sensitivity) {
@@ -25,7 +26,7 @@ function applyMovement(dt) {
   const cos = Math.cos(state.yaw);
 
   state.crouching = keys.has('KeyC');
-  state.sprinting = moving && !state.crouching && (keys.has('ShiftLeft') || keys.has('ShiftRight'));
+  updateSprint(moving && !state.crouching && (keys.has('ShiftLeft') || keys.has('ShiftRight')), dt);
   const speed = MOVE_SPEED * (state.sprinting ? SPRINT_MULT : state.crouching ? CROUCH_MULT : 1) * (isWading() ? WATER_SPEED_MULT : 1);
   state.me.x += ((sin * fwd + cos * strafe) / len) * speed * dt * (moving ? 1 : 0);
   state.me.z += ((cos * fwd - sin * strafe) / len) * speed * dt * (moving ? 1 : 0);
@@ -69,7 +70,9 @@ function updateCamera(dt) {
   // Rung camera khi trúng đòn; giãn góc nhìn khi chạy nhanh và khi vung tay
   state.shake *= Math.exp(-14 * dt);
   state.fovKick *= Math.exp(-10 * dt);
-  state.sprintFov += ((state.sprinting ? 0.12 : 0) - state.sprintFov) * (1 - Math.exp(-8 * dt));
+  const sprintTarget = state.sprinting ? SPRINT_CAMERA.fovBoost : 0;
+  const sprintEase = state.sprinting ? SPRINT_CAMERA.easeIn : SPRINT_CAMERA.easeOut;
+  state.sprintFov += (sprintTarget - state.sprintFov) * (1 - Math.exp(-sprintEase * dt));
   camera.fov = settings.fov + state.sprintFov + state.fovKick;
   const jitter = () => (Math.random() - 0.5) * 2 * state.shake;
   camera.position.set(me.x + jitter() * 0.5, me.y + eye + jitter() * 0.5, me.z + jitter() * 0.5);
@@ -86,7 +89,7 @@ export function updateLocalPlayer(dt) {
     resolveCollisions();
   } else if (!state.alive) {
     state.crouching = false;
-    state.sprinting = false;
+    updateSprint(false, dt);
   }
 
   updateCamera(dt);

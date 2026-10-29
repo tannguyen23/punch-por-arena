@@ -31,6 +31,7 @@ function applyClientState(room, p, m) {
   const ground = terrain.groundAt(p.x, p.z, Number.isFinite(m.y) ? m.y : -Infinity);
   p.y = Number.isFinite(m.y) ? clamp(m.y, ground - 0.5, ground + 4) : ground;
   p.c = m.c ? 1 : 0;
+  p.sprinting = m.s === 1 && !p.c;
   separate(room, p);
   tryPickup(room, p);
 }

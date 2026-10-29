@@ -4,6 +4,36 @@ export const MOVE_SPEED = 6;
 export const EYE_HEIGHT = 1.7;
 export const CROUCH_EYE_HEIGHT = 1.15;
 export const SPRINT_MULT = 1.6;
+export const SPRINT = { duration: 5, recovery: 4, delay: 1, restart: 0.2 };
+export const SPRINT_CAMERA = { fovBoost: 0.2, easeIn: 10, easeOut: 5 };
+export const SPRINT_FX = {
+  textureSize: 32,
+  aura: { capacity: 100, rate: 65, life: 0.35, size: 0.24, color: [0.2, 1, 0.8] },
+  trail: { capacity: 120, rate: 85, life: 0.45, size: 0.12, color: [1, 0.88, 0.3] },
+  width: 0.55,
+  height: 1.4,
+  baseHeight: 0.2,
+  back: 0.45,
+  trailSpeed: 2,
+  stretch: 7,
+  fade: 0.7,
+  firstPerson: {
+    depth: 1.5,
+    edge: 0.78,
+    height: 0.85,
+    width: 0.035,
+    life: 0.26,
+    speed: 0.85,
+    trailSize: 0.012,
+    stretch: 12,
+    color: [0.72, 0.9, 1],
+    alpha: 0.36,
+    rate: 18,
+    capacity: 12,
+    fadeIn: 12,
+    fadeOut: 8,
+  },
+};
 export const CROUCH_MULT = 0.5;
 export const JUMP_SPEED = 6.5;
 export const GRAVITY = 20;
