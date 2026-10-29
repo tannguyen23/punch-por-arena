@@ -5,6 +5,7 @@ import { createHolder } from './weaponModel.js';
 export const knife = {
   icon: '🔪',
   firstPersonTilt: 0.9,
+  attack: 'slide', // chém bằng animation Right Slide khi tấn công
   iconSvg: { viewBox: '0 0 32 16', path: 'M1 7h10v3H1zM11 5h1.5v7H11zM12.5 6.5H26l5 2-5 1.5H12.5z' },
   // Gốc ở giữa cán, mũi dao hướng +Y.
   build() {

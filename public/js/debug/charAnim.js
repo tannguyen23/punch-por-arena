@@ -6,7 +6,10 @@ import { createClipPlayer } from './clipPlayer.js';
 const $ = (id) => document.getElementById(id);
 
 // Khớp cooldown trong server/game/weapons.js để tốc độ animation giống lúc chơi.
-const COOLDOWN = { fist: 0.35, sword: 0.35, dagger: 0.2, axe: 0.8, spear: 0.6, gauntlet: 0.9, thunder: 0.1 };
+const COOLDOWN = {
+  fist: 0.35, sword: 0.35, dagger: 0.2, axe: 0.8, spear: 0.6, knife: 0.3,
+  gauntlet: 0.9, thunder: 0.1, pistol: 0.3, ak47: 0.11, rocket: 1.2,
+};
 
 const loading = $('loading');
 const gamePanel = $('gamePanel');

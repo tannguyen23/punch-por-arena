@@ -1,7 +1,7 @@
 import { scene, solidMaterial } from '../core/scene.js';
 import { CHARACTER } from '../config.js';
 import { loadCharacter, createModelAvatar } from '../entities/character.js';
-import { equipLoadout } from '../entities/weapons/index.js';
+import { equipLoadout, thirdPersonTilt } from '../entities/weapons/index.js';
 
 const { ArcRotateCamera, Color3, Color4, MeshBuilder, TransformNode, Vector3 } = BABYLON;
 
@@ -107,7 +107,7 @@ export async function loadSceneView(canvas) {
       holder.setEnabled(mode === 'clip');
     },
     setWeapon(id) {
-      equipLoadout(avatar.fists, id);
+      equipLoadout(avatar.fists, id, thirdPersonTilt(id)); // súng chĩa ra trước, vũ khí cận chiến theo cẳng tay
     },
   };
 }
