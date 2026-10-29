@@ -5,6 +5,7 @@ import { settings } from './settings.js';
 import { look } from './player/localPlayer.js';
 import { attack } from './player/attack.js';
 import { selectSlot, dropWeapon } from './player/inventory.js';
+import { callRadio } from './player/radioCall.js';
 import { setPauseVisible, onPauseClick } from './ui/hud.js';
 import { copyRoomLink } from './ui/lobbyHud.js';
 import { toggleReady } from './net/socket.js';
@@ -24,6 +25,7 @@ export function initInput() {
     if (e.code === 'KeyF' && !e.repeat) toggleReady();
     if (e.code === 'KeyL' && !e.repeat) copyRoomLink();
     if (e.code === 'KeyG' && !e.repeat) dropWeapon();
+    if (e.code === 'KeyR' && !e.repeat) callRadio();
     const slotKey = SLOT_KEY.exec(e.code);
     if (slotKey && Number(slotKey[1]) - 1 <= FIST_SLOT) selectSlot(Number(slotKey[1]) - 1);
   });

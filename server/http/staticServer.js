@@ -9,10 +9,12 @@ const MIME = {
   '.js': 'text/javascript; charset=utf-8',
   '.css': 'text/css; charset=utf-8',
   '.glb': 'model/gltf-binary',
+  '.mp3': 'audio/mpeg',
 };
 
 // Chỉ phục vụ file nằm trong public/, cộng thêm thư viện Babylon từ node_modules (VENDOR_FILES).
 function resolveFile(pathname) {
+  if (pathname.includes('\0')) return null; // createReadStream ném lỗi với byte null và làm sập cả server
   if (pathname === '/') pathname = '/index.html';
   if (pathname === '/char-anim') pathname = '/char-anim.html'; // trang debug hoạt ảnh
   if (VENDOR_FILES[pathname]) return VENDOR_FILES[pathname];
@@ -22,7 +24,13 @@ function resolveFile(pathname) {
 
 function createStaticServer() {
   return http.createServer((req, res) => {
-    const { pathname } = new URL(req.url, 'http://localhost');
+    let pathname;
+    try {
+      pathname = decodeURIComponent(new URL(req.url, 'http://localhost').pathname);
+    } catch {
+      res.writeHead(400).end('Bad request'); // vd: `GET //` làm new URL ném lỗi, không được để lọt ra ngoài làm sập server
+      return;
+    }
     if (pathname === '/api/maps') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(mapOptions));
       return;
@@ -32,14 +40,7 @@ function createStaticServer() {
       return;
     }
 
-    let file;
-    try {
-      file = resolveFile(decodeURIComponent(pathname));
-    } catch {
-      res.writeHead(400).end('Bad request');
-      return;
-    }
-
+    const file = resolveFile(pathname);
     const type = file && MIME[path.extname(file)];
     if (!type) {
       res.writeHead(404).end('Not found');

@@ -27,6 +27,7 @@ module.exports = {
   PLAYER_RADIUS: 0.5,
   HARD_OVERLAP: 0.6, // chồng lấn sâu hơn mức này thì server mới can thiệp
   SPAWN_CLEARANCE: 2,
+  MAP_MARGIN: 3, // chỗ hồi sinh / sét đánh chỗ trống cách mép sân ít nhất ngần này
   CACTUS_DAMAGE: 2,
   CACTUS_DAMAGE_COOLDOWN_MS: 1200,
   CACTUS_CONTACT_TOLERANCE: 0.1,
@@ -66,9 +67,71 @@ module.exports = {
   FIRE_SLACK_MS: 30, // cho phép phát bắn tới sớm hơn hồi chiêu ngần này (mạng giật làm hai tin nhắn sát nhau hơn)
   WALL_HEIGHT: 3, // tường cao ngần này trên mặt đất (khớp WALL_HEIGHT ở public/js/world/walls.js); đạn bay cao hơn thì qua được
   TERRAIN_RAY_STEP: 0.5, // bước dò mặt đất dọc đường đạn (mét)
-  ROCKET_TICK_MS: 30, // chu kỳ mô phỏng tên lửa đang bay
-  SELF_SPLASH_MULT: 0.5, // tự dính tên lửa của mình chỉ mất một nửa sát thương
+  PROJECTILE_TICK_MS: 30, // chu kỳ mô phỏng tên lửa / lựu đạn đang bay
+  SELF_SPLASH_MULT: 0.5, // tự dính tên lửa / lựu đạn của mình chỉ mất một nửa sát thương
+
+  // Lựu đạn (server/game/grenades.js). Tốc độ ném và thời gian ngòi nằm trong bảng WEAPONS.
+  GRENADE: {
+    gravity: 20, // m/giây², khớp GRAVITY ở public/js/config.js để client đoán đường bay giữa hai snapshot
+    radius: 0.1, // quả lựu đạn nằm cao ngần này trên mặt đất
+    lift: 0.3, // ném chếch lên trên hướng ngắm ngần này (radian) cho thành cung
+    softMult: 0.45, // chuột phải: lăn / tung nhẹ, tốc độ bằng ngần này lần ném mạnh
+    bounce: 0.35, // chạm đất: giữ lại ngần này vận tốc đứng (nảy lên)
+    friction: 0.6, // chạm đất: giữ lại ngần này vận tốc ngang
+    wallBounce: 0.5, // đập tường bật lại với ngần này vận tốc
+    restSpeed: 0.8, // nảy yếu hơn ngần này (m/giây) thì nằm xuống lăn
+    rollDrag: 2.5, // đang lăn trên đất thì chậm dần theo ngần này mỗi giây
+    waterDrag: 4, // dưới nước bị cản mạnh, chìm từ từ
+  },
+
+  // Bão (server/game/weather.js): chỉ có khi đang 'playing', mưa là hình ảnh, sét gây sát thương (server/game/lightning.js).
+  STORM: {
+    firstMs: 45000, // bắt đầu trận ngần này mới có thể có bão
+    chance: 0.6, // tới hẹn thì có bão với xác suất này, không thì hẹn lại sau retryMs
+    retryMs: 30000,
+    durationMs: [60000, 90000], // bão kéo dài trong khoảng này
+    gapMs: 45000, // tạnh rồi ít nhất ngần này mới có bão tiếp
+    fadeMs: 4000, // mưa nặng hạt / tạnh dần trong ngần này (client)
+  },
+  // Sét: đông người thì nhiều sét hơn nhưng có trần, đứng tụm lại hoặc giữa sông / trên đồi dễ bị nhắm hơn.
+  // Luôn báo trước warnMs (vòng sáng dưới đất) để chạy kịp; trúng tâm cũng không chết người đang đầy máu.
+  LIGHTNING: {
+    basePerMin: 2, // số sét mỗi phút khi bão...
+    perPlayerPerMin: 0.5, // ...cộng thêm ngần này cho mỗi người còn sống...
+    maxPerMin: 6, // ...nhưng không quá ngần này
+    minGapMs: 4000, // hai tia sét cách nhau ít nhất ngần này
+    warnMs: 1200, // báo trước khi đánh
+    damage: 25, // sát thương ở tâm
+    edgeMult: 0.3, // ở mép vùng sét chỉ mất ngần này lần sát thương ở tâm
+    radius: 4, // mét
+    crowdRadius: 8, // người đứng trong bán kính này tính là tụm lại
+    crowdWeight: 1, // mỗi người đứng cạnh làm khả năng bị nhắm tăng thêm ngần này
+    waterWeight: 1.5, // đứng dưới sông thì khả năng bị nhắm nhân ngần này
+    highWeight: 1.3, // đứng trên cao (phần trên của dải độ cao sân) thì nhân ngần này
+    highFraction: 0.6, // "trên cao" = cao hơn ngần này của khoảng từ thấp nhất tới cao nhất
+    targetCooldownMs: 8000, // một người vừa bị nhắm thì ngần này sau mới bị nhắm lại
+    missChance: 0.25, // tỉ lệ sét đánh xuống chỗ trống (cho có không khí)
+    jitter: 2.5, // tâm sét lệch ngẫu nhiên tối đa ngần này (mét) so với người bị nhắm
+  },
+
+  // Lựu đạn băng (server/game/ice.js): bay và nảy như mọi lựu đạn (GRENADE ở trên); chỉ số riêng (bán kính, thời gian băng) nằm trong WEAPONS.
+  // Radio gọi bom hạt nhân (server/game/nuke.js). Mốc thời gian tính từ lúc bấm dùng radio; client phát âm thanh theo các mốc này
+  // nên độ dài file trong public/sound nên khớp: radio_chat.mp3 ≈ NUKE_RADIO_MS, falling bomb.mp3 ≈ NUKE_FALL_MS.
+  NUKE_RADIO_MS: 5000, // radio nói chuyện xong thì còi báo động vang lên
+  NUKE_PLANE_IN_MS: 8000, // máy bay lao vào sân (còi báo động đã kêu được 3 giây)
+  NUKE_PLANE_SPEED: 110, // m/giây
+  NUKE_PLANE_APPROACH: 250, // máy bay xuất hiện cách điểm thả ngần này (mét) rồi bay thẳng qua
+  NUKE_PLANE_ALTITUDE: 70, // độ cao bay so với mặt đất ở điểm thả
+  NUKE_FALL_MS: 3000, // bom rơi từ máy bay xuống đất (khớp độ dài falling bomb.mp3 ≈ 3s), hết thì nổ và mọi người chết
+  NUKE_END_SCREEN_MS: 7000, // sau vụ nổ trận kết thúc ngay (người gọi bom thắng) nhưng bảng kết quả chỉ hiện sau ngần này để xem xong màn trắng xoá và mây nấm
+  // Radio gọi bom: số lần hạ gục liên tiếp (không chết) để gọi máy bay thả hòm chứa radio, và hòm rơi cách người gọi chừng này (mét).
+  RADIO_STREAK_KILLS: 3, // khớp RADIO_STREAK_KILLS ở public/js/config.js
+  RADIO_DROP_DISTANCE: 8,
+  // Hòm tiếp tế thường không còn radio. Để thử có thể cho mọi người bắt đầu với radio: [{ weapon: 'nuke', ammo: 1 }].
+  START_WEAPONS: [],
 
   PATTERN_COUNT: 5,
   LOOK_DEFAULT: { shirt: '#e53935', pants: '#1a237e', glove: '#1e88e5', skin: '#f5c7a3', hair: '#1a120d' },
+  FACE_IMAGE: { width: 64, height: 48 }, // cỡ ảnh mặt (điểm ảnh RGBA thô), khớp với FACE_IMAGE của client
+  MAX_MESSAGE_BYTES: 64 * 1024, // tin nhắn WebSocket lớn nhất nhận từ client (tin `join` kèm ảnh mặt khoảng 17 KB)
 };

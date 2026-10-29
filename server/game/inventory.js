@@ -1,5 +1,5 @@
-const { INVENTORY_SLOTS } = require('../config');
-const { DEFAULT_WEAPON } = require('./weapons');
+const { INVENTORY_SLOTS, START_WEAPONS } = require('../config');
+const { WEAPONS, DEFAULT_WEAPON } = require('./weapons');
 
 // Túi đồ: `p.slots` có INVENTORY_SLOTS ô vũ khí ({ weapon, ammo } hoặc null), cộng một ô tay không cố định ở cuối (FIST_SLOT).
 // `p.activeSlot` là ô đang cầm. `p.weapon` / `p.ammo` luôn là bản sao của ô đang cầm để combat / shooting / rockets
@@ -8,26 +8,35 @@ const FIST_SLOT = INVENTORY_SLOTS;
 
 const emptySlots = () => Array(INVENTORY_SLOTS).fill(null);
 
+// Túi lúc bắt đầu / hồi sinh: các món trong START_WEAPONS (config.js, để thử) vào những ô đầu, còn lại trống.
+function startingSlots() {
+  const slots = emptySlots();
+  START_WEAPONS.slice(0, INVENTORY_SLOTS).forEach((item, i) => (slots[i] = { ...item }));
+  return slots;
+}
+
 function syncHeld(p) {
   const slot = p.slots[p.activeSlot] ?? null;
   p.weapon = slot ? slot.weapon : DEFAULT_WEAPON;
   p.ammo = slot ? slot.ammo : null;
 }
 
-// Chết / sang trận mới: mất hết vũ khí, về tay không.
+// Chết / sang trận mới: mất hết vũ khí, về tay không (chỉ còn các món khởi đầu).
 function clearInventory(p) {
-  p.slots = emptySlots();
+  p.slots = startingSlots();
   p.activeSlot = FIST_SLOT;
   syncHeld(p);
 }
 
-// Nhặt vũ khí: đã có cùng loại thì cộng dồn đạn vào ô đó, không thì vào ô trống đầu tiên; xong thì cầm luôn.
-// Trả về false khi túi đầy (phải bấm G vứt bớt) để hòm nằm lại trên sân.
+// Nhặt vũ khí: đã có cùng loại thì cộng dồn đạn vào ô đó (lựu đạn tối đa `stack` quả), không thì vào ô trống đầu tiên;
+// xong thì cầm luôn. Trả về false khi túi đầy / ô lựu đạn đã đủ quả (phải bấm G vứt bớt) để hòm nằm lại trên sân.
 function addToInventory(p, weapon, ammo) {
+  const stack = WEAPONS[weapon]?.stack ?? Infinity;
   let index = p.slots.findIndex((s) => s?.weapon === weapon);
   if (index >= 0) {
     const slot = p.slots[index];
-    if (slot.ammo !== null && ammo !== null) slot.ammo += ammo;
+    if (slot.ammo >= stack) return false;
+    if (slot.ammo !== null && ammo !== null) slot.ammo = Math.min(stack, slot.ammo + ammo);
   } else {
     index = p.slots.indexOf(null);
     if (index < 0) return false;
@@ -56,11 +65,16 @@ function takeActive(p) {
   return slot;
 }
 
-// Dùng một viên đạn (một lần chém với dao). Hết đạn thì vũ khí vẫn nằm trong ô, người chơi tự bấm G để vứt.
+// Dùng một viên đạn (một lần chém với dao, một quả lựu đạn). Hết đạn thì vũ khí vẫn nằm trong ô, người chơi tự bấm G để vứt;
+// riêng lựu đạn ném quả cuối là hết, ô trống luôn và về tay không (client làm y hệt trong player/attack.js).
 function useAmmo(p) {
   const slot = p.slots[p.activeSlot];
   if (!slot || slot.ammo === null) return;
   slot.ammo = Math.max(0, slot.ammo - 1);
+  if (slot.ammo === 0 && WEAPONS[slot.weapon].kind === 'throwable') {
+    p.slots[p.activeSlot] = null;
+    p.activeSlot = FIST_SLOT;
+  }
   syncHeld(p);
 }
 
@@ -70,4 +84,4 @@ const hasAmmo = (p) => p.ammo === null || p.ammo > 0;
 // Gửi trong snapshot: mỗi ô là [vũ khí, đạn] hoặc 0 (trống).
 const slotsView = (p) => p.slots.map((s) => (s ? [s.weapon, s.ammo] : 0));
 
-module.exports = { FIST_SLOT, emptySlots, clearInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };
+module.exports = { FIST_SLOT, emptySlots, startingSlots, clearInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };

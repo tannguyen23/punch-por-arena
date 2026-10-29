@@ -21,7 +21,7 @@ function puffTexture() {
 
 // Cột khói đỏ bốc cao ở chỗ hòm tiếp tế (kiểu PUBG) để cả sân nhìn thấy từ xa. Khói bay lên chậm dần, nở to và trôi theo gió.
 // `prewarm`: dựng sẵn cả cột (người vào giữa chừng) thay vì để nó mọc dần từ đất.
-export function createSmoke(position, { prewarm = false } = {}) {
+export function createSmoke(position, { prewarm = false, color = AIRDROP.smoke.color } = {}) {
   const { smoke } = AIRDROP;
   const ps = new ParticleSystem('airdropSmoke', smoke.capacity, scene);
   ps.particleTexture = puffTexture();
@@ -40,7 +40,7 @@ export function createSmoke(position, { prewarm = false } = {}) {
   ps.addVelocityGradient(1, 0.35);
   ps.addSizeGradient(0, smoke.startSize);
   ps.addSizeGradient(1, smoke.endSize);
-  const [r, g, b] = smoke.color;
+  const [r, g, b] = color;
   ps.addColorGradient(0, new Color4(r, g, b, 0));
   ps.addColorGradient(0.04, new Color4(r, g, b, 0.9));
   ps.addColorGradient(0.7, new Color4(r * 0.85, g, b, 0.55));

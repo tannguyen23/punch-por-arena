@@ -19,6 +19,7 @@ function syncHeld(p) {
 function syncLocalPlayer(p) {
   if (state.alive && p.dead) Sfx.ko(0, 1);
   state.hp = p.hp;
+  state.streak = p.ks;
   state.alive = !p.dead;
   state.inventory = p.s.map((s) => (s ? { weapon: s[0], ammo: s[1] } : null));
   syncHeld(p);

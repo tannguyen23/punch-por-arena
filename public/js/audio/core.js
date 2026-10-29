@@ -1,13 +1,23 @@
 // Nền tảng Web Audio dùng chung cho mọi file âm thanh: context, đầu ra có pan, envelope, tiếng ồn và một nốt.
 // `audio.ctx` là null cho tới khi người chơi bấm vào trang (trình duyệt chỉ cho phát tiếng sau thao tác của người dùng).
-export const audio = { ctx: null, master: null, noiseBuf: null, muted: false };
+// Mọi tiếng đi qua `master` rồi bộ lọc `muffle` (bình thường để lọt hết; bị choáng thì nghẹt lại, xem muffle()).
+// `ears` là tiếng ù trong tai: không bị nghẹt nên nối thẳng ra loa, tắt tiếng cũng tắt theo.
+export const audio = { ctx: null, master: null, muffle: null, ears: null, noiseBuf: null, muted: false };
+
+const OPEN_FREQ = 20000; // bộ lọc `muffle` mở hết cỡ
 
 export function init() {
   if (!audio.ctx) {
     const ctx = new AudioContext();
     audio.ctx = ctx;
     audio.master = ctx.createGain();
-    audio.master.connect(ctx.destination);
+    audio.muffle = ctx.createBiquadFilter();
+    audio.muffle.type = 'lowpass';
+    audio.muffle.frequency.value = OPEN_FREQ;
+    audio.master.connect(audio.muffle);
+    audio.muffle.connect(ctx.destination);
+    audio.ears = ctx.createGain();
+    audio.ears.connect(ctx.destination);
     audio.noiseBuf = ctx.createBuffer(1, ctx.sampleRate * 0.5, ctx.sampleRate);
     const data = audio.noiseBuf.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
@@ -18,7 +28,19 @@ export function init() {
 export function toggleMute() {
   audio.muted = !audio.muted;
   if (audio.master) audio.master.gain.value = audio.muted ? 0 : 1;
+  if (audio.ears) audio.ears.gain.value = audio.muted ? 0 : 1;
   return audio.muted;
+}
+
+// Mọi tiếng nghẹt lại (lọc thấp tới `freq`) rồi trong `seconds` giây trở lại bình thường.
+export function muffle(seconds, freq) {
+  if (!audio.ctx) return;
+  const t = audio.ctx.currentTime;
+  const f = audio.muffle.frequency;
+  f.cancelScheduledValues(t);
+  f.setValueAtTime(freq, t);
+  f.setValueAtTime(freq, t + seconds * 0.4);
+  f.exponentialRampToValueAtTime(OPEN_FREQ, t + seconds);
 }
 
 // Tạo đầu ra có chỉnh âm lượng và trái/phải; trả về node để nối nguồn âm vào.

@@ -7,9 +7,11 @@ const { isPlaying } = require('./match');
 const { applyDamage } = require('./damage');
 const { eyeOf, pointAt, aimDirection, obstacleDistance, firstBodyHit } = require('./raycast');
 const { launchRocket } = require('./rockets');
+const { startNuke } = require('./nuke');
 
 const pack = (p) => [p.x, p.y, p.z].map((v) => +v.toFixed(2));
 const wobble = (angle, spread) => angle + (Math.random() * 2 - 1) * spread;
+const FIRE_KINDS = new Set(['gun', 'rocket', 'nuke']); // các loại vũ khí dùng tin nhắn 'fire'
 
 // Súng: đạn bay tức thì từ mắt người bắn theo hướng ngắm (lệch ngẫu nhiên theo `spread`), dừng ở người, tường hoặc đất
 // đầu tiên. Mọi người nhận súng `w`, điểm đầu/cuối để vẽ vệt đạn; `impact` = đạn găm vào tường/đất (có tia lửa).
@@ -24,15 +26,19 @@ function fireBullet(room, p, weapon, yaw, pitch) {
   if (hit) applyDamage(room, p, hit.target, weapon.damage);
 }
 
-// Tin nhắn 'fire' { yaw, pitch }: bắn súng hoặc tên lửa đang cầm. Server kiểm tra pha, hồi chiêu và số đạn.
+// Tin nhắn 'fire' { yaw, pitch }: bắn súng, bắn tên lửa hoặc gọi bom bằng radio đang cầm (lựu đạn đi bằng 'throw', xem grenades.js). Server kiểm tra pha, hồi chiêu và số đạn.
 function handleFire(room, p, m) {
   if (!Number.isFinite(m.yaw) || !Number.isFinite(m.pitch)) return;
   const weapon = WEAPONS[p.weapon];
   const now = Date.now();
-  if (weapon.kind === 'melee' || !isPlaying(room) || p.dead || !hasAmmo(p)) return;
+  if (!FIRE_KINDS.has(weapon.kind) || !isPlaying(room) || p.dead || !hasAmmo(p)) return;
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất
+  if (weapon.kind === 'nuke') {
+    if (startNuke(room, p)) useAmmo(p); // phòng đang có bom khác tới thì không trừ đạn
+    return;
+  }
   const pitch = clamp(m.pitch, -PITCH_LIMIT, PITCH_LIMIT);
   if (weapon.kind === 'rocket') launchRocket(room, p, weapon, aimDirection(m.yaw, pitch));
   else fireBullet(room, p, weapon, m.yaw, pitch);

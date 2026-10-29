@@ -1,4 +1,4 @@
-import { state, pickups } from '../state.js';
+import { state, pickups, infos } from '../state.js';
 import { createPickup, disposePickup } from '../entities/pickup.js';
 import { announce } from '../ui/matchHud.js';
 import { playAt } from './positional.js';
@@ -61,11 +61,12 @@ function announcePickup({ weapon, ammo }) {
 }
 
 export const pickupHandlers = {
-  // Máy bay vừa xuất hiện: báo động và đếm ngược tới lúc hòm chạm đất.
+  // Máy bay vừa xuất hiện: báo động và đếm ngược tới lúc hòm chạm đất. `by` = người gọi máy bay thả radio (máy bay tiếp tế định kỳ thì null).
   airdrop(m) {
     addPickup(m.pickup);
     Sfx.warning();
-    announce('MÁY BAY TIẾP TẾ ĐANG TỚI!');
+    const caller = m.by === null ? null : m.by === state.myId ? 'BẠN' : (infos.get(m.by)?.name ?? '...').toUpperCase();
+    announce(caller ? `${caller} GỌI MÁY BAY THẢ RADIO GỌI BOM!` : 'MÁY BAY TIẾP TẾ ĐANG TỚI!');
   },
 
   // Có người vứt vũ khí (còn đạn) xuống đất: ai cũng thấy và nhặt được.

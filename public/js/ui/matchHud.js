@@ -74,8 +74,9 @@ function row(className, name, kills) {
   return el;
 }
 
-// Người thắng là người nhiều kill nhất; hoà thì liệt kê hết.
-function winnerText(ranking) {
+// Người thắng là người nhiều kill nhất; hoà thì liệt kê hết. Trận kết thúc bằng bom hạt nhân thì người gọi bom thắng.
+function winnerText(ranking, result) {
+  if (result?.reason === 'nuke') return `Người thắng: ${result.winnerName} (gọi bom hạt nhân)`;
   const top = ranking[0]?.kills ?? 0;
   if (top === 0) return 'Không ai hạ gục ai';
   const names = ranking.filter((p) => p.kills === top).map((p) => p.name);
@@ -83,7 +84,7 @@ function winnerText(ranking) {
 }
 
 function updateEndScreen(now) {
-  const ended = state.match.phase === 'ended';
+  const ended = state.match.phase === 'ended' && now >= state.match.showEndAt;
   endEl.style.display = ended ? 'flex' : 'none';
   if (!ended) {
     lastEndSignature = null;
@@ -94,12 +95,13 @@ function updateEndScreen(now) {
   if (signature === lastEndSignature) return;
   lastEndSignature = signature;
 
+  const { result, ranking } = state.match;
   const title = document.createElement('h1');
-  title.textContent = 'HẾT GIỜ!';
+  title.textContent = result?.reason === 'nuke' ? 'BOM HẠT NHÂN! KẾT THÚC TRẬN' : 'HẾT GIỜ!';
   const winner = document.createElement('div');
   winner.className = 'winner';
-  winner.textContent = winnerText(state.match.ranking);
-  const rows = state.match.ranking.map((p, i) => row(p.id === state.myId ? 'rank me' : 'rank', `${i + 1}. ${p.name}`, p.kills));
+  winner.textContent = winnerText(ranking, result);
+  const rows = ranking.map((p, i) => row(p.id === state.myId ? 'rank me' : 'rank', `${i + 1}. ${p.name}`, p.kills));
   const next = document.createElement('div');
   next.className = 'next';
   next.textContent = `Trận mới sau ${seconds}s`;

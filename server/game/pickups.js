@@ -21,16 +21,16 @@ function findPickupPosition(room) {
 // Máy bay đi qua (x, z) ở độ cao `y` theo hướng `heading` (cùng quy ước với yaw) đúng lúc thả, hòm rơi dù thẳng xuống.
 // `dropped`: vũ khí người chơi vứt ra (nằm sẵn dưới đất, không có máy bay / hòm / khói).
 function pickupView(pickup, now = Date.now()) {
-  const { id, weapon, ammo, x, z, y, heading, dropped } = pickup;
-  return { id, weapon, ammo, x, z, y, heading, dropped, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
+  const { id, weapon, ammo, x, z, y, heading, dropped, smokeKind } = pickup;
+  return { id, weapon, ammo, x, z, y, heading, dropped, smokeKind, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
 }
 
-// Máy bay xuất hiện ngay bây giờ, bay thẳng tới một điểm ngẫu nhiên và thả hòm chứa một vũ khí với ít đạn.
-function launchAirdrop(room) {
-  const weapon = randomDropWeapon();
+// Máy bay xuất hiện ngay bây giờ, bay thẳng tới `pos` và thả hòm chứa `weapon` với ít đạn. Không truyền gì: máy bay tiếp tế định kỳ
+// (vũ khí ngẫu nhiên, điểm thả ngẫu nhiên, khói đỏ). `smokeKind` là màu khói ('red' | 'yellow', xem AIRDROP.smokeColors ở client);
+// `caller` là người gọi máy bay (radio gọi bom), để client báo tên.
+function launchAirdrop(room, { weapon = randomDropWeapon(), pos = findPickupPosition(room), smokeKind = 'red', caller = null } = {}) {
   if (!weapon) return;
   const now = Date.now();
-  const pos = findPickupPosition(room);
   const releaseAt = now + (PLANE_APPROACH / PLANE_SPEED) * 1000;
   const pickup = {
     id: room.nextPickupId++,
@@ -40,11 +40,12 @@ function launchAirdrop(room) {
     z: +pos.z.toFixed(2),
     y: +(room.terrain.heightAt(pos.x, pos.z) + PLANE_ALTITUDE).toFixed(2),
     heading: +(Math.random() * Math.PI * 2).toFixed(3),
+    smokeKind,
     releaseAt,
     landsAt: releaseAt + PARACHUTE_MS,
   };
   room.pickups.set(pickup.id, pickup);
-  broadcast(room, { t: 'airdrop', pickup: pickupView(pickup, now) });
+  broadcast(room, { t: 'airdrop', pickup: pickupView(pickup, now), by: caller?.id ?? null });
 }
 
 // Người vừa vứt vũ khí đang đứng ngay trên nó: phải bước ra khỏi bán kính nhặt rồi mới nhặt lại được.

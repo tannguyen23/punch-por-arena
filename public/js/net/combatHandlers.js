@@ -13,6 +13,15 @@ const BOOM_SHAKE_RANGE = 3; // còn rung trong khoảng ngần này lần bán k
 
 const point = ([x, y, z]) => ({ x, y, z });
 
+// Vụ nổ bán kính `r` tại `at` (tên lửa, lựu đạn): quả cầu lửa, tiếng nổ, rung camera nếu đứng gần.
+export function blastFeedback(at, r) {
+  explosion(at, r);
+  const pos = point(at);
+  playAt('explosion', pos);
+  const dist = Math.hypot(pos.x - state.me.x, pos.y - state.me.y, pos.z - state.me.z);
+  state.shake = Math.max(state.shake, BOOM_SHAKE * Math.max(0, 1 - dist / (r * BOOM_SHAKE_RANGE)));
+}
+
 export const combatHandlers = {
   punch(m) {
     const r = remotes.get(m.id);
@@ -63,10 +72,6 @@ export const combatHandlers = {
 
   boom(m) {
     removeRocket(m.id);
-    explosion(m.at, m.r);
-    const at = point(m.at);
-    playAt('explosion', at);
-    const dist = Math.hypot(at.x - state.me.x, at.y - state.me.y, at.z - state.me.z);
-    state.shake = Math.max(state.shake, BOOM_SHAKE * Math.max(0, 1 - dist / (m.r * BOOM_SHAKE_RANGE)));
+    blastFeedback(m.at, m.r);
   },
 };

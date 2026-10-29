@@ -5,6 +5,10 @@ const {
 const { broadcast } = require('../net/messaging');
 const { AIRDROP_LEAD_MS, clearPickups, launchAirdrop } = require('./pickups');
 const { clearRockets } = require('./rockets');
+const { clearGrenades } = require('./grenades');
+const { startWeather, stopWeather, tickWeather, weatherView } = require('./weather');
+const { clearNuke } = require('./nuke');
+const { clearIce } = require('./ice');
 const { regenerate } = require('./regen');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
@@ -13,6 +17,15 @@ const { getMap } = require('../maps');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
+
+// Bỏ mọi thứ đang bay / chờ nổ trên sân khi đổi pha (tên lửa, lựu đạn, vũng băng, bom hạt nhân, sét đã báo) và cho trời tạnh.
+function clearProjectiles(room) {
+  clearRockets(room);
+  clearGrenades(room);
+  clearIce(room);
+  clearNuke(room);
+  stopWeather(room);
+}
 
 const isPlaying = (room) => room.phase === 'playing';
 const timeLeft = (room) => (room.phase === 'lobby' ? 0 : Math.max(0, room.endsAt - Date.now()));
@@ -26,6 +39,7 @@ function allReady(room) {
 function resetPlayers(room) {
   for (const p of room.players.values()) {
     p.kills = 0;
+    p.streak = 0;
     clearInventory(p);
     p.ready = false;
     respawn(room, p);
@@ -53,22 +67,27 @@ function startMatch(room) {
   const now = Date.now();
   resetPlayers(room);
   clearPickups(room);
-  clearRockets(room);
+  clearProjectiles(room);
   room.phase = 'playing';
   room.endsAt = now + MATCH_DURATION_MS;
   room.ranking = [];
+  room.result = null;
   room.nextAirdropAt = now + AIRDROP_FIRST_MS;
+  startWeather(room, now);
   broadcast(room, { t: 'start', duration: MATCH_DURATION_MS });
 }
 
-function endMatch(room) {
-  clearRockets(room);
+// Kết thúc trận. Hết giờ thì thắng là người nhiều kill nhất (client tự xét từ bảng xếp hạng); bom hạt nhân nổ (`winner` = người gọi bom,
+// xem nuke.js) thì trận kết thúc ngay và người gọi bom thắng. `showIn`: client đợi ngần này ms mới hiện bảng kết quả (cho xem vụ nổ xong đã).
+function endMatch(room, { winner = null, showIn = 0 } = {}) {
+  clearProjectiles(room);
   room.phase = 'ended';
-  room.endsAt = Date.now() + MATCH_INTERMISSION_MS;
+  room.endsAt = Date.now() + showIn + MATCH_INTERMISSION_MS;
   room.ranking = [...room.players.values()]
-    .sort((a, b) => b.kills - a.kills)
+    .sort((a, b) => (b.id === winner?.id) - (a.id === winner?.id) || b.kills - a.kills) // người thắng bom đứng đầu bảng
     .map((p) => ({ id: p.id, name: p.name, kills: p.kills }));
-  broadcast(room, { t: 'end', ranking: room.ranking, intermission: MATCH_INTERMISSION_MS });
+  room.result = winner ? { reason: 'nuke', winnerId: winner.id, winnerName: winner.name, showIn } : { reason: 'time', showIn: 0 };
+  broadcast(room, { t: 'end', ranking: room.ranking, intermission: showIn + MATCH_INTERMISSION_MS, result: room.result });
 }
 
 // Hết giờ xem bảng xếp hạng: dọn sân, mọi người về phòng chờ và phải bấm F lại để chơi ván mới.
@@ -77,8 +96,9 @@ function returnToLobby(room) {
   room.advanceMap(getMap);
   resetPlayers(room);
   clearPickups(room);
-  clearRockets(room);
+  clearProjectiles(room);
   room.ranking = [];
+  room.result = null;
   enterLobby(room, { mapChanged });
 }
 
@@ -112,6 +132,7 @@ function tickRoom(room) {
       } else {
         runAirdrops(room, now);
         regenerate(room, now);
+        tickWeather(room, now);
       }
       break;
     case 'ended':
@@ -120,9 +141,10 @@ function tickRoom(room) {
   }
 }
 
-// Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ (hòm tiếp tế nằm trong 'pickups').
+// Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ, đang bão không
+// (hòm tiếp tế nằm trong 'pickups').
 function matchInfo(room) {
-  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking };
+  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, result: room.result, weather: weatherView(room) };
 }
 
 function startMatchLoop() {
@@ -131,4 +153,4 @@ function startMatchLoop() {
   }, MATCH_TICK_MS);
 }
 
-module.exports = { isPlaying, timeLeft, matchInfo, setReady, tickRoom, startMatchLoop };
+module.exports = { isPlaying, timeLeft, matchInfo, setReady, endMatch, tickRoom, startMatchLoop };

@@ -3,31 +3,55 @@ import { buildArena } from '../world/arena.js';
 import { disposeRemote } from '../entities/remotePlayer.js';
 import { groundAt } from '../core/terrain.js';
 import { clearRockets } from '../fx/rockets.js';
+import { clearGrenades, syncGrenades } from '../fx/grenades.js';
+import { clearStrikes } from '../fx/lightning.js';
+import { setStorm } from '../fx/weather.js';
+import { clearIce, spawnIce } from '../fx/icePatch.js';
+import { clearNuke, startNuke, stopNuke } from '../fx/nuke.js';
 import { setPauseVisible } from '../ui/hud.js';
 import { hideMenu, showMenuError } from '../ui/menu.js';
 import { copyRoomLink } from '../ui/lobbyHud.js';
 import { announce } from '../ui/matchHud.js';
 import { pickupHandlers, addPickup, clearPickups } from './pickupHandlers.js';
 import { combatHandlers } from './combatHandlers.js';
+import { grenadeHandlers } from './grenadeHandlers.js';
+import { weatherHandlers } from './weatherHandlers.js';
+import { nukeHandlers } from './nukeHandlers.js';
 import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
 
 // Đồng hồ của server gửi dạng "còn bao nhiêu ms"; đổi sang mốc của đồng hồ máy mình.
-function applyMatch({ phase, timeLeft, ranking }) {
+function applyMatch({ phase, timeLeft, ranking, result }) {
   state.match.phase = phase;
   state.match.endsAt = performance.now() + timeLeft;
   state.match.ranking = ranking;
+  state.match.result = result ?? null;
+  state.match.showEndAt = 0; // vào phòng lúc đang xem kết quả: hiện luôn, không đợi
 }
 
-// Sang trận mới / về phòng chờ: dọn hòm tiếp tế và tên lửa còn sót.
+// Bỏ những thứ đang bay / chờ nổ / còn tồn tại (server cũng bỏ khi đổi pha): tên lửa, lựu đạn, vũng băng, sét, bom hạt nhân.
+// `keepNukeAftermath`: hết trận vì bom hạt nhân thì để mây nấm và màn trắng xoá tự tan (hiện kết quả đè lên), chỉ bỏ máy bay / bom đang bay.
+function clearProjectiles({ keepNukeAftermath = false } = {}) {
+  clearRockets();
+  clearGrenades();
+  clearIce();
+  clearStrikes();
+  if (keepNukeAftermath) stopNuke();
+  else clearNuke();
+}
+
+// Sang trận mới / về phòng chờ: dọn hòm tiếp tế, tên lửa, lựu đạn, vũng băng, sét, bom còn sót.
 function clearField() {
   clearPickups();
-  clearRockets();
+  clearProjectiles();
 }
 
 const messageHandlers = {
   ...pickupHandlers,
   ...combatHandlers,
+  ...grenadeHandlers,
+  ...weatherHandlers,
+  ...nukeHandlers,
 
   welcome(m) {
     state.myId = m.id;
@@ -45,7 +69,10 @@ const messageHandlers = {
     } catch {}
     if (m.room.created) copyRoomLink();
     applyMatch(m.match);
+    setStorm(m.match.weather.storm); // vào giữa lúc đang bão thì mưa luôn, không chuyển dần
     m.pickups.forEach(addPickup); // hòm đang rơi / đã nằm trên sân (máy bay có thể vẫn đang bay)
+    m.ice.forEach(({ left, ...patch }) => spawnIce({ ...patch, life: left })); // vũng băng còn tồn tại
+    if (m.nuke) startNuke(m.nuke); // bom hạt nhân đang tới: vào giữa chừng cũng nghe và thấy phần còn lại
   },
 
   // Server từ chối cho vào phòng (sai mã, phòng đầy...): về lại menu để thử lại.
@@ -75,6 +102,7 @@ const messageHandlers = {
     if (!m.cancelled) {
       clearField();
       state.match.ranking = [];
+      state.match.result = null;
     }
     announce(m.map
       ? `Map mới: ${m.map.name} · Bấm F khi sẵn sàng`
@@ -86,16 +114,21 @@ const messageHandlers = {
     state.match.phase = 'playing';
     state.match.endsAt = performance.now() + m.duration;
     state.match.ranking = [];
+    state.match.result = null;
     Sfx.horn();
     announce('TRẬN MỚI BẮT ĐẦU!');
   },
 
   end(m) {
-    clearRockets();
+    const byNuke = m.result?.reason === 'nuke';
+    clearProjectiles({ keepNukeAftermath: byNuke });
     state.match.phase = 'ended';
     state.match.endsAt = performance.now() + m.intermission;
     state.match.ranking = m.ranking;
-    Sfx.fanfare();
+    state.match.result = m.result;
+    state.match.showEndAt = performance.now() + m.result.showIn; // bom hạt nhân: đợi xem xong vụ nổ mới hiện bảng kết quả
+    if (byNuke) announce(`${m.result.winnerName.toUpperCase()} THẮNG!`);
+    setTimeout(() => state.match.phase === 'ended' && Sfx.fanfare(), m.result.showIn);
   },
 
   join(m) {
@@ -113,6 +146,7 @@ const messageHandlers = {
     state.match.endsAt = performance.now() + m.mt; // server hiệu chỉnh đồng hồ mỗi lần gửi snapshot
     state.match.phase = m.ph;
     applySnapshot(m.players);
+    syncGrenades(m.gr);
   },
 
   leave(m) {

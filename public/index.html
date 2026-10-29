@@ -10,7 +10,9 @@
   <canvas id="c"></canvas>
   <div id="crosshair"></div>
   <div id="flash"></div>
+  <div id="blind"></div>
   <div id="damage-notice" aria-live="polite"></div>
+  <div id="nuke-flash"></div>
   <div id="dead">Bạn bị hạ gục!</div>
   <div id="hud">
     <div id="hpbar"><div id="hpfill"></div></div>
@@ -20,6 +22,7 @@
   <div id="board"></div>
   <div id="hotbar"></div>
   <div id="ammo"></div>
+  <div id="streak" hidden></div>
   <div id="match-timer"></div>
   <div id="banner"></div>
   <div id="match-end" class="screen"></div>
@@ -29,31 +32,53 @@
 
   <div id="menu" class="screen">
     <h1>Đấm Nhau FPP</h1>
-    <div class="panel">
-      <canvas id="preview"></canvas>
+
+    <div class="panel" id="menu-home">
       <input id="name" maxlength="16" placeholder="Tên của bạn" autocomplete="off">
+      <p id="name-error" class="menu-error"></p>
+      <p id="menu-invite"></p>
+      <button id="start" class="menu-main">Bắt đầu</button>
+      <button id="customize-open" class="menu-second">Tuỳ chỉnh nhân vật</button>
+      <button class="settings-open menu-settings">Cài đặt</button>
+      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Lựu đạn: chuột trái ném xa · chuột phải tung nhẹ<br>Hòm tiếp tế thả dù định kỳ: chạy tới nhặt, vũ khí có ít đạn · Không bị trúng đòn 5 giây thì tự hồi máu<br>Hạ gục liên tiếp 3 lần không chết: R gọi máy bay thả radio gọi bom hạt nhân (hòm khói vàng)<br>Bão: thấy vòng sáng dưới chân thì chạy ra, đứng tụm lại dễ bị sét đánh<br>1–4: đổi ô · G: vứt · M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè</p>
+    </div>
+
+    <div class="panel" id="menu-play" hidden>
+      <h2>Vào chơi</h2>
       <div class="map-picker">
         <div class="map-picker-head"><strong>Map xoay vòng</strong><span>Đổi lần lượt sau mỗi round</span></div>
         <div id="map-options" class="map-options">Đang tải danh sách map…</div>
       </div>
+      <button id="create" class="menu-main">Tạo phòng mới</button>
+      <div class="join-row">
+        <input id="room-code" inputmode="numeric" maxlength="3" placeholder="Mã phòng" autocomplete="off">
+        <button id="join">Vào phòng</button>
+      </div>
+      <p id="menu-error" class="menu-error"></p>
+      <button id="play-back" class="menu-settings">Quay lại</button>
+    </div>
+
+    <div class="panel" id="menu-customize" hidden>
+      <h2>Tuỳ chỉnh nhân vật</h2>
+      <canvas id="preview"></canvas>
       <div class="row"><label>Áo</label><div class="opts" id="opt-shirt"></div></div>
       <div class="row"><label>Họa tiết áo</label><div class="opts" id="opt-pattern"></div></div>
       <div class="row"><label>Quần</label><div class="opts" id="opt-pants"></div></div>
       <div class="row"><label>Găng tay</label><div class="opts" id="opt-glove"></div></div>
       <div class="row"><label>Màu da</label><div class="opts" id="opt-skin"></div></div>
       <div class="row"><label>Tóc</label><div class="opts" id="opt-hair"></div></div>
+      <div class="row"><label>Ảnh mặt</label><div class="opts face-opts">
+        <canvas id="face-thumb"></canvas>
+        <button class="pat" id="face-pick">Chọn ảnh</button>
+        <button class="pat" id="face-clear">Bỏ ảnh</button>
+        <input id="face-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
+      </div></div>
+      <p id="face-error" class="menu-error"></p>
       <div class="buttons">
+        <button id="look-default">Mặc định</button>
         <button id="random">Ngẫu nhiên</button>
-        <button id="create">Tạo phòng</button>
+        <button id="customize-done">Xong</button>
       </div>
-      <button class="settings-open menu-settings">Cài đặt</button>
-      <div class="join-row">
-        <input id="room-code" inputmode="numeric" maxlength="3" placeholder="Mã phòng" autocomplete="off">
-        <button id="join">Vào phòng</button>
-      </div>
-      <p id="menu-invite"></p>
-      <p id="menu-error"></p>
-      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Hòm tiếp tế thả dù định kỳ: chạy tới nhặt, vũ khí có ít đạn · Không bị trúng đòn 5 giây thì tự hồi máu<br>M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè</p>
     </div>
   </div>
 

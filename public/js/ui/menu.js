@@ -1,7 +1,9 @@
-// Màn hình chọn tên và ngoại hình trước khi vào sân.
-import { SHIRT, PANTS, GLOVE, SKIN, HAIR, PATTERNS, randomLook } from './lookOptions.js';
+// Màn hình đầu: nhập tên (bắt buộc) rồi "Bắt đầu" (tạo phòng / vào phòng) hoặc "Tuỳ chỉnh nhân vật" (không bắt buộc:
+// chưa chỉnh gì thì mặc ngoại hình mặc định DEFAULT_LOOK, đã chỉnh thì nhớ trong máy).
 import { loadProfile, saveProfile } from './profileStorage.js';
-import { initPreview, setPreviewLook, stopPreview } from './preview.js';
+import { initCustomize, openCustomize } from './customize.js';
+import { stopPreview } from './preview.js';
+import { DEFAULT_LOOK } from '../config.js';
 
 const ERRORS = {
   room_not_found: 'Không tìm thấy phòng này',
@@ -10,10 +12,19 @@ const ERRORS = {
   bad_maps: 'Hãy chọn ít nhất một map hợp lệ',
   server_full: 'Máy chủ đã hết phòng, thử lại sau',
 };
+const NAME_REQUIRED = 'Hãy nhập tên trước khi chơi';
+const PANELS = ['home', 'play', 'customize'];
 
-// Server từ chối cho vào phòng: hiện lý do trong menu để người chơi thử lại.
+const errorEl = document.getElementById('menu-error');
+
+function showPanel(name) {
+  for (const panel of PANELS) document.getElementById(`menu-${panel}`).hidden = panel !== name;
+}
+
+// Server từ chối cho vào phòng: hiện lý do ở màn hình chọn phòng để người chơi thử lại.
 export function showMenuError(reason) {
-  document.getElementById('menu-error').textContent = ERRORS[reason] ?? 'Không vào được phòng';
+  showPanel('play');
+  errorEl.textContent = ERRORS[reason] ?? 'Không vào được phòng';
 }
 
 // Đã vào phòng: ẩn menu và tắt khung xem trước.
@@ -22,54 +33,37 @@ export function hideMenu() {
   stopPreview();
 }
 
+// Link mời (?room=427): mã phòng 3 chữ số, hoặc '' nếu không có.
+const invitedCode = () => (new URLSearchParams(location.search).get('room') ?? '').replace(/\D/g, '').slice(0, 3);
+
 // onJoin(name, look, intent) được gọi khi bấm "Tạo phòng" (intent = { create: true }) hoặc "Vào phòng" (intent = { room }).
 export function initMenu(onJoin) {
   const saved = loadProfile();
-  const state = { look: { ...randomLook(), ...saved?.look } };
+  const look = { ...DEFAULT_LOOK, ...saved?.look };
   const nameInput = document.getElementById('name');
+  const nameError = document.getElementById('name-error');
+  const roomInput = document.getElementById('room-code');
+  const startButton = document.getElementById('start');
   nameInput.value = typeof saved?.name === 'string' ? saved.name : '';
 
-  const buttons = [];
-  const refresh = () => {
-    for (const b of buttons) b.el.classList.toggle('on', state.look[b.key] === b.value);
-    setPreviewLook(state.look);
-  };
-  const addOption = (key, value, className, setup) => {
-    const el = document.createElement('button');
-    el.className = className;
-    setup(el);
-    el.addEventListener('click', () => {
-      state.look[key] = value;
-      refresh();
-    });
-    document.getElementById('opt-' + key).append(el);
-    buttons.push({ el, key, value });
-  };
+  const save = () => saveProfile({ name: nameInput.value.trim(), look });
+  initCustomize(look, () => {
+    save();
+    showPanel('home');
+  });
 
-  const swatches = { shirt: SHIRT, pants: PANTS, glove: GLOVE, skin: SKIN, hair: HAIR };
-  for (const [key, colors] of Object.entries(swatches)) {
-    for (const color of colors) {
-      addOption(key, color, 'sw', (el) => {
-        el.style.background = color;
-      });
+  // Tên là bắt buộc: thiếu thì quay về màn hình đầu và nhắc.
+  const requireName = () => {
+    const name = nameInput.value.trim();
+    nameError.textContent = name ? '' : NAME_REQUIRED;
+    if (!name) {
+      showPanel('home');
+      nameInput.focus();
     }
-  }
-  PATTERNS.forEach((label, index) => {
-    addOption('pattern', index, 'pat', (el) => {
-      el.textContent = label;
-    });
-  });
-  initPreview();
-  refresh();
+    return name;
+  };
 
-  document.getElementById('random').addEventListener('click', () => {
-    state.look = randomLook();
-    refresh();
-  });
-
-  const roomInput = document.getElementById('room-code');
-  const joinButton = document.getElementById('join');
-  const errorEl = document.getElementById('menu-error');
+  // Map xoay vòng: danh sách map lấy từ server, người tạo phòng chọn những map sẽ xoay vòng sau mỗi round.
   const createButton = document.getElementById('create');
   const mapOptionsEl = document.getElementById('map-options');
   const selectedMaps = new Set();
@@ -108,21 +102,12 @@ export function initMenu(onJoin) {
       errorEl.textContent = error.message;
     });
 
-  // Mở link mời (?room=427): điền sẵn mã phòng và làm nổi nút "Vào phòng".
-  const invited = (new URLSearchParams(location.search).get('room') ?? '').replace(/\D/g, '').slice(0, 3);
-  roomInput.value = invited;
-  if (invited.length === 3) {
-    joinButton.classList.add('invited');
-    document.getElementById('menu-invite').textContent = `Bạn được mời vào phòng ${invited}`;
-  }
-  roomInput.addEventListener('input', () => {
-    roomInput.value = roomInput.value.replace(/\D/g, '').slice(0, 3); // chỉ nhận chữ số
-  });
-
   const submit = (intent) => {
+    const name = requireName();
+    if (!name) return;
     errorEl.textContent = '';
-    saveProfile({ name: nameInput.value.trim(), look: state.look });
-    onJoin(nameInput.value.trim(), { ...state.look }, intent);
+    save();
+    onJoin(name, { ...look }, intent);
   };
   const joinRoom = () => {
     if (!/^\d{3}$/.test(roomInput.value)) {
@@ -133,6 +118,7 @@ export function initMenu(onJoin) {
     submit({ room: roomInput.value });
   };
 
+  // Tạo phòng mới với các map đã chọn (xoay vòng sau mỗi round).
   const createRoom = () => {
     if (selectedMaps.size === 0) {
       errorEl.textContent = ERRORS.bad_maps;
@@ -140,12 +126,34 @@ export function initMenu(onJoin) {
     }
     submit({ create: true, mapIds: [...selectedMaps] });
   };
+
+  // Mở link mời: "Bắt đầu" vào thẳng phòng được mời (vẫn điền sẵn mã ở màn hình chọn phòng nếu vào không được).
+  const invited = invitedCode();
+  roomInput.value = invited;
+  if (invited.length === 3) {
+    startButton.textContent = `Vào phòng ${invited}`;
+    startButton.classList.add('invited');
+    document.getElementById('join').classList.add('invited');
+    document.getElementById('menu-invite').textContent = `Bạn được mời vào phòng ${invited}`;
+  }
+  const start = () => {
+    if (!requireName()) return;
+    if (invited.length === 3) submit({ room: invited });
+    else showPanel('play');
+  };
+
+  startButton.addEventListener('click', start);
+  nameInput.addEventListener('input', () => nameInput.value.trim() && (nameError.textContent = ''));
+  nameInput.addEventListener('keydown', (e) => e.key === 'Enter' && start());
+  document.getElementById('customize-open').addEventListener('click', () => {
+    showPanel('customize');
+    openCustomize();
+  });
+  document.getElementById('play-back').addEventListener('click', () => showPanel('home'));
   createButton.addEventListener('click', createRoom);
-  joinButton.addEventListener('click', joinRoom);
-  roomInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') joinRoom();
+  document.getElementById('join').addEventListener('click', joinRoom);
+  roomInput.addEventListener('input', () => {
+    roomInput.value = roomInput.value.replace(/\D/g, '').slice(0, 3); // chỉ nhận chữ số
   });
-  nameInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') (roomInput.value ? joinRoom : createRoom)();
-  });
+  roomInput.addEventListener('keydown', (e) => e.key === 'Enter' && joinRoom());
 }

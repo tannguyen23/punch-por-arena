@@ -5,8 +5,12 @@ const { randomFreePosition } = require('../game/spawn');
 const { applyClientState } = require('../game/movement');
 const { handlePunch } = require('../game/combat');
 const { handleFire } = require('../game/shooting');
+const { handleThrow } = require('../game/grenades');
 const { pickupView } = require('../game/pickups');
+const { iceView } = require('../game/ice');
+const { nukeView } = require('../game/nuke');
 const { handleDrop } = require('../game/drops');
+const { handleRadioCall } = require('../game/radioCall');
 const { selectSlot } = require('../game/inventory');
 const { sanitizeLook, sanitizeName } = require('../game/sanitize');
 const { weaponInfo } = require('../game/weapons');
@@ -42,14 +46,16 @@ function resolveRoom(m) {
 
 function handleJoin(p, m) {
   if (p.joined) return;
+  const name = sanitizeName(m.name, p.id);
+  const look = sanitizeLook(m.look); // làm trước khi tạo phòng: dữ liệu hỏng mà làm ném lỗi thì không để lại phòng rỗng
   const { room, error } = resolveRoom(m);
   if (error) {
     send(p.ws, { t: 'error', reason: error }); // giữ kết nối để client thử lại với mã khác
     return;
   }
 
-  p.name = sanitizeName(m.name, p.id);
-  p.look = sanitizeLook(m.look);
+  p.name = name;
+  p.look = look;
   p.room = room;
   Object.assign(p, randomFreePosition(room));
   p.joined = true;
@@ -62,6 +68,8 @@ function handleJoin(p, m) {
     map: room.mapData,
     weapons: weaponInfo(),
     pickups: [...room.pickups.values()].map((pickup) => pickupView(pickup)),
+    ice: iceView(room),
+    nuke: nukeView(room),
     match: matchInfo(room),
     room: {
       code: room.code,
@@ -84,24 +92,27 @@ const gameHandlers = {
   state: (p, m) => applyClientState(p.room, p, m),
   punch: (p, m) => (m.hand === 'L' || m.hand === 'R') && handlePunch(p.room, p, m.hand),
   fire: (p, m) => handleFire(p.room, p, m),
+  throw: (p, m) => handleThrow(p.room, p, m),
   ready: (p, m) => setReady(p.room, p, m.ready),
   slot: (p, m) => selectSlot(p, m.slot), // selectSlot tự kiểm tra chỉ số ô
   drop: (p) => handleDrop(p.room, p),
+  radio: (p) => handleRadioCall(p.room, p),
 };
 
 function handleConnection(ws) {
   const p = createPlayer(ws);
 
+  ws.on('error', () => {}); // khung WebSocket hỏng chỉ đóng kết nối đó; thiếu listener này thì Node ném lỗi và sập cả server
+
   ws.on('message', (raw) => {
-    let m;
     try {
-      m = JSON.parse(raw);
-    } catch {
-      return;
+      const m = JSON.parse(raw);
+      if (m.t === 'join') return handleJoin(p, m);
+      if (p.joined && Object.hasOwn(gameHandlers, m.t)) gameHandlers[m.t](p, m);
+    } catch (err) {
+      // Tin nhắn hỏng (không phải JSON, `null`, kiểu dữ liệu sai...) chỉ bị bỏ qua: một client không được làm sập cả server.
+      if (!(err instanceof SyntaxError)) console.error('Lỗi khi xử lý tin nhắn:', err.message);
     }
-    if (m.t === 'join') return handleJoin(p, m);
-    if (!p.joined) return;
-    gameHandlers[m.t]?.(p, m);
   });
 
   ws.on('close', () => {

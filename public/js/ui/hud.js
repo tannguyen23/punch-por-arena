@@ -2,6 +2,7 @@ import { state, infos } from '../state.js';
 import { updateWeaponPanel } from './weaponPanel.js';
 import { updateHotbar } from './hotbar.js';
 import { updateAmmo } from './ammo.js';
+import { updateStreak } from './streak.js';
 
 const pauseEl = document.getElementById('pause');
 const hpFill = document.getElementById('hpfill');
@@ -59,11 +60,12 @@ export function flashCrosshairHit() {
   setTimeout(() => crosshair.classList.remove('hit'), 150);
 }
 
-// Tâm ngắm theo loại vũ khí: chấm (cận chiến), dấu cộng (súng), vòng tròn (tên lửa, nổ lan).
+// Tâm ngắm theo loại vũ khí: chấm (cận chiến), dấu cộng (súng), vòng tròn (tên lửa, nổ lan), vòng đứt (lựu đạn).
 function updateCrosshair() {
   const kind = state.weaponTypes[state.weapon]?.kind ?? 'melee';
   crosshair.classList.toggle('gun', kind === 'gun');
   crosshair.classList.toggle('rocket', kind === 'rocket');
+  crosshair.classList.toggle('throw', kind === 'throwable');
 }
 
 // Máu tăng mà vẫn đang sống (không phải vừa hồi sinh) là đang tự hồi máu: thanh máu sáng lên.
@@ -84,6 +86,7 @@ export function updateHud(snapshotPlayers) {
   updateCrosshair();
   updateHotbar();
   updateAmmo();
+  updateStreak();
   updateScoreboard(snapshotPlayers);
 }
 

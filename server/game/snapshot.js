@@ -3,12 +3,14 @@ const { broadcast } = require('../net/messaging');
 const { timeLeft } = require('./match');
 const { allRooms } = require('./rooms');
 const { slotsView } = require('./inventory');
+const { grenadesView } = require('./grenades');
 
 function buildSnapshot(room) {
   return {
     t: 'snap',
     ph: room.phase,
     mt: timeLeft(room), // thời gian còn lại của pha hiện tại (đếm ngược / trận / giờ nghỉ), mili giây
+    gr: grenadesView(room), // lựu đạn trên sân
     players: [...room.players.values()].map((p) => ({
       id: p.id,
       x: +p.x.toFixed(3),
@@ -20,6 +22,7 @@ function buildSnapshot(room) {
       hp: p.hp,
       dead: p.dead,
       kills: p.kills,
+      ks: p.streak, // chuỗi hạ gục liên tiếp
       w: p.weapon,
       a: p.ammo, // số đạn còn lại (null = dùng mãi)
       s: slotsView(p), // túi đồ: [vũ khí, đạn] hoặc 0 từng ô

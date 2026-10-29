@@ -7,7 +7,8 @@ const { ParticleSystem, Vector3, Color4, RawTexture, Texture } = BABYLON;
 const effects = new Map();
 let texture = null;
 
-function glowTexture() {
+// Chấm sáng tròn mờ dần ra mép, dùng chung cho các hạt (chạy nhanh, mưa).
+export function glowTexture() {
   if (texture) return texture;
   const size = SPRINT_FX.textureSize;
   const pixels = new Uint8Array(size * size * 4);
