@@ -1,6 +1,7 @@
 const { MAX_HP, SPAWN_CLEARANCE, PLAYER_RADIUS, MAP_MARGIN } = require('../config');
 const { send } = require('../net/messaging');
 const { distToRect } = require('../utils/geometry');
+const { clearPotion } = require('./potions');
 
 // Vị trí khô ráo, không đè lên vật phẩm, tường nào và không sát người chơi còn sống trong phòng.
 function isFree(room, pos) {
@@ -40,6 +41,7 @@ function freePositionNear(room, center, distance) {
 }
 
 function respawn(room, p) {
+  clearPotion(p); // hồi sinh với thân hình và máu bình thường
   Object.assign(p, randomFreePosition(room), { hp: MAX_HP, dead: false, fallStartedAt: 0 });
   send(p.ws, { t: 'setpos', x: p.x, z: p.z });
 }

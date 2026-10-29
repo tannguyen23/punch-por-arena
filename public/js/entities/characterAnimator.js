@@ -10,6 +10,8 @@
 //   trên không, và trả về tư thế đứng yên khi chạm đất. Đấm giữa không trung thì sau cú đấm quay lại tư thế nhảy.
 // - Đứng yên: lặp clip idle; clip không khép kín (khoá cuối khác khung đầu) nên đoạn cuối được hoà dần về khung đầu.
 // - Ngã: chạy knock_out một lần rồi GIỮ tư thế cuối (nằm dưới đất) cho tới khi hồi sinh (reset).
+// - Đấm lớn (big_right_punch, của người hoá to): tích lực = chạy tới khung lấy đà (`bigWindup`) rồi GIỮ ở đó tới khi thả (chargeBig),
+//   thả thì chạy nốt phần còn lại (releaseBig), huỷ thì trả về tư thế đứng yên (cancelBig). Clip này còn co giãn (scaling) tay phải.
 // Tự nội suy khoá thay vì dùng bộ phát của Babylon để trộn được giữa các hoạt ảnh liên tiếp và đổi tốc độ theo ý.
 const { Quaternion, Vector3 } = BABYLON;
 
@@ -34,8 +36,14 @@ const KINDS = {
     mirror: (v) => new Vector3(-v.x, v.y, v.z),
     write: (node, v) => node.position.copyFrom(v),
   },
+  scaling: {
+    create: () => new Vector3(1, 1, 1),
+    blend: (a, b, t, out) => Vector3.LerpToRef(a, b, t, out),
+    mirror: (v) => v.clone(),
+    write: (node, v) => node.scaling.copyFrom(v),
+  },
 };
-const PATH_OF = { rotationQuaternion: 'rotation', position: 'position' };
+const PATH_OF = { rotationQuaternion: 'rotation', position: 'position', scaling: 'scaling' };
 
 const swapSide = (name) => (/^left_/.test(name) ? name.replace('left_', 'right_') : /^right_/.test(name) ? name.replace('right_', 'left_') : name);
 const keyOf = (track) => `${track.target.uniqueId}:${track.path}`;
@@ -73,16 +81,17 @@ function sample(track, t, out) {
 }
 
 export class CharacterAnimator {
-  // sets: { L, R, J?, I?, K? } — bộ đường của đấm trái, đấm phải, nhảy, đứng yên và ngã (mỗi bộ chỉ chứa những nút nó điều khiển).
+  // sets: { L, R, J?, I?, K?, B? } — bộ đường của đấm trái, đấm phải, nhảy, đứng yên, ngã và đấm lớn (mỗi bộ chỉ chứa những nút nó điều khiển).
   // driven: các nút mà phần XOAY do nơi khác ghi (chân đi bộ): ta chỉ giữ giá trị trong `rotationOf`, không tự ghi lên nút.
-  constructor(sets, { driven = [], idleSpeed = 1 } = {}) {
+  constructor(sets, { driven = [], idleSpeed = 1, bigWindup = 0 } = {}) {
     this.sets = sets;
+    this.bigWindup = bigWindup; // giây trong clip đấm lớn: lấy đà xong, giữ ở đây tới khi thả
     this.driven = new Set(driven);
     this.idleSpeed = idleSpeed;
     for (const set of Object.values(sets)) {
       set.keys = new Set(set.map(keyOf));
       set.duration = Math.max(...set.map((t) => t.times.at(-1)));
-      if (set === sets.S || set === sets.SL) set.blendIn = SLIDE_BLEND_IN;
+      if (set === sets.S || set === sets.SL || set === sets.B) set.blendIn = SLIDE_BLEND_IN;
     }
 
     // Nút đích của mọi đường, và tư thế gốc của model (trước khi ta ghi gì) để làm nền cho nút không có trong idle.
@@ -93,7 +102,7 @@ export class CharacterAnimator {
         const key = keyOf(t);
         if (this.entries.has(key)) continue;
         this.entries.set(key, { target: t.target, path: t.path });
-        rest.set(key, t.path === 'rotation' ? (t.target.rotationQuaternion?.clone() ?? Quaternion.FromEulerVector(t.target.rotation)) : t.target.position.clone());
+        rest.set(key, t.path === 'rotation' ? (t.target.rotationQuaternion?.clone() ?? Quaternion.FromEulerVector(t.target.rotation)) : t.path === 'scaling' ? t.target.scaling.clone() : t.target.position.clone());
       }
     }
 
@@ -118,6 +127,7 @@ export class CharacterAnimator {
     this.jumpSpeed = 1;
     this.running = false;
     this.runT = 0;
+    this.hold = null; // khác null: cú đấm đang chạy dừng lại ở thời điểm này cho tới khi thả (tích lực của đấm lớn)
     for (const [key, v] of this.base) this.apply(key, v);
   }
 
@@ -149,7 +159,40 @@ export class CharacterAnimator {
     if (!this.active) return;
     this.t = 0;
     this.speed = Math.max(1, this.active.duration / cooldown);
+    this.hold = null;
     this.begin('punch');
+  }
+
+  // Bắt đầu tích lực đấm lớn: lấy đà rồi giữ nguyên tư thế tới khi releaseBig / cancelBig.
+  chargeBig() {
+    if (!this.sets.B) return;
+    this.active = this.sets.B;
+    this.t = 0;
+    this.speed = 1;
+    this.hold = this.bigWindup;
+    this.begin('punch');
+  }
+
+  // Thả: chạy tiếp từ tư thế lấy đà tới hết clip. Chưa thấy tích lực (vào phòng giữa chừng, mất tin) thì trộn thẳng vào tư thế lấy đà.
+  releaseBig() {
+    if (!this.sets.B) return;
+    if (this.stage === 'punch' && this.active === this.sets.B && this.hold !== null) {
+      this.hold = null;
+      return;
+    }
+    this.active = this.sets.B;
+    this.t = this.bigWindup;
+    this.speed = 1;
+    this.hold = null;
+    this.begin('punch');
+  }
+
+  // Huỷ tích lực (thả sớm, hết thuốc, bị hạ): về tư thế đứng yên.
+  cancelBig() {
+    if (this.stage !== 'punch' || this.hold === null) return;
+    this.hold = null;
+    this.t = 0;
+    this.begin('return');
   }
 
   // Người chơi rời đất / chạm đất. `airTime` (giây) là thời gian bay dự kiến để căn tốc độ hoạt ảnh nhảy cho vừa.
@@ -177,6 +220,7 @@ export class CharacterAnimator {
   // Bị hạ: ngã một lần rồi giữ tư thế nằm dưới đất. `reset()` khi hồi sinh để đứng dậy.
   knockOut() {
     if (!this.sets.K || this.stage === 'ko') return;
+    this.hold = null;
     this.t = 0;
     this.begin('ko');
   }
@@ -189,6 +233,7 @@ export class CharacterAnimator {
     this.t = 0;
     this.idleT = 0;
     this.blendT = 0;
+    this.hold = null;
     this.stage = 'idle';
     this.from.clear();
     for (const [key, v] of this.base) this.apply(key, v);
@@ -256,7 +301,7 @@ export class CharacterAnimator {
 
     // 'punch' chạy một lần; 'jump' đi theo thời gian bay và giữ tư thế cuối nếu còn trên không.
     const clip = this.stage === 'jump' ? this.sets.J : this.active;
-    if (this.stage === 'punch') this.t += dt * this.speed;
+    if (this.stage === 'punch') this.t = Math.min(this.t + dt * this.speed, this.hold ?? Infinity);
     const time = this.stage === 'jump' ? this.airT * this.jumpSpeed : this.t;
     this.blendT += dt;
     const blendTime = this.stage === 'punch' ? (this.active.blendIn ?? BLEND_IN) : BLEND_IN;
@@ -279,6 +324,11 @@ export class CharacterAnimator {
   }
 }
 
+// Vai trò của một animation theo tên, xét lần lượt từ trên xuống. Thứ tự quan trọng: "Right Slide" và "big_right_punch" cũng chứa "right",
+// nên phải được nhận trước khi tới "right" / "left" (nếu không sẽ ghi đè cú đấm thường).
+const ROLES = [[/knock|death|die/i, 'K'], [/idle/i, 'I'], [/run|sprint/i, 'Run'], [/jump/i, 'J'], [/slide/i, 'S'], [/big/i, 'B'], [/right/i, 'R'], [/left/i, 'L']];
+const roleOf = (name) => ROLES.find(([pattern]) => pattern.test(name))?.[1] ?? null;
+
 // Dựng bộ điều khiển hoạt ảnh từ các animation group của một bản sao nhân vật (`body` là nút gốc của bản sao).
 // Null nếu model không có animation đấm. Các animation group được dọn ngay vì ta tự phát.
 export function createCharacterAnimator(body, groups, options) {
@@ -287,21 +337,7 @@ export function createCharacterAnimator(body, groups, options) {
 
   const sets = {};
   for (const group of groups) {
-    const side = /knock|death|die/i.test(group.name)
-      ? 'K'
-      : /idle/i.test(group.name)
-        ? 'I'
-        : /run|sprint/i.test(group.name)
-          ? 'Run'
-        : /jump/i.test(group.name)
-          ? 'J'
-          : /slide/i.test(group.name)
-            ? 'S'
-            : /right/i.test(group.name)
-              ? 'R'
-              : /left/i.test(group.name)
-                ? 'L'
-                : null;
+    const side = roleOf(group.name);
     if (side) sets[side] = extractTracks(group);
     group.dispose();
   }

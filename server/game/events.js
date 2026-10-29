@@ -1,6 +1,7 @@
 const { EVENTS, MATCH_DURATION_MS, MIN_PLAYERS_TO_START } = require('../config');
 const { broadcast } = require('../net/messaging');
 const dogEvent = require('./dogEvent');
+const { poopsView, poopInfo } = require('./poop');
 
 // Sự kiện ngẫu nhiên trong trận. Đầu trận lên lịch 1–3 sự kiện rải đều (mỗi sự kiện một "ô" thời gian riêng, không chồng nhau);
 // tới giờ thì bắt đầu: `introMs` đầu cả phòng đứng hình để đọc luật (restrictions.js), sau đó sự kiện chạy tới hết giờ hoặc có kết quả.
@@ -44,6 +45,7 @@ function eventView(room, now = Date.now()) {
     bounty: ev.bounty,
     introLeft: Math.max(0, ev.introEndsAt - now),
     left: Math.max(0, ev.endsAt - now),
+    ...(ev.kind === 'dog' ? { poop: poopInfo(), poops: poopsView(room) } : {}), // kỹ năng thả shit của chó, và shit đang nằm trên sân cho người vào giữa chừng
   };
 }
 

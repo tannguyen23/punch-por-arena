@@ -1,8 +1,11 @@
 import { beginEvent, finishEvent } from '../ui/eventHud.js';
+import { addPoop, clearPoops } from './poopHandlers.js';
 
 // Người vào giữa lúc đang có sự kiện (`welcome.match.event`, null nếu không có): thấy luật và đồng hồ như mọi người.
 export function applyEvent(event) {
-  if (event) beginEvent(event);
+  if (!event) return;
+  beginEvent(event);
+  event.poops?.forEach(addPoop); // shit chó đã thả trước khi mình vào
 }
 
 export const eventHandlers = {
@@ -14,5 +17,6 @@ export const eventHandlers = {
   // Sự kiện kết thúc (có kết quả, hoặc bị huỷ vì hết trận / người chơi thoát).
   eventEnd(m) {
     finishEvent(m);
+    clearPoops();
   },
 };

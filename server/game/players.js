@@ -17,6 +17,13 @@ function createPlayer(ws) {
     c: 0, // 1 khi đang ngồi
     yaw: 0,
     hp: MAX_HP,
+    maxHp: MAX_HP, // đổi theo thuốc đang uống (potions.js)
+    potion: null, // thuốc đang có hiệu lực: { id, endsAt } (potions.js)
+    poopCharges: 0, // số cục shit chó còn thả được (poop.js)
+    poopNextAt: 0, // mốc Date.now() hồi thêm một cục; 0 = đã đầy
+    lastPoopAt: 0,
+    bigChargeAt: 0, // mốc Date.now() bắt đầu giữ phím đấm trời giáng; 0 = không tích lực (bigPunch.js)
+    bigPunchReadyAt: 0, // mốc Date.now() dùng lại được đấm trời giáng
     lastHurtAt: 0, // mốc Date.now() lần bị trúng đòn gần nhất (tính hồi máu, xem regen.js)
     lastCactusDamageAt: 0,
     fallStartedAt: 0,

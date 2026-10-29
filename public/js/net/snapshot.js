@@ -2,6 +2,7 @@ import { state, remotes, infos } from '../state.js';
 import { createRemote, disposeRemote } from '../entities/remotePlayer.js';
 import { equipLoadout, thirdPersonTilt } from '../entities/weapons/index.js';
 import { setDogForm } from '../entities/dogForm.js';
+import { potionChanged } from '../fx/potionFx.js';
 import { updateHud } from '../ui/hud.js';
 import { AMMO_SYNC_GRACE_MS, SLOT_SYNC_GRACE_MS } from '../config.js';
 import { playAt } from './positional.js';
@@ -20,9 +21,14 @@ function syncHeld(p) {
 function syncLocalPlayer(p) {
   if (state.alive && p.dead) Sfx.ko(0, 1);
   state.hp = p.hp;
+  state.maxHp = p.mh;
+  if ((p.pt || 0) !== (state.potion?.id ?? 0)) potionChanged(state.potion?.id ?? 0, p.pt || 0); // uống / hết thuốc: loé màn hình, tiếng
+  state.potion = p.pt ? { id: p.pt, endsAt: performance.now() + p.pl } : null; // server gửi "còn bao lâu", đổi sang đồng hồ máy mình
   state.streak = p.ks;
   state.alive = !p.dead;
   state.dog = p.dg === 1;
+  state.poopCharges = p.pc;
+  state.poopNextAt = p.pn ? performance.now() + p.pn : 0;
   state.inventory = p.s.map((s) => (s ? { weapon: s[0], ammo: s[1] } : null));
   syncHeld(p);
 }
@@ -42,6 +48,8 @@ function syncRemote(p) {
   r.sprinting = p.sp === 1;
   r.tyaw = p.yaw;
   r.hp = p.hp;
+  r.maxHp = p.mh;
+  r.potion = p.pt;
   setDogForm(r, p.dg === 1);
   if (!r.dead && p.dead) {
     playAt('ko', r.root.position);

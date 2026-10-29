@@ -2,11 +2,14 @@ const {
   EYE_HEIGHT, CROUCH_EYE_HEIGHT, BODY_RADIUS, BODY_HEIGHT, CROUCH_BODY_HEIGHT, WALL_HEIGHT, TERRAIN_RAY_STEP,
 } = require('../config');
 const { segmentRectEntry, segmentIntersectsRect } = require('../utils/geometry');
+const { scaleOf } = require('./potions');
 
 // Dò đường đạn / tên lửa trong 3D. Tia gồm `origin` {x, y, z} và hướng đơn vị `dir`; các hàm trả về khoảng cách
 // dọc tia (mét) tới chỗ chạm, Infinity nếu không chạm trong `maxDist`.
 
-const eyeOf = (p) => ({ x: p.x, y: p.y + (p.c ? CROUCH_EYE_HEIGHT : EYE_HEIGHT), z: p.z });
+// Mắt, thân đều nhân với kích thước của người đó (thuốc hoá to / nhỏ, xem potions.js); client nhân tương tự ở player/aim.js.
+const eyeOf = (p) => ({ x: p.x, y: p.y + (p.c ? CROUCH_EYE_HEIGHT : EYE_HEIGHT) * scaleOf(p), z: p.z });
+const bodyTop = (o) => o.y + (o.c ? CROUCH_BODY_HEIGHT : BODY_HEIGHT) * scaleOf(o);
 const pointAt = (origin, dir, t) => ({ x: origin.x + dir.x * t, y: origin.y + dir.y * t, z: origin.z + dir.z * t });
 
 // Hướng nhìn giống camera của client: yaw quanh trục đứng, pitch dương là nhìn xuống.
@@ -23,7 +26,8 @@ function bodyDistance(o, origin, dir, maxDist) {
   const ox = origin.x - o.x;
   const oz = origin.z - o.z;
   const a = dir.x * dir.x + dir.z * dir.z;
-  const c = ox * ox + oz * oz - BODY_RADIUS * BODY_RADIUS;
+  const radius = BODY_RADIUS * scaleOf(o);
+  const c = ox * ox + oz * oz - radius * radius;
   if (a < 1e-9) {
     if (c > 0) return Infinity; // bắn thẳng đứng, ở ngoài hình trụ
   } else {
@@ -34,7 +38,7 @@ function bodyDistance(o, origin, dir, maxDist) {
     tmin = Math.max(tmin, (-b - root) / a);
     tmax = Math.min(tmax, (-b + root) / a);
   }
-  const top = o.y + (o.c ? CROUCH_BODY_HEIGHT : BODY_HEIGHT);
+  const top = bodyTop(o);
   if (Math.abs(dir.y) < 1e-9) {
     if (origin.y < o.y || origin.y > top) return Infinity;
   } else {
@@ -87,8 +91,8 @@ const wallBetween = (room, a, b) => room.punchBlockers.some((w) => segmentInters
 
 // Khoảng cách từ một điểm tới bề mặt thân người (0 nếu nằm trong), để tính sức nổ: trúng thẳng người là đủ sát thương.
 function distanceToBody(o, point) {
-  const top = o.y + (o.c ? CROUCH_BODY_HEIGHT : BODY_HEIGHT);
-  const side = Math.max(0, Math.hypot(point.x - o.x, point.z - o.z) - BODY_RADIUS);
+  const top = bodyTop(o);
+  const side = Math.max(0, Math.hypot(point.x - o.x, point.z - o.z) - BODY_RADIUS * scaleOf(o));
   const vertical = Math.max(0, o.y - point.y, point.y - top);
   return Math.hypot(side, vertical);
 }

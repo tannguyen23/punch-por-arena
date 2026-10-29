@@ -13,6 +13,8 @@ class Room {
     this.setMap(initialMap);
     this.players = new Map(); // id → người chơi đã vào phòng
     this.pickups = new Map(); // id → hòm tiếp tế (đang rơi hoặc đã nằm trên sân)
+    this.poops = new Map(); // id → cục shit của con chó trong sự kiện hoá chó: { id, x, y, z } (poop.js)
+    this.nextPoopId = 1;
     this.nextPickupId = 1;
     this.rockets = []; // tên lửa đang bay
     this.nextRocketId = 1;
@@ -32,6 +34,7 @@ class Room {
     this.phase = 'lobby';
     this.endsAt = 0; // mốc Date.now() hết pha hiện tại (countdown / playing / ended)
     this.nextAirdropAt = 0; // mốc Date.now() máy bay tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing')
+    this.nextPotionAt = 0; // mốc Date.now() lọ thuốc tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing', xem potionDrops.js)
     this.ranking = []; // bảng xếp hạng của trận vừa kết thúc
     this.result = null; // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (match.js)
   }

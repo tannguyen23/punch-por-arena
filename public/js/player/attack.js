@@ -94,6 +94,7 @@ function callNuke() {
 // button: 0 = chuột trái, 2 = chuột phải. Cận chiến: tay trái / tay phải; súng: nút nào cũng bắn; lựu đạn: ném mạnh / nhẹ; radio: nút nào cũng gọi. Trả về true nếu đã đánh.
 export function attack(button) {
   if (!state.alive || state.cooldown > 0 || state.match.phase !== 'playing') return false;
+  if (state.bigPunch.charging) return false; // đang tích lực đấm lớn: tay đang giữ tư thế lấy đà
   if (state.dog || isFrozen()) return false; // chó chỉ chạy; đứng hình thì không ai đánh được
   if (button !== 0 && button !== 2) return false;
   const kind = kindOf(state.weapon);

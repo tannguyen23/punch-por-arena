@@ -27,14 +27,16 @@ function dogRules(ev, seconds) {
   if (ev.targetId === state.myId) {
     return [
       'BẠN bị biến thành CHÓ!',
-      'Bạn mất hết vũ khí, không đánh được, chỉ chạy được (nhanh hơn người).',
+      'Bạn mất hết vũ khí, không đánh được, chỉ chạy được (nhanh hơn người một chút). Mọi người luôn thấy bạn ở đâu, kể cả sau tường.',
+      'Bấm Q để thả shit sau lưng (tích trữ tối đa vài cục, hồi dần): ai dậm phải sẽ chậm lại và bị che tầm nhìn.',
       `Sống sót ${seconds}s để nhận ${ev.bounty} điểm.`,
       `Nếu bị hạ gục, người hạ gục bạn nhận ${ev.bounty} điểm.`,
     ];
   }
   return [
     `${ev.targetName} bị biến thành CHÓ!`,
-    'Con chó mất hết vũ khí, không đánh được, chỉ chạy được (nhanh hơn người). Mũi tên đỏ trên đầu chỉ chỗ nó.',
+    'Con chó mất hết vũ khí, không đánh được, chỉ chạy được (nhanh hơn người một chút). Chỉ báo trên màn hình luôn cho biết nó ở đâu, kể cả sau tường.',
+    'Coi chừng shit chó thả lại sau lưng: dậm phải sẽ chậm lại và bị che tầm nhìn một lúc (nhảy qua để tránh).',
     `Hạ gục chó trong ${seconds}s: bạn nhận ${ev.bounty} điểm (cộng thêm điểm hạ gục thường).`,
     `Nếu chó chạy thoát tới hết giờ, chó nhận ${ev.bounty} điểm.`,
   ];
@@ -50,9 +52,9 @@ function buildIntro(ev) {
 }
 
 // Tin nhắn 'event' (và `welcome.match.event` cho người vào giữa chừng): `introLeft` / `left` là mili giây còn lại.
-export function beginEvent({ kind, targetId, targetName, bounty, introLeft, left }) {
+export function beginEvent({ kind, targetId, targetName, bounty, poop = null, introLeft, left }) {
   const now = performance.now();
-  state.event = { kind, targetId, targetName, bounty, introEndsAt: now + introLeft, endsAt: now + left };
+  state.event = { kind, targetId, targetName, bounty, poop, introEndsAt: now + introLeft, endsAt: now + left };
   buildIntro(state.event);
   lastBeep = null;
   wasFrozen = introLeft > 0;

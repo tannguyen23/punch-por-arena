@@ -100,6 +100,38 @@ module.exports = {
   DOG_EVENT: {
     durationMs: (Number(arg('dog-seconds') ?? process.env.DOG_SECONDS) || 45) * 1000, // thời gian chạy trốn, tính sau phần mở đầu
     bounty: 150,
+    // Kỹ năng thả shit của chó (server/game/poop.js): tích trữ tối đa `max` cục, hồi một cục mỗi `rechargeMs`, hai lần thả cách nhau ít nhất `gapMs`.
+    // Người săn bước vào trong `radius` mét (không nhảy cao hơn cục shit quá `jumpClear` mét) thì cục biến mất và họ bị chậm `slowMs`.
+    // `radius` khớp POOP.patchRadius ở public/js/config.js (bãi shit vẽ rộng bằng vùng dính).
+    poop: { max: 3, rechargeMs: 8000, gapMs: 700, radius: 1.5, jumpClear: 0.5, slowMs: 5000 },
+  },
+
+  // Thuốc (server/game/potions.js, potionDrops.js): nằm sẵn trên sân (không máy bay, không hòm), nhặt là uống ngay.
+  // Chỉ số từng loại (kích thước, máu, tốc độ) nằm trong bảng POTIONS của potions.js. Thử nhanh: --potion-first-seconds=3.
+  POTION: {
+    firstMs: (Number(arg('potion-first-seconds') ?? process.env.POTION_FIRST_SECONDS) || 15) * 1000, // thuốc đầu tiên xuất hiện sau ngần này từ đầu trận
+    intervalMs: 20000, // cứ ngần này lại có thêm một lọ
+    maxOnField: 3, // trên sân đang có đủ ngần này lọ chưa ai nhặt thì thôi không thêm
+    durationMs: 30000, // thời gian hiệu lực
+  },
+
+  // Đấm trời giáng của người hoá to (server/game/bigPunch.js): giữ phím `chargeMs` rồi thả, `impactMs` sau (khớp khung hình tay duỗi hết cỡ của clip
+  // big_right_punch trừ đi khung lấy đà `CHARACTER.bigWindup` ở client: 0.75s − 0.25s) sóng xung kích nổ ra cách người đấm `reach` mét theo hướng nhìn.
+  // Mọi người trong `radius` mét quanh tâm sóng (không bị tường chặn, chênh độ cao không quá `vertical`) mất máu và bị đánh văng ra xa tâm;
+  // ở mép chỉ còn `edgeDamageMult` / `edgeKnockMult` lần sát thương / lực ở tâm. `lift` là vận tốc hất lên (m/giây).
+  BIG_PUNCH: {
+    chargeMs: 800,
+    slackMs: 150, // thả sớm hơn `chargeMs` ngần này vẫn tính là đủ (mạng giật)
+    cooldownMs: 8000,
+    impactMs: 500,
+    reach: 3,
+    radius: 8,
+    vertical: 4,
+    damage: 35,
+    edgeDamageMult: 0.4,
+    knockSpeed: 22,
+    edgeKnockMult: 0.5,
+    lift: 7,
   },
 
   // Bão (server/game/weather.js): chỉ có khi đang 'playing', mưa là hình ảnh, sét gây sát thương (server/game/lightning.js).

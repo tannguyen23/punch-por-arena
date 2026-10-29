@@ -5,6 +5,7 @@ const { tryPickup } = require('./pickups');
 const { checkHazardContact } = require('./hazards');
 const { applyDamage } = require('./damage');
 const { isFrozen } = require('./restrictions');
+const { checkPoopContact } = require('./poop');
 
 // Lưới an toàn: nếu client báo vị trí chồng sâu vào người khác thì đẩy ra và bắt client cập nhật lại.
 function separate(room, p) {
@@ -47,6 +48,7 @@ function applyClientState(room, p, m) {
   separate(room, p);
   checkHazardContact(room, p);
   tryPickup(room, p);
+  checkPoopContact(room, p);
 }
 
 module.exports = { applyClientState };

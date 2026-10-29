@@ -12,7 +12,7 @@ function blockedPickup() {
   const { x, z } = state.me;
   for (const pickup of pickups.values()) {
     const { position } = pickup.root;
-    if (pickup.landed && !owns(pickup.weapon) && Math.hypot(position.x - x, position.z - z) < PICKUP_RADIUS) return pickup;
+    if (pickup.landed && !pickup.potion && !owns(pickup.weapon) && Math.hypot(position.x - x, position.z - z) < PICKUP_RADIUS) return pickup;
   }
   return null;
 }

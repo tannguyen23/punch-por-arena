@@ -5,6 +5,7 @@ import { equipLoadout, WEAPON_MODELS } from '../entities/weapons/index.js';
 import { createModelAvatar } from '../entities/character.js';
 import { camera } from './camera.js';
 import { showGun, updateGunView, setGunViewLook } from './gunView.js';
+import { setBodyViewLook } from './bodyView.js';
 import { VIEWMODEL, RECOIL_RECOVER, EQUIP_RAISE_TIME } from '../config.js';
 
 const { Vector3, Color3 } = BABYLON;
@@ -29,17 +30,23 @@ let wasAlive = true; // dọn hoạt ảnh đang dở khi bị hạ (viewmodel b
 
 const isGun = (id) => Boolean(WEAPON_MODELS[id]?.viewHold);
 
+// Co tay về `scale` và đặt sao cho mắt của model nằm đúng VIEWMODEL.offset trong hệ camera (ghi vào viewmodelRest).
+function placeViewmodel(avatar, scale) {
+  const { offset } = VIEWMODEL;
+  const { eyePoint } = avatar;
+  avatar.root.scaling.setAll(scale);
+  viewmodelRest.set(offset.x - eyePoint.x * scale, offset.y - eyePoint.y * scale, offset.z - eyePoint.z * scale);
+}
+
 // Dựng tay từ nhân vật model khi đã nạp xong: gắn vào camera, co nhỏ và đẩy ra trước để thấy ở hai góc dưới màn hình,
 // vẽ đè lên mọi thứ. Vũ khí đang cầm được chuyển sang tay mới.
 function ensureViewmodel() {
   if (viewmodel || !VIEWMODEL.enabled || !localLook) return;
   const avatar = createModelAvatar(scene, 'me', localLook, { viewmodel: true });
   if (!avatar) return; // model chưa nạp xong, thử lại khung sau
-  const { scale, offset } = VIEWMODEL;
   avatar.root.parent = camera;
-  avatar.root.scaling.setAll(scale);
-  avatar.root.position.set(offset.x - avatar.eyePoint.x * scale, offset.y - avatar.eyePoint.y * scale, offset.z - avatar.eyePoint.z * scale);
-  viewmodelRest = avatar.root.position.clone();
+  viewmodelRest = new Vector3();
+  placeViewmodel(avatar, VIEWMODEL.scale);
   scene.setRenderingAutoClearDepthStencil(VIEWMODEL.renderingGroup, true, true, true);
   for (const fist of Object.values(myFists)) {
     fist.drop();
@@ -63,11 +70,18 @@ export function setLocalLook(look) {
   localLook = look;
   handMat.diffuseColor = Color3.FromHexString(look.glove); // nắm đấm hình cầu dùng khi chưa có tay model
   setGunViewLook(look);
+  setBodyViewLook(look);
 }
 
 // Vung tay `hand` ('L' / 'R'); hoạt ảnh tua nhanh theo `cooldown` của vũ khí (giây). Gọi từ player/attack.js.
 export function swingHand(hand, cooldown) {
   hands[hand].punch(cooldown);
+}
+
+// Đấm lớn của tay phải: 'charge' (tích lực) | 'release' (thả, đấm nốt) | 'cancel' (huỷ). Xem player/bigPunch.js.
+// Nắm đấm hình cầu (model chưa nạp xong) không có hoạt ảnh này nên bỏ qua.
+export function bigPunchHand(action) {
+  hands.R[`${action}Big`]?.();
 }
 
 // Gọi mỗi khung hình sau khi camera đã cập nhật.
@@ -82,6 +96,7 @@ export function updateViewmodel(dt) {
   const showHands = state.alive && !state.dog && !isGun(equipped); // chó không có tay
   if (viewmodel) {
     viewmodel.root.setEnabled(showHands);
+    placeViewmodel(viewmodel, VIEWMODEL.scale * state.size ** VIEWMODEL.sizeExponent); // to hơn / nhỏ hơn một phần theo thuốc
     viewmodel.setRunning(state.alive && state.sprinting);
     viewmodel.root.position.copyFrom(viewmodelRest);
     viewmodel.root.position.y -= VIEWMODEL.raiseDrop * lift;
