@@ -8,7 +8,7 @@ const { clearRockets } = require('./rockets');
 const { regenerate } = require('./regen');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
-const { DEFAULT_WEAPON, equip } = require('./weapons');
+const { clearInventory } = require('./inventory');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
@@ -25,7 +25,7 @@ function allReady(room) {
 function resetPlayers(room) {
   for (const p of room.players.values()) {
     p.kills = 0;
-    equip(p, DEFAULT_WEAPON);
+    clearInventory(p);
     p.ready = false;
     respawn(room, p);
   }

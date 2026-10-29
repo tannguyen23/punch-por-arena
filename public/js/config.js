@@ -16,7 +16,9 @@ export const MIN_DIST = 1.0; // khoảng cách tối thiểu giữa hai người
 export const PLAYER_RADIUS = 0.5;
 export const WATER_SPEED_MULT = 0.55; // lội nước chậm hơn đi cạn
 export const GROUND_STICK = 0.25; // đi xuống dốc, cách đất dưới ngần này thì vẫn bám đất (không rơi)
-export const HOTBAR_SLOTS = 3; // số ô vũ khí trên thanh dưới màn hình
+export const HOTBAR_SLOTS = 3; // số ô vũ khí trong túi, khớp INVENTORY_SLOTS ở server/config.js
+export const FIST_SLOT = HOTBAR_SLOTS; // ô tay không cố định nằm sau các ô vũ khí (phím 4), khớp FIST_SLOT ở server
+export const PICKUP_RADIUS = 1.2; // khớp PICKUP_RADIUS ở server/config.js (chỉ dùng để nhắc "túi đầy")
 
 export const MOUSE_SENSITIVITY = 0.0022;
 export const SENSITIVITY_MIN = 0.0005; // radian/pixel, giới hạn thanh chỉnh độ nhạy chuột
@@ -27,6 +29,8 @@ export const PITCH_LIMIT = 1.4; // góc ngẩng/cúi tối đa (radian), khớp 
 // Súng: số đạn hiện trên màn hình trừ ngay khi bắn; snapshot của server chỉ ghi đè khi đã ngừng bắn ngần này mili giây
 // (nếu không con số sẽ nhảy lên xuống vì snapshot tới chậm hơn phát bắn).
 export const AMMO_SYNC_GRACE_MS = 400;
+// Đổi ô vũ khí hiện ngay trên máy mình; snapshot tới trong khoảng này có thể vẫn là ô cũ nên chưa ghi đè.
+export const SLOT_SYNC_GRACE_MS = 400;
 export const RECOIL_RECOVER = 12; // tốc độ tay/súng trở về chỗ cũ sau khi giật (càng lớn càng nhanh)
 // Lửa đầu nòng của mình: lệch khỏi mắt theo hệ camera (phải, xuống, ra trước), khớp chỗ đầu nòng của súng cầm ở tay phải.
 export const MUZZLE_OFFSET = { right: 0.2, down: 0.2, forward: 1.0 };
@@ -43,6 +47,7 @@ export const GUN_FX = {
 export const AIRDROP = {
   planeVisible: 220, // máy bay đã bay qua điểm thả quá ngần này (mét) thì xoá
   crateHover: 1.6, // vũ khí trong hòm lơ lửng cao ngần này trên mặt đất sau khi hòm chạm đất
+  dropHover: 0.6, // vũ khí người chơi vứt ra (không có hòm) lơ lửng thấp hơn
   sway: 0.18, // hòm đung đưa dưới dù (radian)
   smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì cột khói dựng sẵn cả cột
   // Cột khói đỏ ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.

@@ -1,7 +1,8 @@
 const { PICKUP_RADIUS, PICKUP_MIN_GAP, PLANE_SPEED, PLANE_APPROACH, PLANE_ALTITUDE, PARACHUTE_MS } = require('../config');
 const { terrain } = require('../maps');
 const { randomFreePosition } = require('./spawn');
-const { randomDropWeapon, rollAmmo, equip } = require('./weapons');
+const { randomDropWeapon, rollAmmo } = require('./weapons');
+const { addToInventory } = require('./inventory');
 const { broadcast } = require('../net/messaging');
 
 // Từ lúc máy bay xuất hiện tới lúc hòm chạm đất (mili giây).
@@ -19,9 +20,10 @@ function findPickupPosition(room) {
 
 // Hòm gửi cho client: thời điểm đổi sang "còn bao lâu" (âm = đã qua) để client tự tính theo đồng hồ của mình.
 // Máy bay đi qua (x, z) ở độ cao `y` theo hướng `heading` (cùng quy ước với yaw) đúng lúc thả, hòm rơi dù thẳng xuống.
+// `dropped`: vũ khí người chơi vứt ra (nằm sẵn dưới đất, không có máy bay / hòm / khói).
 function pickupView(pickup, now = Date.now()) {
-  const { id, weapon, ammo, x, z, y, heading } = pickup;
-  return { id, weapon, ammo, x, z, y, heading, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
+  const { id, weapon, ammo, x, z, y, heading, dropped } = pickup;
+  return { id, weapon, ammo, x, z, y, heading, dropped, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
 }
 
 // Máy bay xuất hiện ngay bây giờ, bay thẳng tới một điểm ngẫu nhiên và thả hòm chứa một vũ khí với ít đạn.
@@ -46,14 +48,21 @@ function launchAirdrop(room) {
   broadcast(room, { t: 'airdrop', pickup: pickupView(pickup, now) });
 }
 
-// Đi tới gần hòm đã chạm đất thì nhặt luôn, thay vũ khí đang cầm (cùng loại thì cộng dồn đạn).
+// Người vừa vứt vũ khí đang đứng ngay trên nó: phải bước ra khỏi bán kính nhặt rồi mới nhặt lại được.
+function blockedFor(pickup, p, near) {
+  if (pickup.ignore !== p.id) return false;
+  if (!near) pickup.ignore = null;
+  return near;
+}
+
+// Đi tới gần hòm đã chạm đất thì nhặt luôn vào túi đồ và cầm lên (cùng loại thì cộng dồn đạn). Túi đầy thì hòm nằm lại.
 function tryPickup(room, p) {
   if (p.dead) return;
   const now = Date.now();
   for (const pickup of room.pickups.values()) {
-    if (now < pickup.landsAt || Math.hypot(pickup.x - p.x, pickup.z - p.z) >= PICKUP_RADIUS) continue;
-    const stack = p.weapon === pickup.weapon && p.ammo !== null && pickup.ammo !== null;
-    equip(p, pickup.weapon, stack ? p.ammo + pickup.ammo : pickup.ammo);
+    const near = Math.hypot(pickup.x - p.x, pickup.z - p.z) < PICKUP_RADIUS;
+    if (blockedFor(pickup, p, near) || !near || now < pickup.landsAt) continue;
+    if (!addToInventory(p, pickup.weapon, pickup.ammo)) continue;
     room.pickups.delete(pickup.id);
     broadcast(room, { t: 'pickup', id: pickup.id, by: p.id, weapon: pickup.weapon });
     return;

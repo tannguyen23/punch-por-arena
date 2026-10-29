@@ -8,6 +8,7 @@ import { updateWater } from './world/arena.js';
 import { updateLocalPlayer } from './player/localPlayer.js';
 import { setLocalLook } from './player/viewmodel.js';
 import { updateAttack } from './player/attack.js';
+import { updatePickupHint } from './player/pickupHint.js';
 import { initInput } from './input.js';
 import { initMenu } from './ui/menu.js';
 import { connect } from './net/socket.js';
@@ -35,6 +36,7 @@ scene.onBeforeRenderObservable.add(() => {
   const dt = Math.min(engine.getDeltaTime() / 1000, 0.1);
   updateLocalPlayer(dt);
   updateAttack();
+  updatePickupHint();
   for (const r of remotes.values()) updateRemote(r, dt);
   for (const pickup of pickups.values()) updatePickup(pickup, dt);
   updateMatchHud();

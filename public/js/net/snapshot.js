@@ -2,27 +2,26 @@ import { state, remotes, infos } from '../state.js';
 import { createRemote, disposeRemote } from '../entities/remotePlayer.js';
 import { equipLoadout, thirdPersonTilt } from '../entities/weapons/index.js';
 import { updateHud } from '../ui/hud.js';
-import { announce } from '../ui/matchHud.js';
-import { AMMO_SYNC_GRACE_MS } from '../config.js';
+import { AMMO_SYNC_GRACE_MS, SLOT_SYNC_GRACE_MS } from '../config.js';
 import { playAt } from './positional.js';
 import * as Sfx from '../audio/sfx.js';
 
-// Vũ khí vừa hết đạn / dao vừa gãy (server tự đổi về tay không): báo cho người chơi biết vì sao mất vũ khí.
-function announceEmpty(prevWeapon, prevAmmo, p) {
-  if (p.dead || p.w !== 'fist' || prevWeapon === 'fist' || prevAmmo === null || prevAmmo > 1) return;
-  announce(state.weaponTypes[prevWeapon]?.kind === 'melee' ? 'VŨ KHÍ ĐÃ GÃY!' : 'HẾT ĐẠN!');
+// Vũ khí đang cầm và ô đang chọn. Vừa bấm đổi ô (player/inventory.js) thì snapshot có thể còn là ô cũ: đợi một lúc.
+function syncHeld(p) {
+  const now = performance.now();
+  if (now - state.slotChangedAt < SLOT_SYNC_GRACE_MS) return;
+  // Đạn trừ ngay khi bắn (player/attack.js); snapshot tới chậm hơn nên chỉ ghi đè khi đổi vũ khí hoặc đã ngừng bắn một lúc.
+  if (p.w !== state.weapon || now - state.lastFireAt > AMMO_SYNC_GRACE_MS) state.ammo = p.a;
+  state.weapon = p.w; // player/viewmodel.js tự đổi vũ khí cầm trên tay khi thấy giá trị này đổi
+  state.activeSlot = p.as;
 }
 
 function syncLocalPlayer(p) {
   if (state.alive && p.dead) Sfx.ko(0, 1);
-  announceEmpty(state.weapon, state.ammo, p);
-  // Đạn trừ ngay khi bắn (player/attack.js); snapshot tới chậm hơn nên chỉ ghi đè khi đổi vũ khí hoặc đã ngừng bắn một lúc.
-  if (p.w !== state.weapon || performance.now() - state.lastFireAt > AMMO_SYNC_GRACE_MS) state.ammo = p.a;
   state.hp = p.hp;
   state.alive = !p.dead;
-  state.weapon = p.w; // player/localPlayer.js tự đổi vũ khí cầm trên tay khi thấy giá trị này đổi
-  // Tạm thời server mới cho cầm một vũ khí nên nó nằm ở ô 1. Khi server có túi đồ nhiều ô thì lấy từ đó.
-  state.inventory[0] = p.w === 'fist' ? null : p.w;
+  state.inventory = p.s.map((s) => (s ? { weapon: s[0], ammo: s[1] } : null));
+  syncHeld(p);
 }
 
 function syncRemote(p) {

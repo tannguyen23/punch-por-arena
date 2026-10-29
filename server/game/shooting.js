@@ -1,7 +1,8 @@
 const { FIRE_SLACK_MS, PITCH_LIMIT } = require('../config');
 const { clamp } = require('../utils/math');
 const { broadcast } = require('../net/messaging');
-const { WEAPONS, useAmmo } = require('./weapons');
+const { WEAPONS } = require('./weapons');
+const { useAmmo, hasAmmo } = require('./inventory');
 const { isPlaying } = require('./match');
 const { applyDamage } = require('./damage');
 const { eyeOf, pointAt, aimDirection, obstacleDistance, firstBodyHit } = require('./raycast');
@@ -28,7 +29,7 @@ function handleFire(room, p, m) {
   if (!Number.isFinite(m.yaw) || !Number.isFinite(m.pitch)) return;
   const weapon = WEAPONS[p.weapon];
   const now = Date.now();
-  if (weapon.kind === 'melee' || !isPlaying(room) || p.dead || !(p.ammo > 0)) return;
+  if (weapon.kind === 'melee' || !isPlaying(room) || p.dead || !hasAmmo(p)) return;
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất

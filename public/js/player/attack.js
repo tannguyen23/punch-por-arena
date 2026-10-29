@@ -4,10 +4,12 @@ import { WEAPON_MODELS } from '../entities/weapons/index.js';
 import { muzzleFlash } from '../fx/gunEffects.js';
 import { swingHand } from './viewmodel.js';
 import { muzzlePosition } from './aim.js';
+import { announce } from '../ui/matchHud.js';
 import * as Sfx from '../audio/sfx.js';
 import { PUNCH_COOLDOWN, PITCH_LIMIT } from '../config.js';
 
 const DRY_FIRE_COOLDOWN = 0.3; // giây giữa hai tiếng "cạch" khi bóp cò lúc hết đạn
+const DROP_HINT = 'BẤM G ĐỂ VỨT';
 
 const kindOf = (id) => state.weaponTypes[id]?.kind ?? 'melee';
 const cooldownOf = (id) => (state.weaponTypes[id]?.cooldown ?? PUNCH_COOLDOWN * 1000) / 1000;
@@ -15,11 +17,22 @@ const cooldownOf = (id) => (state.weaponTypes[id]?.cooldown ?? PUNCH_COOLDOWN * 
 // Tay sẽ đấm tiếp theo khi giữ chuột với vũ khí tự đánh (luân phiên trái/phải).
 let autoButton = 0;
 
-// Trừ đạn ngay trên màn hình, không đợi snapshot (xem AMMO_SYNC_GRACE_MS).
+const emptyText = () => (kindOf(state.weapon) === 'melee' ? 'VŨ KHÍ ĐÃ GÃY!' : 'HẾT ĐẠN!');
+
+// Trừ đạn ngay trên màn hình, không đợi snapshot (xem AMMO_SYNC_GRACE_MS). Hết đạn thì vũ khí vẫn nằm trong ô
+// cho tới khi người chơi tự vứt.
 function spendAmmo() {
   if (state.ammo === null) return;
   state.ammo = Math.max(0, state.ammo - 1);
   state.lastFireAt = performance.now();
+  if (state.ammo === 0) announce(`${emptyText()} ${DROP_HINT}`);
+}
+
+// Đánh / bắn bằng vũ khí đã hết đạn: súng kêu "cạch", dao gãy thì nhắc vứt đi.
+function dryAttack() {
+  state.cooldown = DRY_FIRE_COOLDOWN;
+  if (kindOf(state.weapon) === 'melee') announce(`${emptyText()} ${DROP_HINT}`);
+  else Sfx.dryFire();
 }
 
 // Vũ khí cận chiến (tay không, dao...): vung tay, server tìm người trúng. Dao mất một độ bền mỗi lần chém.
@@ -37,11 +50,6 @@ function punch(button) {
 
 // Súng / tên lửa: lửa đầu nòng, tiếng nổ và độ giật hiện ngay; vệt đạn, tên lửa và sát thương do server báo về.
 function fire() {
-  if (!(state.ammo > 0)) {
-    state.cooldown = DRY_FIRE_COOLDOWN;
-    Sfx.dryFire();
-    return;
-  }
   const def = WEAPON_MODELS[state.weapon];
   state.cooldown = cooldownOf(state.weapon);
   send({ t: 'fire', yaw: state.yaw, pitch: state.pitch });
@@ -57,7 +65,8 @@ function fire() {
 export function attack(button) {
   if (!state.alive || state.cooldown > 0 || state.match.phase !== 'playing') return false;
   if (button !== 0 && button !== 2) return false;
-  if (kindOf(state.weapon) === 'melee') punch(button);
+  if (state.ammo === 0) dryAttack();
+  else if (kindOf(state.weapon) === 'melee') punch(button);
   else fire();
   return true;
 }

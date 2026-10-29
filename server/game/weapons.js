@@ -53,19 +53,6 @@ function rollAmmo(id) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
-// Đưa vũ khí vào tay người chơi kèm số đạn (null = dùng mãi).
-function equip(p, id, ammo = null) {
-  p.weapon = id;
-  p.ammo = ammo;
-}
-
-// Dùng một viên đạn (một lần chém với dao). Hết đạn thì về tay không.
-function useAmmo(p) {
-  if (p.ammo === null) return;
-  p.ammo -= 1;
-  if (p.ammo <= 0) equip(p, DEFAULT_WEAPON);
-}
-
 // Phần client cần biết để hiển thị và tính thời gian hồi (không có độ hiếm, độ lệch); gửi trong 'welcome'.
 const weaponInfo = () =>
   Object.fromEntries(
@@ -75,4 +62,4 @@ const weaponInfo = () =>
     ]),
   );
 
-module.exports = { WEAPONS, DEFAULT_WEAPON, randomDropWeapon, rollAmmo, equip, useAmmo, weaponInfo };
+module.exports = { WEAPONS, DEFAULT_WEAPON, randomDropWeapon, rollAmmo, weaponInfo };

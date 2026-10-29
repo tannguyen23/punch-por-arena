@@ -7,6 +7,8 @@ const { applyClientState } = require('../game/movement');
 const { handlePunch } = require('../game/combat');
 const { handleFire } = require('../game/shooting');
 const { pickupView } = require('../game/pickups');
+const { handleDrop } = require('../game/drops');
+const { selectSlot } = require('../game/inventory');
 const { sanitizeLook, sanitizeName } = require('../game/sanitize');
 const { weaponInfo } = require('../game/weapons');
 const { matchInfo, setReady } = require('../game/match');
@@ -66,6 +68,8 @@ const gameHandlers = {
   punch: (p, m) => (m.hand === 'L' || m.hand === 'R') && handlePunch(p.room, p, m.hand),
   fire: (p, m) => handleFire(p.room, p, m),
   ready: (p, m) => setReady(p.room, p, m.ready),
+  slot: (p, m) => selectSlot(p, m.slot), // selectSlot tự kiểm tra chỉ số ô
+  drop: (p) => handleDrop(p.room, p),
 };
 
 function handleConnection(ws) {

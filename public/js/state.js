@@ -29,8 +29,9 @@ export const state = {
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
   ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
   lastFireAt: 0, // mốc performance.now() lần bắn gần nhất (xem AMMO_SYNC_GRACE_MS)
-  inventory: [], // id vũ khí ở từng ô của thanh vũ khí (null/thiếu = ô trống)
-  activeSlot: 0, // ô đang cầm
+  inventory: [], // túi đồ do server gửi: { weapon, ammo } hoặc null (trống) từng ô vũ khí
+  activeSlot: null, // ô đang cầm (ô tay không là FIST_SLOT trong config.js); null khi chưa có snapshot
+  slotChangedAt: 0, // mốc performance.now() lần mình bấm đổi ô (xem SLOT_SYNC_GRACE_MS)
   weaponTypes: {}, // id → { kind, name, damage, range, cooldown, splash } do server gửi
 
   attacking: false, // đang giữ chuột đánh
