@@ -119,9 +119,10 @@ function aimAtCameraTilt(item, anchor, root, tilt) {
   item.rotationQuaternion = Quaternion.FromUnitVectorsToRef(Vector3.Up(), local, new Quaternion());
 }
 
-// Một tay của nhân vật model: cầm vũ khí ở neo và chạy hoạt ảnh đấm khi bị gọi punch().
-// `view` (chỉ có ở tay góc nhìn thứ nhất): { root, group } — vũ khí được vẽ đè (nhóm vẽ `group`) và chĩa theo góc nghiêng `tilt` của camera.
-function createHand(anchor, animator, side, view = null) {
+// Một tay của nhân vật model: cầm vũ khí ở neo và chạy hoạt ảnh đấm / chém khi bị gọi punch().
+// `view` (chỉ có ở tay góc nhìn thứ nhất): { root, group } — vũ khí được vẽ đè (nhóm vẽ `group`).
+// Có `tilt` thì vũ khí chĩa theo (0, cos tilt, sin tilt) của camera (góc nhìn thứ nhất) hoặc của thân nhân vật `root` (người khác cầm súng).
+function createHand(anchor, animator, side, root, view = null) {
   const slide = side === 'L' ? 'SL' : 'S'; // tay trái dùng bản soi gương của Right Slide
   return {
     attack: null, // kiểu đánh của vũ khí đang cầm ('slide' = chém), equipWeapon gán
@@ -135,9 +136,8 @@ function createHand(anchor, animator, side, view = null) {
       item.parent = anchor;
       item.position.set(0, 0, 0);
       item.rotation.set(0, 0, 0);
-      if (!view) return;
-      for (const mesh of item.getChildMeshes()) mesh.renderingGroupId = view.group;
-      if (tilt !== undefined) aimAtCameraTilt(item, anchor, view.root, tilt);
+      if (view) for (const mesh of item.getChildMeshes()) mesh.renderingGroupId = view.group;
+      if (tilt !== undefined) aimAtCameraTilt(item, anchor, view?.root ?? root, tilt);
     },
     drop() {
       this.held?.dispose();
@@ -194,8 +194,8 @@ export function createModelAvatar(scene, id, look, options = {}) {
     legs,
     eyePoint,
     fists: {
-      L: createHand(createHandAnchor(scene, handMesh(CHARACTER.offHandMesh)), animator, 'L', view),
-      R: createHand(createHandAnchor(scene, handMesh(CHARACTER.handMesh)), animator, 'R', view),
+      L: createHand(createHandAnchor(scene, handMesh(CHARACTER.offHandMesh)), animator, 'L', root, view),
+      R: createHand(createHandAnchor(scene, handMesh(CHARACTER.handMesh)), animator, 'R', root, view),
     },
     update: (dt) => animator?.update(dt),
     // Rời đất / chạm đất: chạy hoạt ảnh nhảy. `airTime` là thời gian bay dự kiến (giây).

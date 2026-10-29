@@ -5,6 +5,8 @@ const { createRoom, getRoom, removeIfEmpty } = require('../game/rooms');
 const { randomFreePosition } = require('../game/spawn');
 const { applyClientState } = require('../game/movement');
 const { handlePunch } = require('../game/combat');
+const { handleFire } = require('../game/shooting');
+const { pickupView } = require('../game/pickups');
 const { sanitizeLook, sanitizeName } = require('../game/sanitize');
 const { weaponInfo } = require('../game/weapons');
 const { matchInfo, setReady } = require('../game/match');
@@ -47,7 +49,7 @@ function handleJoin(p, m) {
     z: p.z,
     map: currentMap,
     weapons: weaponInfo(),
-    pickups: [...room.pickups.values()],
+    pickups: [...room.pickups.values()].map((pickup) => pickupView(pickup)),
     match: matchInfo(room),
     room: { code: room.code, max: ROOM_MAX_PLAYERS, minPlayers: MIN_PLAYERS_TO_START, created: Boolean(m.create) },
     maxHp: MAX_HP,
@@ -62,6 +64,7 @@ function handleJoin(p, m) {
 const gameHandlers = {
   state: (p, m) => applyClientState(p.room, p, m),
   punch: (p, m) => (m.hand === 'L' || m.hand === 'R') && handlePunch(p.room, p, m.hand),
+  fire: (p, m) => handleFire(p.room, p, m),
   ready: (p, m) => setReady(p.room, p, m.ready),
 };
 

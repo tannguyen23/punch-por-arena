@@ -18,7 +18,8 @@ export function createHolder() {
   return new TransformNode('weapon', scene);
 }
 
-// Nạp model của một vũ khí, tô màu, đo chiều dài thật và điểm cầm để lần nào dựng cũng cùng kích thước.
+// Nạp model của một vũ khí, tô màu (nếu có `kindOf`), đo chiều dài thật và điểm cầm để lần nào dựng cũng cùng kích thước.
+// Không có bộ phận `gripKind` thì điểm cầm là giữa model; model đặt gốc ở chỗ cầm thì vẫn đúng vì `instantiate` chỉ dời theo trục Y.
 export async function loadTemplate(def) {
   const container = await BABYLON.SceneLoader.LoadAssetContainerAsync('', def.url, scene, null, '.glb');
   let minY = Infinity;
@@ -30,9 +31,10 @@ export async function loadTemplate(def) {
     const box = mesh.getBoundingInfo().boundingBox;
     minY = Math.min(minY, box.minimumWorld.y);
     maxY = Math.max(maxY, box.maximumWorld.y);
-    const kind = def.kindOf(mesh, box.maximumWorld.y);
-    mesh.material = partMaterial(def.colors[kind]);
-    if (kind === def.gripKind) gripY = (box.minimumWorld.y + box.maximumWorld.y) / 2;
+    // Không có `kindOf` (vd: model Blockbench đã có texture) thì giữ nguyên material của file.
+    const kind = def.kindOf?.(mesh, box.maximumWorld.y);
+    if (kind) mesh.material = partMaterial(def.colors[kind]);
+    if (kind && kind === def.gripKind) gripY = (box.minimumWorld.y + box.maximumWorld.y) / 2;
   }
   return { container, scale: def.length / (maxY - minY), gripY: gripY ?? (minY + maxY) / 2 };
 }

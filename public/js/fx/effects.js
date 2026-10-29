@@ -5,6 +5,9 @@ const { MeshBuilder, StandardMaterial, Color3 } = BABYLON;
 
 const items = []; // { mesh, life, max, step(dt, k), ownMaterial }
 
+// Thêm một hiệu ứng tự huỷ sau `life` giây; `step(dt, k)` chạy mỗi khung hình với k đi từ 0 → 1 (dùng ở các file fx khác).
+export const track = (item) => items.push(item);
+
 function textMaterial(name, tex) {
   const mat = new StandardMaterial(name, scene);
   mat.emissiveTexture = tex;
@@ -57,13 +60,13 @@ function billboard(size, x, y, z, material) {
   return mesh;
 }
 
-export function burst(x, y, z, count = 12) {
+export function burst(x, y, z, count = 12, speedScale = 1) {
   for (let i = 0; i < count; i++) {
     const mesh = MeshBuilder.CreateSphere('spark', { diameter: 0.1 + Math.random() * 0.08, segments: 4 }, scene);
     mesh.material = sparkMat;
     mesh.position.set(x, y, z);
     const angle = Math.random() * Math.PI * 2;
-    const speed = 2.5 + Math.random() * 3.5;
+    const speed = (2.5 + Math.random() * 3.5) * speedScale;
     const v = { x: Math.cos(angle) * speed, y: 1 + Math.random() * 3, z: Math.sin(angle) * speed };
     const max = 0.35 + Math.random() * 0.25;
     items.push({
@@ -81,8 +84,8 @@ export function burst(x, y, z, count = 12) {
   }
 }
 
-export function flash(x, y, z) {
-  const mesh = billboard({ size: 1 }, x, y, z, starMat);
+export function flash(x, y, z, size = 1) {
+  const mesh = billboard({ size }, x, y, z, starMat);
   items.push({
     mesh,
     life: 0.22,

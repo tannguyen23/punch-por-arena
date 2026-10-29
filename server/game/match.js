@@ -1,11 +1,14 @@
 const {
-  MATCH_DURATION_MS, MATCH_INTERMISSION_MS, MATCH_TICK_MS, WAVE_WARNING_MS, WAVES, COUNTDOWN_MS, MIN_PLAYERS_TO_START,
+  MATCH_DURATION_MS, MATCH_INTERMISSION_MS, MATCH_TICK_MS, AIRDROP_FIRST_MS, AIRDROP_INTERVAL_MS, COUNTDOWN_MS,
+  MIN_PLAYERS_TO_START,
 } = require('../config');
 const { broadcast } = require('../net/messaging');
-const { clearPickups, dropWave } = require('./pickups');
+const { AIRDROP_LEAD_MS, clearPickups, launchAirdrop } = require('./pickups');
+const { clearRockets } = require('./rockets');
+const { regenerate } = require('./regen');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
-const { DEFAULT_WEAPON } = require('./weapons');
+const { DEFAULT_WEAPON, equip } = require('./weapons');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
@@ -22,7 +25,7 @@ function allReady(room) {
 function resetPlayers(room) {
   for (const p of room.players.values()) {
     p.kills = 0;
-    p.weapon = DEFAULT_WEAPON;
+    equip(p, DEFAULT_WEAPON);
     p.ready = false;
     respawn(room, p);
   }
@@ -31,7 +34,7 @@ function resetPlayers(room) {
 function enterLobby(room, { cancelled = false } = {}) {
   room.phase = 'lobby';
   room.endsAt = 0;
-  room.waves = [];
+  room.nextAirdropAt = 0;
   broadcast(room, { t: 'lobby', cancelled });
 }
 
@@ -45,14 +48,16 @@ function startMatch(room) {
   const now = Date.now();
   resetPlayers(room);
   clearPickups(room);
+  clearRockets(room);
   room.phase = 'playing';
   room.endsAt = now + MATCH_DURATION_MS;
   room.ranking = [];
-  room.waves = WAVES.map(({ at, count }) => ({ at: now + at * MATCH_DURATION_MS, count, announced: false, dropped: false }));
+  room.nextAirdropAt = now + AIRDROP_FIRST_MS;
   broadcast(room, { t: 'start', duration: MATCH_DURATION_MS });
 }
 
 function endMatch(room) {
+  clearRockets(room);
   room.phase = 'ended';
   room.endsAt = Date.now() + MATCH_INTERMISSION_MS;
   room.ranking = [...room.players.values()]
@@ -65,6 +70,7 @@ function endMatch(room) {
 function returnToLobby(room) {
   resetPlayers(room);
   clearPickups(room);
+  clearRockets(room);
   room.ranking = [];
   enterLobby(room);
 }
@@ -75,18 +81,11 @@ function setReady(room, p, ready) {
   p.ready = Boolean(ready);
 }
 
-// Báo trước đợt vũ khí sắp rơi (đếm ngược trên màn hình mọi người) rồi thả khi đến giờ.
-function runWaves(room, now) {
-  for (const wave of room.waves) {
-    if (!wave.announced && now >= wave.at - WAVE_WARNING_MS) {
-      wave.announced = true;
-      broadcast(room, { t: 'wave', in: Math.max(0, wave.at - now), count: wave.count });
-    }
-    if (!wave.dropped && now >= wave.at) {
-      wave.dropped = true;
-      dropWave(room, wave.count);
-    }
-  }
+// Cứ AIRDROP_INTERVAL_MS lại có một máy bay thả hòm tiếp tế. Hòm không kịp chạm đất trước khi hết trận thì thôi không thả.
+function runAirdrops(room, now) {
+  if (now < room.nextAirdropAt) return;
+  room.nextAirdropAt += AIRDROP_INTERVAL_MS;
+  if (now + AIRDROP_LEAD_MS < room.endsAt) launchAirdrop(room);
 }
 
 function tickRoom(room) {
@@ -101,8 +100,12 @@ function tickRoom(room) {
       else if (now >= room.endsAt) startMatch(room);
       break;
     case 'playing':
-      if (now >= room.endsAt) endMatch(room);
-      else runWaves(room, now);
+      if (now >= room.endsAt) {
+        endMatch(room);
+      } else {
+        runAirdrops(room, now);
+        regenerate(room, now);
+      }
       break;
     case 'ended':
       if (now >= room.endsAt) returnToLobby(room);
@@ -110,16 +113,9 @@ function tickRoom(room) {
   }
 }
 
-// Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, có đợt vũ khí nào đang đếm ngược, bảng xếp hạng nếu đang nghỉ.
+// Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ (hòm tiếp tế nằm trong 'pickups').
 function matchInfo(room) {
-  const now = Date.now();
-  const pending = room.waves.find((w) => w.announced && !w.dropped);
-  return {
-    phase: room.phase,
-    timeLeft: timeLeft(room),
-    wave: pending ? { in: Math.max(0, pending.at - now), count: pending.count } : null,
-    ranking: room.ranking,
-  };
+  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking };
 }
 
 function startMatchLoop() {
