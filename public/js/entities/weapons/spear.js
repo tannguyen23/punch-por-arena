@@ -5,6 +5,7 @@ import { createHolder } from './weaponModel.js';
 export const spear = {
   icon: '🔱',
   firstPersonTilt: 1.2,
+  attack: 'slide',
   // Gốc ở chỗ cầm, mũi giáo hướng +Y (dài khoảng 1.8 m).
   build() {
     const root = createHolder();

@@ -29,6 +29,7 @@ export const CHARACTER = {
   url: '/models/char.glb',
   height: 2.0, // co giãn model về chiều cao này (mét), chân chạm đất
   facing: 0, // xoay model quanh trục Y (rad) cho mặt hướng +Z như nhân vật dựng bằng code
+  idleSpeed: 1, // tốc độ vòng lặp idle (1 = đúng như file; giảm số này để chậm hơn)
   patternMeshes: ['body'], // khối áo mang hoạ tiết (tay áo chỉ có màu trơn)
   offHandMesh: 'right_hand', // khối găng tay trái (tên trái/phải trong file đang đặt ngược, như bên dưới)
   eyeMeshes: ['left_eye', 'right_eye'], // điểm giữa hai mắt = chỗ đặt camera khi dựng tay góc nhìn thứ nhất

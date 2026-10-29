@@ -5,6 +5,7 @@ import { createHolder } from './weaponModel.js';
 export const dagger = {
   icon: '🔪',
   firstPersonTilt: 0.9,
+  attack: 'slide',
   // Gốc ở giữa cán, mũi dao hướng +Y.
   build() {
     const root = createHolder();

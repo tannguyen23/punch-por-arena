@@ -68,5 +68,6 @@ export function updateRemote(r, dt) {
   const pct = Math.max(0, r.hp) / state.maxHp;
   r.fill.scaling.x = Math.max(pct, 0.001);
   r.fill.position.x = -0.5 * (1 - pct);
-  r.root.setEnabled(!r.dead);
+  // Chết thì giữ nhân vật lại để thấy tư thế ngã; chỉ ẩn thanh máu/tên.
+  r.upper.setEnabled(!r.dead);
 }

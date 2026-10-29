@@ -10,7 +10,8 @@ import { thunder } from './thunder.js';
 // Mỗi định nghĩa có `icon`, `firstPersonTilt` và MỘT trong hai cách có hình:
 //   - `url` (+ length, gripKind, colors, kindOf): nạp model .glb, xem sword.js
 //   - `build(side)`: dựng tạm bằng hình khối trong code, trả về node có gốc ở chỗ cầm và đầu vũ khí hướng +Y
-// Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1), `autoFire` (giữ chuột là tự đánh), `swingSound` (tên âm thanh vung).
+// Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1), `autoFire` (giữ chuột là tự đánh), `swingSound` (tên âm thanh vung),
+// `attack: 'slide'` (tấn công bằng animation chém `Right Slide` thay vì đấm; mặc định đấm).
 // Có .glb thật cho vũ khí nào thì đổi định nghĩa của nó từ `build` sang `url`; nơi khác không phải sửa.
 // Thêm vũ khí mới: tạo file định nghĩa rồi đăng ký ở đây.
 export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder };
@@ -35,6 +36,7 @@ export function createWeaponModel(id, side = 1) {
 // `side`: +1 tay phải, -1 tay trái (cho vũ khí có hai bản đối xứng); `tilt`: góc nghiêng ở góc nhìn thứ nhất.
 export async function equipWeapon(hand, id, { side = 1, tilt } = {}) {
   hand.wanted = id;
+  hand.attack = WEAPON_MODELS[id]?.attack ?? null; // kiểu đánh của vũ khí (mặc định đấm)
   hand.drop();
   const model = await createWeaponModel(id, side);
   if (!model) return;
@@ -52,5 +54,6 @@ export function equipLoadout(hands, id, tilt) {
 // Bỏ vũ khí và huỷ mọi lần nạp đang chờ cho tay này (gọi trước khi huỷ nhân vật).
 export function releaseWeapon(hand) {
   hand.wanted = null;
+  hand.attack = null;
   hand.drop();
 }

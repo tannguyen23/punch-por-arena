@@ -70,7 +70,8 @@ export function createAvatar(scene, id, look) {
     }
   };
 
-  return { root, upper, legs, fists, pose, update: (dt) => (fists.L.update(dt), fists.R.update(dt)), setAirborne() {} };
+  // Nhân vật dựng bằng code (khi model chưa nạp xong) không có hoạt ảnh ngã / hồi sinh: giữ nguyên giao diện với bản model.
+  return { root, upper, legs, fists, pose, update: (dt) => (fists.L.update(dt), fists.R.update(dt)), setAirborne() {}, knockOut() {}, resetAnimation() {} };
 }
 
 // Nhân vật từ model .glb nếu đã nạp xong, chưa thì dùng nhân vật dựng bằng code.

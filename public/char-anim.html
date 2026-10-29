@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <title>Debug hoạt ảnh nhân vật</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/css/charAnim.css">
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="panel">
+    <h1>Debug hoạt ảnh</h1>
+    <div id="loading">Đang nạp char.glb…</div>
+
+    <div class="modes">
+      <label><input type="radio" name="mode" value="game" checked> Nhân vật + vũ khí</label>
+      <label><input type="radio" name="mode" value="clip"> Clip gốc</label>
+    </div>
+
+    <div id="gamePanel">
+      <div class="row">
+        <button data-action="idle">Đứng yên</button>
+        <button data-action="punchL">Đấm trái</button>
+        <button data-action="punchR">Đấm phải</button>
+      </div>
+      <div class="row">
+        <button data-action="jump">Nhảy</button>
+        <button data-action="ko">Ngã</button>
+        <button data-action="reset">Hồi sinh</button>
+      </div>
+      <label class="field">Vũ khí
+        <select id="weapon">
+          <option value="fist">Tay không</option>
+          <option value="sword">Kiếm</option>
+          <option value="axe">Rìu</option>
+          <option value="dagger">Dao găm</option>
+          <option value="spear">Giáo</option>
+          <option value="gauntlet">Găng tay vô cực</option>
+          <option value="thunder">Găng sấm sét</option>
+        </select>
+      </label>
+      <label class="check"><input type="checkbox" id="repeat"> Lặp lại đòn đánh</label>
+    </div>
+
+    <div id="clipPanel" hidden>
+      <label class="field">Clip
+        <select id="clip"></select>
+      </label>
+      <div class="row">
+        <button id="clipPlay">Phát</button>
+        <label class="check"><input type="checkbox" id="clipLoop" checked> Lặp</label>
+      </div>
+      <label class="field">Thời gian <output id="clipTimeLabel">0.00 / 0.00s</output>
+        <input type="range" id="clipTime" min="0" max="1" step="0.001" value="0">
+      </label>
+      <div class="row">
+        <button id="clipPrev">◀ 1 khung</button>
+        <button id="clipNext">1 khung ▶</button>
+      </div>
+    </div>
+
+    <label class="field">Tốc độ <output id="speedLabel">1.00×</output>
+      <input type="range" id="speed" min="0.05" max="2" step="0.05" value="1">
+    </label>
+
+    <div class="row">
+      <button id="pause">Tạm dừng</button>
+    </div>
+
+    <div class="cameras">
+      <button data-cam="front">Trước</button>
+      <button data-cam="back">Sau</button>
+      <button data-cam="left">Trái</button>
+      <button data-cam="right">Phải</button>
+      <button data-cam="three">3/4</button>
+    </div>
+
+    <p class="hint">Phím: 1 đấm trái · 2 đấm phải · 3 nhảy · 4 ngã · 5 hồi sinh · 0 đứng yên · Space tạm dừng</p>
+  </div>
+
+  <script src="/babylon.js"></script>
+  <script src="/babylon.gltf-loader.js"></script>
+  <script type="module" src="/js/debug/charAnim.js"></script>
+</body>
+</html>

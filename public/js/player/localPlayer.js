@@ -31,6 +31,7 @@ const myFists = {
 let hands = myFists;
 let viewmodel = null;
 let localLook = null;
+let wasAlive = true; // để dọn hoạt ảnh đang dở khi bị hạ (viewmodel bị ẩn lúc chết)
 let equipped = 'fist'; // vũ khí đang cầm trên tay phải; đổi theo state.weapon do server quyết định
 
 // Dựng tay từ nhân vật model khi đã nạp xong: gắn vào camera, co nhỏ và đẩy ra trước để thấy ở hai góc dưới màn hình,
@@ -157,6 +158,8 @@ function updateCamera(dt) {
 export function updateLocalPlayer(dt) {
   ensureViewmodel();
   syncWeapon();
+  if (wasAlive && !state.alive) viewmodel?.resetAnimation();
+  wasAlive = state.alive;
   state.cooldown = Math.max(0, state.cooldown - dt);
   autoAttack();
 

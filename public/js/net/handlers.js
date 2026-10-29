@@ -207,7 +207,13 @@ function syncRemote(p) {
   r.tc = p.c;
   r.tyaw = p.yaw;
   r.hp = p.hp;
-  if (!r.dead && p.dead) playAt('ko', r.root.position);
+  if (!r.dead && p.dead) {
+    playAt('ko', r.root.position);
+    r.knockOut();
+  } else if (r.dead && !p.dead) {
+    r.resetAnimation(); // hồi sinh: về tư thế đứng ở chỗ mới
+    r.root.position.set(p.x, p.y, p.z); // đặt thẳng tới chỗ hồi sinh, không trượt từ chỗ chết
+  }
   r.dead = p.dead;
   if (p.w !== r.weapon) {
     r.weapon = p.w;
