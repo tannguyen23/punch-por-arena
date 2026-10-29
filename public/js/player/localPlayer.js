@@ -9,9 +9,13 @@ import { updateSprint } from './sprint.js';
 import { slideVelocity, settleSlide, resetSlide } from './iceSlide.js';
 import { groundAt, waterLevel } from '../core/terrain.js';
 import { isFrozen } from '../core/freeze.js';
+import { sizeOf, speedOf } from '../core/bodySize.js';
+import { updateBodyView } from './bodyView.js';
+import { applyKnockback, resetKnockback } from './knockback.js';
+import { stinkSpeedMult } from './stink.js';
 import * as Sfx from '../audio/sfx.js';
 import {
-  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT, DOG,
+  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT, DOG, POTION,
 } from '../config.js';
 
 export function look(movementX, movementY, sensitivity) {
@@ -30,7 +34,7 @@ function applyMovement(dt) {
   state.crouching = keys.has('KeyC') && !state.dog; // chó không ngồi
   updateSprint(moving && !state.crouching && (keys.has('ShiftLeft') || keys.has('ShiftRight')), dt);
   const speed = MOVE_SPEED * (state.sprinting ? SPRINT_MULT : state.crouching ? CROUCH_MULT : 1) * (isWading() ? WATER_SPEED_MULT : 1)
-    * (state.dog ? DOG.speedMult : 1);
+    * (state.dog ? DOG.speedMult : 1) * speedOf(state.potion?.id) * stinkSpeedMult();
   const scale = moving ? speed / len : 0;
   const { x, z } = slideVelocity((sin * fwd + cos * strafe) * scale, (cos * fwd - sin * strafe) * scale, dt);
   state.me.x += x * dt;
@@ -70,6 +74,8 @@ function applyVertical(dt) {
 function updateCamera(dt) {
   const { me } = state;
   state.crouchAmount += ((state.crouching ? 1 : 0) - state.crouchAmount) * (1 - Math.exp(-14 * dt));
+  state.size += (sizeOf(state.potion?.id) - state.size) * (1 - Math.exp(-POTION.sizeEase * dt)); // uống thuốc: camera lên / xuống từ từ
+  state.potionFov *= Math.exp(-POTION.fx.fovEase * dt);
   const eye = eyeHeight();
 
   // Rung camera khi trúng đòn; giãn góc nhìn khi chạy nhanh và khi vung tay
@@ -78,7 +84,7 @@ function updateCamera(dt) {
   const sprintTarget = state.sprinting ? SPRINT_CAMERA.fovBoost : 0;
   const sprintEase = state.sprinting ? SPRINT_CAMERA.easeIn : SPRINT_CAMERA.easeOut;
   state.sprintFov += (sprintTarget - state.sprintFov) * (1 - Math.exp(-sprintEase * dt));
-  camera.fov = settings.fov + state.sprintFov + state.fovKick;
+  camera.fov = settings.fov + state.sprintFov + state.fovKick + state.potionFov;
   const jitter = () => (Math.random() - 0.5) * 2 * state.shake;
   camera.position.set(me.x + jitter() * 0.5, me.y + eye + jitter() * 0.5, me.z + jitter() * 0.5);
   camera.rotation.set(state.pitch + jitter(), state.yaw + jitter(), jitter() * 0.5);
@@ -90,6 +96,7 @@ export function updateLocalPlayer(dt) {
   if (state.alive && state.myId !== null) {
     const { x, z } = state.me;
     if (!isFrozen()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật
+    applyKnockback(dt);
     applyVertical(dt);
     updateWading();
     resolveCollisions();
@@ -97,9 +104,12 @@ export function updateLocalPlayer(dt) {
   } else if (!state.alive) {
     state.crouching = false;
     resetSlide();
+    resetKnockback();
+    state.stinkUntil = 0;
     updateSprint(false, dt);
   }
 
   updateCamera(dt);
+  updateBodyView(dt);
   updateViewmodel(dt);
 }

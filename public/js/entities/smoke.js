@@ -20,12 +20,14 @@ function puffTexture() {
 }
 
 // Cột khói đỏ bốc cao ở chỗ hòm tiếp tế (kiểu PUBG) để cả sân nhìn thấy từ xa. Khói bay lên chậm dần, nở to và trôi theo gió.
+// Điểm nhả khói dời được (`follow`): hòm đang rơi thì khói nhả theo hòm, các cụm đã nhả ở yên trong thế giới nên để lại một vệt khói phía trên hòm.
 // `prewarm`: dựng sẵn cả cột (người vào giữa chừng) thay vì để nó mọc dần từ đất.
 export function createSmoke(position, { prewarm = false, color = AIRDROP.smoke.color } = {}) {
   const { smoke } = AIRDROP;
   const ps = new ParticleSystem('airdropSmoke', smoke.capacity, scene);
   ps.particleTexture = puffTexture();
-  ps.emitter = position.add(new Vector3(0, 0.3, 0));
+  const emitter = position.add(new Vector3(0, 0.3, 0));
+  ps.emitter = emitter;
   ps.minEmitBox = new Vector3(-0.5, 0, -0.5);
   ps.maxEmitBox = new Vector3(0.5, 0.5, 0.5);
   ps.direction1 = new Vector3(-0.2, 1, -0.2);
@@ -56,6 +58,10 @@ export function createSmoke(position, { prewarm = false, color = AIRDROP.smoke.c
   }
   ps.start();
   return {
+    // Dời điểm nhả khói tới `position` (hệ hạt đọc lại vector này mỗi khung hình).
+    follow(position) {
+      emitter.set(position.x, position.y + 0.3, position.z);
+    },
     // Ngừng nhả khói; phần khói đã có tan dần rồi tự huỷ.
     stop() {
       ps.disposeOnStop = true;

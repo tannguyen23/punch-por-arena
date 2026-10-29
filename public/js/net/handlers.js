@@ -14,6 +14,8 @@ import { copyRoomLink } from '../ui/lobbyHud.js';
 import { announce } from '../ui/matchHud.js';
 import { pickupHandlers, addPickup, clearPickups } from './pickupHandlers.js';
 import { combatHandlers } from './combatHandlers.js';
+import { bigPunchHandlers } from './bigPunchHandlers.js';
+import { poopHandlers, clearPoops } from './poopHandlers.js';
 import { grenadeHandlers } from './grenadeHandlers.js';
 import { weatherHandlers } from './weatherHandlers.js';
 import { nukeHandlers } from './nukeHandlers.js';
@@ -44,12 +46,15 @@ function clearProjectiles({ keepNukeAftermath = false } = {}) {
 // Sang trận mới / về phòng chờ: dọn hòm tiếp tế, tên lửa, lựu đạn, vũng băng, sét, bom còn sót.
 function clearField() {
   clearPickups();
+  clearPoops();
   clearProjectiles();
 }
 
 const messageHandlers = {
   ...pickupHandlers,
   ...combatHandlers,
+  ...bigPunchHandlers,
+  ...poopHandlers,
   ...grenadeHandlers,
   ...weatherHandlers,
   ...nukeHandlers,
@@ -64,6 +69,7 @@ const messageHandlers = {
     state.me.y = groundAt(m.x, m.z, Infinity);
     for (const o of m.players) infos.set(o.id, o);
     state.weaponTypes = m.weapons;
+    state.potionTypes = m.potions;
     state.room = m.room;
     hideMenu();
     try {

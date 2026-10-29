@@ -17,6 +17,8 @@ export const state = {
   yaw: 0,
   pitch: 0,
   crouching: false,
+  size: 1, // kích thước của mình đã làm mượt theo thuốc (1 = bình thường), dùng cho độ cao mắt, tay, chân; xem player/localPlayer.js
+  potionFov: 0, // góc nhìn giãn / thu thêm lúc uống thuốc, trả dần về 0 (fx/potionFx.js)
   crouchAmount: 0, // 0 đứng → 1 ngồi hẳn, đổi mượt theo thời gian
   sprinting: false,
   stamina: 1,
@@ -32,6 +34,8 @@ export const state = {
     result: null, // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (server/game/match.js)
     showEndAt: 0, // mốc performance.now() từ đó mới hiện bảng kết quả (sau bom hạt nhân đợi xem xong vụ nổ)
   },
+  potion: null, // thuốc mình đang uống: { id, endsAt } (mốc performance.now()), null = không; chỉ số từng loại ở potionTypes
+  potionTypes: {}, // id → { name, scale, hpMult, speedMult, collision, durationMs } do server gửi (server/game/potions.js)
   dog: false, // mình đang hoá chó (từ snapshot): chạy nhanh, không đánh / cầm vũ khí được
   event: null, // sự kiện đang chạy: { kind, targetId, targetName, bounty, introEndsAt, endsAt } (mốc performance.now()), xem net/eventHandlers.js
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
@@ -43,6 +47,13 @@ export const state = {
   weaponTypes: {}, // id → { kind, name, damage, range, cooldown, splash } do server gửi
   streak: 0, // số lần mình hạ gục liên tiếp không chết (từ snapshot); đủ RADIO_STREAK_KILLS thì bấm R gọi máy bay thả radio
 
+  knock: { x: 0, z: 0 }, // vận tốc bị đánh văng (m/giây), tan dần, xem player/knockback.js
+  bigPunch: { charging: false, charge: 0, startedAt: 0, readyAt: 0, wasDown: false }, // đấm trời giáng của người hoá to: charge 0–1, readyAt = mốc performance.now() dùng lại được (player/bigPunch.js)
+  stinkStartedAt: 0, // dậm phải shit của chó: mốc performance.now() bắt đầu / hết bị chậm + che tầm nhìn (player/stink.js, ui/stinkOverlay.js)
+  stinkUntil: 0,
+  poopCharges: 0, // (khi mình là chó) số cục shit còn thả được, và mốc performance.now() hồi thêm một cục (0 = đã đầy); từ snapshot
+  poopNextAt: 0,
+  poopWasDown: false,
   attacking: false, // đang giữ chuột đánh
   cooldown: 0,
   sprintFov: 0,
@@ -54,4 +65,5 @@ export const state = {
 
 export const remotes = new Map(); // id → người chơi khác đang hiển thị trong sân
 export const infos = new Map(); // id → { id, name, look } của mọi người chơi trong sân
+export const poops = new Map(); // id → cục shit con chó thả đang nằm trên sân (entities/poop.js)
 export const pickups = new Map(); // id → hòm tiếp tế (đang rơi hoặc đã nằm trên sân)

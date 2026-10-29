@@ -52,8 +52,13 @@ export function clearPickups() {
   refreshLanding();
 }
 
-// Mình vừa nhặt: báo tên vũ khí và số đạn (dao: số lần chém) cho chắc chắn biết đang cầm gì.
-function announcePickup({ weapon, ammo }) {
+// Mình vừa nhặt: báo tên vũ khí và số đạn (dao: số lần chém) cho chắc chắn biết đang cầm gì; thuốc thì báo đã uống.
+function announcePickup({ weapon, potion, ammo }) {
+  if (potion) {
+    const type = state.potionTypes[potion];
+    if (type) announce(`ĐÃ UỐNG ${type.name.toUpperCase()}!`);
+    return;
+  }
   const info = state.weaponTypes[weapon];
   if (!info) return;
   const amount = ammo === null || ammo === undefined ? '' : ` · ${ammo} ${info.kind === 'melee' ? 'lần chém' : 'viên'}`;
@@ -67,6 +72,12 @@ export const pickupHandlers = {
     Sfx.warning();
     const caller = m.by === null ? null : m.by === state.myId ? 'BẠN' : (infos.get(m.by)?.name ?? '...').toUpperCase();
     announce(caller ? `${caller} GỌI MÁY BAY THẢ RADIO GỌI BOM!` : 'MÁY BAY TIẾP TẾ ĐANG TỚI!');
+  },
+
+  // Lọ thuốc mới xuất hiện trên sân (không máy bay): ai cũng thấy vòng sáng và chạy tới nhặt.
+  potiondrop(m) {
+    addPickup(m.pickup);
+    announce('CÓ THUỐC MỚI TRÊN SÂN!');
   },
 
   // Có người vứt vũ khí (còn đạn) xuống đất: ai cũng thấy và nhặt được.

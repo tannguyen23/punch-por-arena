@@ -130,6 +130,10 @@ function createHand(anchor, animator, side, root, view = null) {
     punch(cooldown) {
       animator?.play(this.attack === 'slide' && animator?.sets[slide] ? slide : side, cooldown);
     },
+    // Đấm lớn (người hoá to): tích lực giữ ở tư thế lấy đà, thả thì đấm nốt, huỷ thì về tư thế đứng yên (xem characterAnimator.js).
+    chargeBig: () => animator?.chargeBig(),
+    releaseBig: () => animator?.releaseBig(),
+    cancelBig: () => animator?.cancelBig(),
     update() {},
     hold(item, tilt) {
       this.drop();
@@ -168,7 +172,7 @@ export function createModelAvatar(scene, id, look, options = {}) {
   const legs = ['left_L', 'right_L'].map((name) => body.getChildTransformNodes(false, (n) => n.name === name)[0]);
   // Tư thế đứng yên lấy từ khung đầu của idle (model cũ không có idle thì dùng thế thủ của cú đấm).
   // Phần xoay của chân do pose() ghi (đung đưa khi đi + bước chân của animation).
-  const animator = createCharacterAnimator(body, animationGroups, { driven: legs.filter(Boolean), idleSpeed: CHARACTER.idleSpeed });
+  const animator = createCharacterAnimator(body, animationGroups, { driven: legs.filter(Boolean), idleSpeed: CHARACTER.idleSpeed, bigWindup: CHARACTER.bigWindup });
   const handMesh = (name) => body.getChildMeshes(false).find((m) => m.name === name);
 
   // Điểm giữa hai mắt (khi chưa dời nhân vật đi đâu): chỗ đặt camera cho tay góc nhìn thứ nhất.

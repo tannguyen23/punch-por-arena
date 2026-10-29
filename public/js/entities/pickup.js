@@ -1,14 +1,15 @@
 import { scene } from '../core/scene.js';
 import { heightAt } from '../core/terrain.js';
-import { AIRDROP } from '../config.js';
+import { AIRDROP, POTION } from '../config.js';
 import { createWeaponModel } from './weapons/index.js';
+import { createPotionModel } from './potionModel.js';
 import { createAirplane } from './airplane.js';
 import { createCrate } from './crate.js';
 import { createSmoke } from './smoke.js';
 
-const { TransformNode, MeshBuilder, StandardMaterial, Color3 } = BABYLON;
+const { TransformNode, MeshBuilder, StandardMaterial, Color3, Vector3 } = BABYLON;
 
-// Vòng sáng và cột sáng đánh dấu chỗ hòm sẽ rơi, nhìn thấy từ xa. Dùng chung cho mọi hòm.
+// Vòng sáng và cột sáng vàng đánh dấu vật nhặt, nhìn thấy từ xa. Dùng chung cho mọi vật nhặt.
 let glow = null;
 function glowMaterials() {
   if (!glow) {
@@ -20,22 +21,25 @@ function glowMaterials() {
       mat.alpha = alpha;
       return mat;
     };
-    glow = { ring: make(0.55), beam: make(0.14) };
+    glow = { ring: make(0.55), beam: make(0.2) };
   }
   return glow;
 }
 
-function addMarker(root) {
-  const { ring, beam } = glowMaterials();
+// Vòng sáng dưới đất cho mọi vật nhặt; cột sáng (`beam` = { height, diameter }) chỉ cho vật không nằm trong hòm (lọ thuốc, vũ khí vứt ra):
+// hòm tiếp tế đã có khói đỏ đi theo nó nên không cần cột sáng.
+function addMarker(root, beam = null) {
+  const { ring, beam: beamMaterial } = glowMaterials();
   const disc = MeshBuilder.CreateDisc('pickupRing', { radius: 0.9, tessellation: 32 }, scene);
   disc.parent = root;
   disc.rotation.x = Math.PI / 2;
   disc.position.y = 0.03;
   disc.material = ring;
-  const column = MeshBuilder.CreateCylinder('pickupBeam', { diameter: 0.7, height: 4, tessellation: 16 }, scene);
+  if (!beam) return;
+  const column = MeshBuilder.CreateCylinder('pickupBeam', { diameter: beam.diameter, height: beam.height, tessellation: 16 }, scene);
   column.parent = root;
-  column.position.y = 2;
-  column.material = beam;
+  column.position.y = beam.height / 2;
+  column.material = beamMaterial;
 }
 
 // Hòm tiếp tế do server gửi: { id, weapon, ammo, x, z, y, heading, speed, releaseIn, landIn }. Máy bay bay theo `heading`, đi qua
@@ -43,22 +47,23 @@ function addMarker(root) {
 // giữa chừng thấy đúng chỗ máy bay / hòm đang ở. Vũ khí trong hòm chỉ hiện (xoay trên nóc hòm) sau khi chạm đất.
 // `hooks.onLand(pickup)`: hòm vừa chạm đất; `hooks.onPlane(pickup, position | null)`: máy bay di chuyển / biến mất (để phát tiếng).
 // `dropped`: vũ khí người chơi vứt ra, chỉ có vũ khí lơ lửng sát đất và vòng sáng (không máy bay, hòm, khói).
-export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false, smokeKind = null }, hooks = {}) {
+// `potion` (thay cho `weapon`): lọ thuốc, dựng như vũ khí vứt ra nhưng là lọ thuốc, nhặt là uống ngay.
+export function createPickup({ id, weapon, potion = null, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false, smokeKind = null }, hooks = {}) {
   const now = performance.now();
   const ground = heightAt(x, z);
   const root = new TransformNode('pickup' + id, scene);
   root.position.set(x, ground, z);
-  addMarker(root);
+  addMarker(root, dropped ? (potion ? POTION.beam : AIRDROP.dropBeam) : null);
 
   const crate = dropped ? null : createCrate();
   if (crate) crate.root.parent = root;
   const spin = new TransformNode('pickupSpin', scene);
   spin.parent = root;
-  const hover = dropped ? AIRDROP.dropHover : AIRDROP.crateHover;
+  const hover = potion ? POTION.hover : dropped ? AIRDROP.dropHover : AIRDROP.crateHover;
   spin.position.y = hover;
 
   const pickup = {
-    id, weapon, ammo, root, crate, spin, hooks, speed, heading, dropped, hover, smokeKind,
+    id, weapon, potion, ammo, root, crate, spin, hooks, speed, heading, dropped, hover, smokeKind,
     dropHeight: y - ground,
     releaseAt: now + releaseIn,
     landAt: now + landIn,
@@ -70,7 +75,7 @@ export function createPickup({ id, weapon, ammo, x, z, y, heading, speed, releas
     disposed: false,
   };
   if (landIn <= 0) land(pickup); // đã nằm sẵn trên sân, không có hiệu ứng chạm đất
-  createWeaponModel(weapon).then((model) => {
+  (potion ? createPotionModel(potion) : createWeaponModel(weapon)).then((model) => {
     if (!model) return;
     if (pickup.disposed) model.dispose();
     else model.parent = spin;
@@ -130,24 +135,31 @@ function updateFalling(pickup, now) {
   pickup.hooks.onLand?.(pickup);
 }
 
-// Cột khói bốc lên ở chỗ hòm sẽ rơi ngay khi hòm rời máy bay, cho cả sân thấy từ xa (đỏ, hoặc màu khác theo `smokeKind`).
+const anchor = new Vector3(); // vị trí hòm trong thế giới, dùng lại mỗi khung hình
+
+// Khói đi theo hòm ngay từ lúc hòm rời máy bay (đỏ, hoặc màu khác theo `smokeKind`), cho cả sân thấy từ xa: hòm rơi tới đâu nhả khói tới đó nên để lại
+// một vệt khói phía trên; chạm đất rồi thì thành cột khói ngay tại hòm tới khi có người nhặt. Người vào giữa chừng khi hòm đã nằm dưới đất thì dựng
+// sẵn cả cột; hòm còn đang rơi thì chỉ có vệt từ lúc mình vào.
 function updateSmoke(pickup, now) {
-  if (pickup.dropped || pickup.smoke || now < pickup.releaseAt) return;
-  pickup.smoke = createSmoke(pickup.root.position, { prewarm: pickup.lateJoin, color: AIRDROP.smokeColors[pickup.smokeKind] });
+  if (pickup.dropped || now < pickup.releaseAt) return;
+  const { position } = pickup.root;
+  anchor.set(position.x, position.y + pickup.crate.root.position.y, position.z); // crate.root.position.y = độ cao hòm so với đất (0 khi đã chạm đất)
+  pickup.smoke ??= createSmoke(anchor, { prewarm: pickup.lateJoin && pickup.landed, color: AIRDROP.smokeColors[pickup.smokeKind] });
+  pickup.smoke.follow(anchor);
 }
 
 export function updatePickup(pickup, dt) {
   const now = performance.now();
   updatePlane(pickup, now, dt);
-  updateSmoke(pickup, now);
-  if (!pickup.landed) {
+  if (pickup.landed) {
+    pickup.spin.setEnabled(true);
+    pickup.t += dt;
+    pickup.spin.rotation.y += dt * 1.5;
+    pickup.spin.position.y = pickup.hover + 0.15 * Math.sin(pickup.t * 2);
+  } else {
     updateFalling(pickup, now);
-    return;
   }
-  pickup.spin.setEnabled(true);
-  pickup.t += dt;
-  pickup.spin.rotation.y += dt * 1.5;
-  pickup.spin.position.y = pickup.hover + 0.15 * Math.sin(pickup.t * 2);
+  updateSmoke(pickup, now); // sau khi hòm đã được đặt ở vị trí của khung hình này
 }
 
 // Material và mesh mẫu dùng chung nên không huỷ kèm.

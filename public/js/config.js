@@ -6,14 +6,62 @@ export const CROUCH_EYE_HEIGHT = 1.15;
 export const SPRINT_MULT = 1.6;
 // Sự kiện hoá chó (entities/dogForm.js, ui/eventHud.js, player/localPlayer.js). Điểm thưởng và thời gian do server quyết định.
 export const DOG = {
-  speedMult: 1.5, // người hoá chó chạy nhanh hơn ngần này lần (server không kiểm tốc độ)
+  speedMult: 1.2, // người hoá chó chạy nhanh hơn ngần này lần (server không kiểm tốc độ). Chó cũng chạy nước rút được: 1.2 × 1.6 = 11.5 m/s so với 9.6 của người rượt, và nước rút có thể lực nên không thoát mãi được
   eyeHeight: 0.85, // mắt chó thấp sát đất
   barHeight: 1.45, // thanh máu + tên của chó treo ở độ cao này (người là 2.3)
   markerHeight: 2.2, // mũi tên đỏ trên đầu chó để cả sân thấy
+  tagHeight: 2.7, // bảng "tiền thưởng" trên màn hình bám ở độ cao này so với chân chó (ui/dogTracker.js)
+  trackerMargin: 56, // bảng cách mép màn hình ngần này pixel thì coi như ngoài tầm nhìn, chuyển sang mũi tên ở mép
+  trackerInset: 58, // ngoài tầm nhìn: bảng lùi vào trong ngần này pixel so với mũi tên ở mép
   fur: [0.66, 0.44, 0.24],
   furDark: [0.42, 0.27, 0.14],
   nose: [0.08, 0.08, 0.08],
   marker: [1, 0.15, 0.1],
+};
+// Kỹ năng thả shit của con chó (player/poop.js, entities/poop.js, ui/stinkOverlay.js). Số cục tối đa, hồi chiêu, bán kính dính và thời gian chậm do
+// server quyết định (DOG_EVENT.poop ở server/config.js); ở đây là phím, mức chậm (server không kiểm tốc độ) và phần hình.
+export const POOP = {
+  key: 'KeyQ',
+  keyLabel: 'Q',
+  slowMult: 0.7, // dậm phải thì chạy chậm còn ngần này lần trong thời gian server báo
+  patchRadius: 1.5, // bán kính bãi shit vẽ ra (mét), khớp vùng dính DOG_EVENT.poop.radius ở server/config.js
+  hitShake: 0.15,
+  colors: { body: '#6b3f1d', dark: '#4a2a12' },
+  puff: { color: [0.55, 0.65, 0.12], every: 0.7, life: 1.6, rise: 0.9, burst: 8, visibleRange: 40 }, // khói thối bốc từ cục shit (fx/poopFx.js)
+  overlayOpacity: 0.9, // độ đậm tối đa của sọc thối che màn hình
+  fadeInMs: 300,
+  fadeOutMs: 1000,
+  textMs: 2800, // dòng chữ "Thúi quá..." hiện ngần này mili giây từ lúc dậm phải
+};
+
+// Thuốc hoá to / nhỏ (entities/potionModel.js, ui/potionHud.js). Chỉ số từng loại (kích thước, máu, tốc độ, va chạm) do server gửi trong `welcome`;
+// ở đây chỉ là phần hình. Model potion.glb không có màu nên tô theo tên khối (`kinds`), nước thuốc đổi màu theo loại thuốc.
+export const POTION = {
+  url: '/models/potion.glb',
+  height: 0.55, // lọ thuốc nằm trên sân cao ngần này (mét)
+  hover: 0.7, // lơ lửng cao ngần này trên mặt đất (tâm lọ)
+  beam: { height: 30, diameter: 1 }, // cột sáng vàng trên lọ thuốc cho dễ thấy từ xa (lọ không có hòm / khói nên chỉ có cột này để tìm)
+  kinds: { beveled_cuboid: 'liquid', tube: 'glass', cylinder: 'cork' },
+  colors: { glass: '#d3edf5', cork: '#8a5a2b' },
+  liquid: { grow: '#e8453c', shrink: '#3fa7ff' }, // màu nước thuốc, cũng là màu thanh đếm ngược trên HUD
+  sizeEase: 3.5, // to ra / nhỏ lại mượt theo tốc độ này (càng lớn càng nhanh; 3.5 ≈ gần xong sau 0.8 giây), cả mình lẫn người khác
+  // Hiệu ứng lúc uống / hết thuốc trên máy mình (fx/potionFx.js, ui/potionFlash.js); hết thuốc thì nhẹ bằng `endStrength` lần.
+  fx: {
+    fov: 0.3, // góc nhìn giãn ra (to) hoặc thu lại (nhỏ) ngần này radian rồi trả dần
+    fovEase: 2.5, // tốc độ trả góc nhìn về bình thường
+    shake: 0.3, // rung camera khi hoá to (hoá nhỏ rung bằng `shrinkShakeMult` lần)
+    shrinkShakeMult: 0.4,
+    endStrength: 0.5,
+  },
+};
+
+// Thân dưới của mình ở góc nhìn thứ nhất (player/bodyView.js): nhân vật model đầy đủ nhưng chỉ hiện quần và giày (tên khối trong char.glb),
+// đặt đúng chỗ đứng, co giãn theo thuốc nên nhìn xuống thấy đôi chân to / nhỏ. Đặt `enabled: false` để quay về chỉ thấy tay.
+export const BODY_VIEW = {
+  enabled: true,
+  meshes: ['cylinder', 'beveled_cuboid'], // quần và giày (khối của mỗi chân)
+  feetEdge: 0.85, // cúi xuống tối đa (PITCH_LIMIT) thì bàn chân nằm ở ngần này của quãng từ tâm tới mép dưới màn hình (0 = giữa màn hình, 1 = sát mép, >1 = ra ngoài)
+  stepRate: 3, // chân đung đưa nhanh cỡ này theo tốc độ đi (khớp remotePlayer.js); người to bước chậm, người nhỏ bước dồn (chia cho căn bậc hai kích thước)
 };
 export const EVENT_RESULT_MS = 6000; // thông báo kết quả sự kiện hiện ngần này
 export const SPRINT = { duration: 5, recovery: 4, delay: 1, restart: 0.2 };
@@ -160,6 +208,7 @@ export const AIRDROP = {
   planeVisible: 220, // máy bay đã bay qua điểm thả quá ngần này (mét) thì xoá
   crateHover: 1.6, // vũ khí trong hòm lơ lửng cao ngần này trên mặt đất sau khi hòm chạm đất
   dropHover: 0.6, // vũ khí người chơi vứt ra (không có hòm) lơ lửng thấp hơn
+  dropBeam: { height: 4, diameter: 0.7 }, // cột sáng vàng của vũ khí vứt ra (hòm tiếp tế không có cột sáng, đã có khói đỏ)
   sway: 0.18, // hòm đung đưa dưới dù (radian)
   smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì cột khói dựng sẵn cả cột
   // Cột khói ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.
@@ -167,12 +216,12 @@ export const AIRDROP = {
   smokeColors: { yellow: [0.98, 0.85, 0.1] },
   smoke: {
     color: [0.92, 0.12, 0.1],
-    rate: 40, // cụm khói mỗi giây
-    capacity: 700, // ≥ rate × life
+    rate: 24, // cụm khói mỗi giây. Giảm từ 40 cho đỡ nặng: mỗi cụm là một mảnh mờ rất to, nhiều cụm chồng nhau thì GPU phải vẽ đè (overdraw) rất nhiều lần
+    capacity: 320, // ≥ rate × life
     speed: 8, // tốc độ bốc lên lúc đầu (m/giây), chậm dần còn 35%
     life: 13, // giây mỗi cụm khói tồn tại
     startSize: 1.6, // cụm khói nở từ cỡ này (mét)...
-    endSize: 12, // ...tới cỡ này khi lên tới đỉnh
+    endSize: 9, // ...tới cỡ này khi lên tới đỉnh (diện tích mỗi cụm tỉ lệ bình phương nên giảm từ 12 xuống 9 là bớt gần nửa)
     wind: [0.35, 0, 0.15], // gió đẩy khói lệch sang một bên (m/giây²)
     prewarmCycles: 90,
   },
@@ -185,6 +234,7 @@ export const CHARACTER = {
   height: 2.0, // co giãn model về chiều cao này (mét), chân chạm đất
   facing: 0, // xoay model quanh trục Y (rad) cho mặt hướng +Z như nhân vật dựng bằng code
   idleSpeed: 1, // tốc độ vòng lặp idle (1 = đúng như file; giảm số này để chậm hơn)
+  bigWindup: 0.25, // giây trong clip big_right_punch lúc tay lấy đà xong: tích lực dừng ở đây, thả thì chạy tiếp (khung 0.75 là lúc đấm trúng)
   patternMeshes: ['body'], // khối áo mang hoạ tiết (tay áo chỉ có màu trơn)
   offHandMesh: 'right_hand', // khối găng tay trái (tên trái/phải trong file đang đặt ngược, như bên dưới)
   eyeMeshes: ['left_eye', 'right_eye'], // điểm giữa hai mắt = chỗ đặt camera khi dựng tay góc nhìn thứ nhất
@@ -224,7 +274,22 @@ export const VIEWMODEL = {
   // cẳng tay che mất bàn tay và vũ khí đang cầm (dao, kiếm chỉ lòi ra đầu mũi).
   meshes: ['left_hand', 'right_hand'],
   raiseDrop: 0.35, // vừa đổi vũ khí thì tay hạ xuống ngần này (mét) rồi đưa lên
+  sizeExponent: 0.5, // tay co giãn theo kích thước^số này. Không thể là 1: co giãn đều cả tay lẫn vị trí quanh camera thì trên màn hình không đổi gì
 };
+
+// Đấm trời giáng của người hoá to (player/bigPunch.js, fx/shockwave.js, ui/bigPunchHud.js). Thời gian tích lực, hồi chiêu, tầm và sức đánh văng
+// do server quyết định (BIG_PUNCH ở server/config.js), client chỉ nhận thời gian tích lực và hồi chiêu qua `welcome.potions`.
+export const BIG_PUNCH = {
+  key: 'KeyQ', // giữ để tích lực, thả để đấm
+  keyLabel: 'Q',
+  lockoutSeconds: 1, // sau khi tung đòn, ngần này giây không đấm thường chen vào cho khỏi cắt hoạt ảnh
+  shake: 0.5, // rung camera khi sóng xung kích nổ ngay cạnh, nhỏ dần theo khoảng cách
+  shakeRange: 2, // còn rung trong khoảng ngần này lần bán kính sóng
+  shockwave: { life: 0.6, color: [1, 0.85, 0.5], sparks: 40 },
+};
+
+// Bị đánh văng (player/knockback.js): đà tan dần theo hàm mũ với tốc độ này (1/giây); trên không tan chậm nên bay xa.
+export const KNOCKBACK = { groundFriction: 2.2, airFriction: 0.5, stopSpeed: 0.3 };
 
 export const EQUIP_RAISE_TIME = 0.3; // giây để vũ khí mới đưa từ dưới màn hình lên
 

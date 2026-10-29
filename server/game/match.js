@@ -1,6 +1,6 @@
 const {
   MATCH_DURATION_MS, MATCH_INTERMISSION_MS, MATCH_TICK_MS, AIRDROP_FIRST_MS, AIRDROP_INTERVAL_MS, COUNTDOWN_MS,
-  MIN_PLAYERS_TO_START,
+  MIN_PLAYERS_TO_START, POTION,
 } = require('../config');
 const { broadcast } = require('../net/messaging');
 const { AIRDROP_LEAD_MS, clearPickups, launchAirdrop } = require('./pickups');
@@ -11,6 +11,8 @@ const { clearNuke } = require('./nuke');
 const { clearIce } = require('./ice');
 const { planEvents, tickEvents, clearEvents, eventView } = require('./events');
 const { regenerate } = require('./regen');
+const { runPotionDrops } = require('./potionDrops');
+const { tickPotions } = require('./potions');
 const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
 const { clearInventory } = require('./inventory');
@@ -55,6 +57,7 @@ function enterLobby(room, { cancelled = false, mapChanged = false } = {}) {
   room.phase = 'lobby';
   room.endsAt = 0;
   room.nextAirdropAt = 0;
+  room.nextPotionAt = 0;
   broadcast(room, {
     t: 'lobby',
     cancelled,
@@ -78,6 +81,7 @@ function startMatch(room) {
   room.ranking = [];
   room.result = null;
   room.nextAirdropAt = now + AIRDROP_FIRST_MS;
+  room.nextPotionAt = now + POTION.firstMs;
   startWeather(room, now);
   planEvents(room, now);
   broadcast(room, { t: 'start', duration: MATCH_DURATION_MS });
@@ -137,6 +141,8 @@ function tickRoom(room) {
         endMatch(room);
       } else {
         runAirdrops(room, now);
+        runPotionDrops(room, now);
+        tickPotions(room, now);
         regenerate(room, now);
         tickWeather(room, now);
         tickEvents(room, now);

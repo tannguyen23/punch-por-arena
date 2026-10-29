@@ -11,9 +11,12 @@ const { iceView } = require('../game/ice');
 const { nukeView } = require('../game/nuke');
 const { handleDrop } = require('../game/drops');
 const { handleRadioCall } = require('../game/radioCall');
+const { startCharge, releaseCharge } = require('../game/bigPunch');
+const { handlePoop } = require('../game/poop');
 const { selectSlot } = require('../game/inventory');
 const { sanitizeLook, sanitizeName } = require('../game/sanitize');
 const { weaponInfo } = require('../game/weapons');
+const { potionInfo } = require('../game/potions');
 const { matchInfo, setReady } = require('../game/match');
 const { send, broadcast } = require('./messaging');
 const { mapOptions, defaultMapIds, getMap } = require('../maps');
@@ -67,6 +70,7 @@ function handleJoin(p, m) {
     z: p.z,
     map: room.mapData,
     weapons: weaponInfo(),
+    potions: potionInfo(),
     pickups: [...room.pickups.values()].map((pickup) => pickupView(pickup)),
     ice: iceView(room),
     nuke: nukeView(room),
@@ -97,6 +101,9 @@ const gameHandlers = {
   slot: (p, m) => selectSlot(p, m.slot), // selectSlot tự kiểm tra chỉ số ô
   drop: (p) => handleDrop(p.room, p),
   radio: (p) => handleRadioCall(p.room, p),
+  poop: (p) => handlePoop(p.room, p),
+  bigcharge: (p) => startCharge(p.room, p),
+  bigrelease: (p) => releaseCharge(p.room, p),
 };
 
 function handleConnection(ws) {

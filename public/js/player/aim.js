@@ -1,8 +1,10 @@
 import { state } from '../state.js';
 import { EYE_HEIGHT, CROUCH_EYE_HEIGHT, MUZZLE_OFFSET, DOG } from '../config.js';
 
-// Độ cao mắt so với chân (hạ dần khi ngồi xuống).
-export const eyeHeight = () => (state.dog ? DOG.eyeHeight : EYE_HEIGHT + (CROUCH_EYE_HEIGHT - EYE_HEIGHT) * state.crouchAmount);
+// Độ cao mắt so với chân (hạ dần khi ngồi xuống, nhân với kích thước khi uống thuốc: server tính điểm bắn y như vậy, chỉ khác là
+// `state.size` đổi mượt trong khoảng một giây còn server đổi ngay).
+export const eyeHeight = () =>
+  state.dog ? DOG.eyeHeight : (EYE_HEIGHT + (CROUCH_EYE_HEIGHT - EYE_HEIGHT) * state.crouchAmount) * state.size;
 
 // Ba trục của camera theo yaw/pitch (pitch dương là nhìn xuống), cùng cách server tính hướng bắn.
 export function aimAxes(yaw = state.yaw, pitch = state.pitch) {

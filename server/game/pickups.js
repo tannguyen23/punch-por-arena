@@ -4,6 +4,7 @@ const { randomDropWeapon, rollAmmo } = require('./weapons');
 const { addToInventory } = require('./inventory');
 const { broadcast } = require('../net/messaging');
 const { cantAct } = require('./restrictions');
+const { drinkPotion } = require('./potions');
 
 // Từ lúc máy bay xuất hiện tới lúc hòm chạm đất (mili giây).
 const AIRDROP_LEAD_MS = (PLANE_APPROACH / PLANE_SPEED) * 1000 + PARACHUTE_MS;
@@ -20,10 +21,10 @@ function findPickupPosition(room) {
 
 // Hòm gửi cho client: thời điểm đổi sang "còn bao lâu" (âm = đã qua) để client tự tính theo đồng hồ của mình.
 // Máy bay đi qua (x, z) ở độ cao `y` theo hướng `heading` (cùng quy ước với yaw) đúng lúc thả, hòm rơi dù thẳng xuống.
-// `dropped`: vũ khí người chơi vứt ra (nằm sẵn dưới đất, không có máy bay / hòm / khói).
+// `dropped`: vũ khí người chơi vứt ra hoặc lọ thuốc (nằm sẵn dưới đất, không có máy bay / hòm / khói); `potion`: lọ thuốc (thay cho `weapon`).
 function pickupView(pickup, now = Date.now()) {
-  const { id, weapon, ammo, x, z, y, heading, dropped, smokeKind } = pickup;
-  return { id, weapon, ammo, x, z, y, heading, dropped, smokeKind, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
+  const { id, weapon, potion, ammo, x, z, y, heading, dropped, smokeKind } = pickup;
+  return { id, weapon, potion, ammo, x, z, y, heading, dropped, smokeKind, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
 }
 
 // Máy bay xuất hiện ngay bây giờ, bay thẳng tới `pos` và thả hòm chứa `weapon` với ít đạn. Không truyền gì: máy bay tiếp tế định kỳ
@@ -56,16 +57,17 @@ function blockedFor(pickup, p, near) {
   return near;
 }
 
-// Đi tới gần hòm đã chạm đất thì nhặt luôn vào túi đồ và cầm lên (cùng loại thì cộng dồn đạn). Túi đầy thì hòm nằm lại.
+// Đi tới gần hòm đã chạm đất thì nhặt luôn vào túi đồ và cầm lên (cùng loại thì cộng dồn đạn). Túi đầy thì hòm nằm lại. Lọ thuốc thì uống luôn.
 function tryPickup(room, p) {
   if (p.dead || cantAct(room, p)) return; // chó không cầm được gì
   const now = Date.now();
   for (const pickup of room.pickups.values()) {
     const near = Math.hypot(pickup.x - p.x, pickup.z - p.z) < PICKUP_RADIUS;
     if (blockedFor(pickup, p, near) || !near || now < pickup.landsAt) continue;
-    if (!addToInventory(p, pickup.weapon, pickup.ammo)) continue;
+    if (pickup.potion) drinkPotion(p, pickup.potion, now); // thuốc không vào túi: uống ngay
+    else if (!addToInventory(p, pickup.weapon, pickup.ammo)) continue;
     room.pickups.delete(pickup.id);
-    broadcast(room, { t: 'pickup', id: pickup.id, by: p.id, weapon: pickup.weapon });
+    broadcast(room, { t: 'pickup', id: pickup.id, by: p.id, weapon: pickup.weapon, potion: pickup.potion });
     return;
   }
 }
@@ -73,4 +75,4 @@ function tryPickup(room, p) {
 // Dọn sân khi sang trận mới / về phòng chờ (client dọn theo message 'start' / 'lobby').
 const clearPickups = (room) => room.pickups.clear();
 
-module.exports = { AIRDROP_LEAD_MS, pickupView, launchAirdrop, tryPickup, clearPickups };
+module.exports = { AIRDROP_LEAD_MS, findPickupPosition, pickupView, launchAirdrop, tryPickup, clearPickups };

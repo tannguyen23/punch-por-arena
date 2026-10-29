@@ -1,11 +1,12 @@
 import { scene, solidMaterial } from '../core/scene.js';
 import { state } from '../state.js';
 import { groundAt } from '../core/terrain.js';
-import { JUMP_AIR_TIME, AIRBORNE_HEIGHT } from '../config.js';
+import { JUMP_AIR_TIME, AIRBORNE_HEIGHT, POTION } from '../config.js';
 import { createPlayerAvatar } from './avatar.js';
 import { createNameTag } from './nameTag.js';
 import { releaseWeapon } from './weapons/index.js';
 import { updateDogForm } from './dogForm.js';
+import { sizeOf } from '../core/bodySize.js';
 
 const { Color3, MeshBuilder, TransformNode } = BABYLON;
 
@@ -36,7 +37,7 @@ export function createRemote(id, { name, look }) {
     ...avatar,
     fill,
     phase: 0, crouch: 0, tx: 0, ty: 0, tz: 0, tc: 0, tyaw: 0,
-    hp: 100, dead: false, initialised: false, weapon: 'fist', sprinting: false,
+    hp: 100, maxHp: 100, potion: 0, size: 1, dead: false, initialised: false, weapon: 'fist', sprinting: false,
   };
 }
 
@@ -44,6 +45,14 @@ export function disposeRemote(r) {
   releaseWeapon(r.fists.L);
   releaseWeapon(r.fists.R); // vũ khí dùng chung material nên không để dispose(…, true) của root đụng tới
   r.root.dispose(false, true); // xoá luôn material và texture riêng của người này
+}
+
+// Thuốc hoá to / nhỏ: cả nhân vật co giãn quanh chân (kéo theo vũ khí cầm trên tay). Thanh máu + tên nằm trong nhân vật nên được co ngược lại
+// để luôn cùng một cỡ trên màn hình, chỉ đổi độ cao theo đầu.
+function updateSize(r, dt) {
+  r.size += (sizeOf(r.potion) - r.size) * (1 - Math.exp(-POTION.sizeEase * dt));
+  r.root.scaling.setAll(r.size);
+  r.fill.parent.scaling.setAll(1 / r.size);
 }
 
 export function updateRemote(r, dt) {
@@ -68,7 +77,8 @@ export function updateRemote(r, dt) {
   r.update(dt);
   r.pose(r.crouch, r.dead ? 0 : Math.sin(r.phase) * 0.7 * Math.min(speed / 3, 1) * (1 - 0.7 * r.crouch));
   updateDogForm(r, speed, dt);
-  const pct = Math.max(0, r.hp) / state.maxHp;
+  updateSize(r, dt);
+  const pct = Math.max(0, r.hp) / r.maxHp;
   r.fill.scaling.x = Math.max(pct, 0.001);
   r.fill.position.x = -0.5 * (1 - pct);
   // Chết thì giữ nhân vật lại để thấy tư thế ngã; chỉ ẩn thanh máu/tên.

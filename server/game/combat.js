@@ -1,4 +1,4 @@
-const { PUNCH_COS, PUNCH_VERTICAL } = require('../config');
+const { PUNCH_COS, PUNCH_VERTICAL, PLAYER_RADIUS } = require('../config');
 const { broadcast } = require('../net/messaging');
 const { WEAPONS } = require('./weapons');
 const { useAmmo, hasAmmo } = require('./inventory');
@@ -6,9 +6,11 @@ const { isPlaying } = require('./match');
 const { cantAct } = require('./restrictions');
 const { applyDamage } = require('./damage');
 const { wallBetween } = require('./raycast');
+const { radiusOf } = require('./potions');
 
 // Người gần nhất trong phòng nằm trong tầm `range` của vũ khí, trong góc 35° phía trước mặt người đấm,
-// không chênh độ cao quá `PUNCH_VERTICAL` và không bị tường chắn.
+// không chênh độ cao quá `PUNCH_VERTICAL` và không bị tường chắn. Tầm tính từ tâm nên cộng thêm phần bán kính va chạm lớn hơn bình thường
+// của hai bên (người to hơn thì không thể đứng sát), và bớt đi nếu nhỏ hơn.
 function findPunchTarget(room, p, range) {
   const fx = Math.sin(p.yaw);
   const fz = Math.cos(p.yaw);
@@ -19,7 +21,7 @@ function findPunchTarget(room, p, range) {
     const dx = o.x - p.x;
     const dz = o.z - p.z;
     const dist = Math.hypot(dx, dz);
-    if (dist > range || dist < 1e-6) continue;
+    if (dist > range + radiusOf(p) + radiusOf(o) - 2 * PLAYER_RADIUS || dist < 1e-6) continue;
     if (Math.abs(o.y - p.y) > PUNCH_VERTICAL) continue;
     if ((dx * fx + dz * fz) / dist < PUNCH_COS) continue;
     if (dist < best && !wallBetween(room, p, o)) {
