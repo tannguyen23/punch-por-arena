@@ -20,7 +20,7 @@ const base = { kind: 'melee', range: PUNCH_RANGE, cooldown: PUNCH_COOLDOWN, drop
 const throwable = { kind: 'throwable', range: 25, cooldown: 900, speed: 18, ammo: [1, 2], stack: 3 };
 const WEAPONS = {
   fist: { ...base, name: 'Tay không', damage: 10 },
-  // Vũ khí cận chiến cũ: vẫn dùng được nhưng không còn rơi (hòm tiếp tế chỉ có 4 món bên dưới).
+  // Vũ khí cận chiến cũ: vẫn dùng được nhưng không còn rơi (hòm tiếp tế chỉ có súng lục / AK / tên lửa bên dưới).
   sword: { ...base, name: 'Kiếm', damage: 25 },
   dagger: { ...base, name: 'Dao găm', damage: 10, range: 1.8, cooldown: 200 },
   axe: { ...base, name: 'Rìu', damage: 40, range: 2.6, cooldown: 800 },
@@ -28,18 +28,19 @@ const WEAPONS = {
   thunder: { ...base, name: 'Găng sấm sét', damage: 5, range: 2.0, cooldown: 100 },
   gauntlet: { ...base, name: 'Găng tay vô cực', damage: 45, range: 2.0, cooldown: 900 },
 
-  // Hòm tiếp tế: dropWeight là phần trăm (tổng 100). Tên lửa mạnh nhất nên hiếm nhất.
+  // Hòm tiếp tế: vũ khí chính chỉ là súng lục / AK / tên lửa, dropWeight là tỉ lệ tương đối giữa ba món (tên lửa mạnh nhất nên hiếm nhất).
+  // Dao và lựu đạn không rơi làm vũ khí chính; lựu đạn chỉ đi kèm hòm (AIRDROP.bonus ở config.js, xem pickups.js).
   pistol: { kind: 'gun', name: 'Súng lục', damage: 25, range: 60, cooldown: 300, spread: 0.012, ammo: [10, 20], dropWeight: 20 },
-  knife: { ...base, name: 'Dao chiến đấu', damage: 25, range: 2.0, cooldown: 300, ammo: [10, 20], dropWeight: 14 },
+  knife: { ...base, name: 'Dao chiến đấu', damage: 25, range: 2.0, cooldown: 300, ammo: [10, 20], dropWeight: 0 },
   ak47: { kind: 'gun', name: 'AK-47', damage: 16, range: 80, cooldown: 110, spread: 0.03, ammo: [10, 20], dropWeight: 16 },
   frag: {
-    ...throwable, name: 'Lựu đạn nổ', effect: 'blast', damage: 85, splash: 5, fuse: 2500, dropWeight: 14,
+    ...throwable, name: 'Lựu đạn nổ', effect: 'blast', damage: 85, splash: 5, fuse: 2500, dropWeight: 0,
   },
   flashbang: {
-    ...throwable, name: 'Lựu đạn choáng', effect: 'flash', damage: 0, splash: 15, fuse: 1800, dropWeight: 14,
+    ...throwable, name: 'Lựu đạn choáng', effect: 'flash', damage: 0, splash: 15, fuse: 1800, dropWeight: 0,
   },
   icegrenade: {
-    ...throwable, name: 'Lựu đạn băng', effect: 'ice', damage: 0, splash: 4, fuse: 2000, duration: 8000, dropWeight: 14,
+    ...throwable, name: 'Lựu đạn băng', effect: 'ice', damage: 0, splash: 4, fuse: 2000, duration: 8000, dropWeight: 0,
   },
   rocket: {
     kind: 'rocket', name: 'Súng phóng tên lửa', damage: 90, range: 80, cooldown: 1200, splash: 4, speed: 35, ammo: [2, 4], dropWeight: 8,

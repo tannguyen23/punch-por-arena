@@ -53,7 +53,8 @@ export function clearPickups() {
 }
 
 // Mình vừa nhặt: báo tên vũ khí và số đạn (dao: số lần chém) cho chắc chắn biết đang cầm gì; thuốc thì báo đã uống.
-function announcePickup({ weapon, potion, ammo }) {
+// `bonus`: lựu đạn thưởng trong hòm đã vào túi (túi đầy thì nó văng ra sân, server gửi riêng bằng tin 'drop').
+function announcePickup({ weapon, potion, ammo }, bonus) {
   if (potion) {
     const type = state.potionTypes[potion];
     if (type) announce(`ĐÃ UỐNG ${type.name.toUpperCase()}!`);
@@ -62,13 +63,16 @@ function announcePickup({ weapon, potion, ammo }) {
   const info = state.weaponTypes[weapon];
   if (!info) return;
   const amount = ammo === null || ammo === undefined ? '' : ` · ${ammo} ${info.kind === 'melee' ? 'lần chém' : 'viên'}`;
-  announce(`NHẶT ĐƯỢC ${info.name.toUpperCase()}${amount}`);
+  const extra = state.weaponTypes[bonus];
+  announce(`NHẶT ĐƯỢC ${info.name.toUpperCase()}${amount}${extra ? ` + ${extra.name.toUpperCase()}` : ''}`);
 }
 
 export const pickupHandlers = {
   // Máy bay vừa xuất hiện: báo động và đếm ngược tới lúc hòm chạm đất. `by` = người gọi máy bay thả radio (máy bay tiếp tế định kỳ thì null).
+  // `quiet`: hòm thứ hai trở đi của cùng một đợt, đã báo động ở hòm đầu nên không kêu lại.
   airdrop(m) {
     addPickup(m.pickup);
+    if (m.quiet) return;
     Sfx.warning();
     const caller = m.by === null ? null : m.by === state.myId ? 'BẠN' : (infos.get(m.by)?.name ?? '...').toUpperCase();
     announce(caller ? `${caller} GỌI MÁY BAY THẢ RADIO GỌI BOM!` : 'MÁY BAY TIẾP TẾ ĐANG TỚI!');
@@ -80,7 +84,7 @@ export const pickupHandlers = {
     announce('CÓ THUỐC MỚI TRÊN SÂN!');
   },
 
-  // Có người vứt vũ khí (còn đạn) xuống đất: ai cũng thấy và nhặt được.
+  // Có vũ khí rơi ra sân (bấm G, người chết văng cả túi, lựu đạn thưởng không vừa túi): ai cũng thấy và nhặt được.
   drop(m) {
     addPickup(m.pickup);
     if (m.by === state.myId) Sfx.thud(0, 0.5);
@@ -92,7 +96,7 @@ export const pickupHandlers = {
     if (pickup) {
       if (m.by === state.myId) {
         Sfx.pickup(0, 1);
-        announcePickup(pickup);
+        announcePickup(pickup, m.bonus);
       } else {
         playAt('pickup', pickup.root.position);
       }

@@ -28,7 +28,7 @@ class Room {
     this.nextStrikeId = 1;
     this.lastTargetedAt = new Map(); // id người chơi → mốc Date.now() lần gần nhất bị sét nhắm
     this.icePatches = []; // vũng băng do lựu đạn băng tạo ra: { id, x, z, r, endsAt } (ice.js)
-    this.nuke = null; // quả bom hạt nhân đang tới: { id, ownerId, at, view (tin 'nuke' đã gửi), startedAt, timer }
+    this.nuke = null; // quả bom hạt nhân đang tới: { id, ownerId, at (điểm rơi [x, y, z]), view (tin 'nuke' đã gửi), startedAt, timer } (nuke.js)
     this.nextNukeId = 1;
     this.event = null; // sự kiện đang chạy: { kind, targetId, bounty, introEndsAt, endsAt } (events.js)
     this.eventPlan = []; // các sự kiện sẽ xảy ra trong trận: { kind, at } (events.js)
@@ -38,7 +38,6 @@ class Room {
     this.nextAirdropAt = 0; // mốc Date.now() máy bay tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing')
     this.nextPotionAt = 0; // mốc Date.now() lọ thuốc tiếp theo xuất hiện (chỉ có nghĩa khi đang 'playing', xem potionDrops.js)
     this.ranking = []; // bảng xếp hạng của trận vừa kết thúc
-    this.result = null; // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (match.js)
   }
 
   setMap(map) {

@@ -48,7 +48,8 @@ function addMarker(root, beam = null) {
 // `hooks.onLand(pickup)`: hòm vừa chạm đất; `hooks.onPlane(pickup, position | null)`: máy bay di chuyển / biến mất (để phát tiếng).
 // `dropped`: vũ khí người chơi vứt ra, chỉ có vũ khí lơ lửng sát đất và vòng sáng (không máy bay, hòm, khói).
 // `potion` (thay cho `weapon`): lọ thuốc, dựng như vũ khí vứt ra nhưng là lọ thuốc, nhặt là uống ngay.
-export function createPickup({ id, weapon, potion = null, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false, smokeKind = null }, hooks = {}) {
+// `bonus`: lựu đạn thưởng trong hòm, xoay cùng vũ khí chính, lệch sang cạnh và nhỏ hơn (AIRDROP.bonusOffset).
+export function createPickup({ id, weapon, potion = null, bonus = null, ammo, x, z, y, heading, speed, releaseIn, landIn, dropped = false, smokeKind = null }, hooks = {}) {
   const now = performance.now();
   const ground = heightAt(x, z);
   const root = new TransformNode('pickup' + id, scene);
@@ -75,13 +76,23 @@ export function createPickup({ id, weapon, potion = null, ammo, x, z, y, heading
     disposed: false,
   };
   if (landIn <= 0) land(pickup); // đã nằm sẵn trên sân, không có hiệu ứng chạm đất
-  (potion ? createPotionModel(potion) : createWeaponModel(weapon)).then((model) => {
-    if (!model) return;
-    if (pickup.disposed) model.dispose();
-    else model.parent = spin;
-  });
+  attachModel(pickup, potion ? createPotionModel(potion) : createWeaponModel(weapon));
+  if (bonus && !dropped) attachModel(pickup, createWeaponModel(bonus), AIRDROP.bonusOffset);
   updatePickup(pickup, 0);
   return pickup;
+}
+
+// Gắn model (nạp xong) vào phần xoay; `offset` = { x, y, scale } so với vũ khí chính. Vật nhặt đã bị huỷ trong lúc nạp thì bỏ model.
+function attachModel(pickup, loading, offset = null) {
+  loading.then((model) => {
+    if (!model) return;
+    if (pickup.disposed) return model.dispose();
+    model.parent = pickup.spin;
+    if (!offset) return;
+    model.position.x += offset.x;
+    model.position.y += offset.y;
+    model.scaling.scaleInPlace(offset.scale);
+  });
 }
 
 function land(pickup) {

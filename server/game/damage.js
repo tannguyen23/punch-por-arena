@@ -4,6 +4,7 @@ const { respawn } = require('./spawn');
 const { clearInventory } = require('./inventory');
 const { isFrozen, shieldedFromDamage } = require('./restrictions');
 const { onPlayerDown, absorbLethal } = require('./events');
+const { spillInventory } = require('./loot');
 
 // Trừ máu `target` (đấm, đạn, tên lửa đều qua đây). `attacker` có thể là null (người bắn đã thoát) hoặc chính `target`
 // (tự dính tên lửa của mình): khi đó hạ gục không được tính điểm cho ai.
@@ -16,6 +17,9 @@ function applyDamage(room, attacker, target, amount, source = null) {
   if (target.hp > 0 || absorbLethal(room, target, attacker)) return; // trận solo: gục chỉ là thua hiệp, không mất gì
   target.dead = true;
   target.streak = 0; // chết thì mất chuỗi hạ gục
+  // Cả túi văng ra quanh xác cho người khác nhặt (chết trong hư không thì mất luôn). Chỉ khi đang đánh: ngã khỏi đảo ở phòng chờ
+  // mà cũng văng thì món khởi đầu (START_WEAPONS) bị nhân bản nằm đầy sân. Đọc thẳng room.phase vì không require được match.js (vòng).
+  if (room.phase === 'playing') spillInventory(room, target);
   clearInventory(target); // chết thì mất hết vũ khí
   if (attacker && attacker !== target) {
     attacker.kills++;

@@ -3,6 +3,7 @@
 // dựng mặt đất và tính độ cao khi di chuyển. Hàm `interpolate` phải khớp từng chữ với public/js/world/terrain.js.
 const { clamp } = require('../utils/math');
 const { distToRect } = require('../utils/geometry');
+const { ISLAND_FALL_MARGIN } = require('../config');
 
 const lerp = (a, b, t) => a + (b - a) * t;
 const smoothstep = (a, b, x) => {
@@ -170,7 +171,8 @@ function buildTerrain(spec) {
         const bridge = bridgeAt(x, z);
         if (bridge && feetY >= bridge.deckY - 0.5) return bridge.deckY;
         if (!islandAt(x, z)) return -Infinity;
-        return heightAt(x, z);
+        const ground = heightAt(x, z);
+        return feetY < ground - ISLAND_FALL_MARGIN ? -Infinity : ground; // đã rơi xuống dưới đảo: không được kéo ngược lên mặt đảo
       }
       const ground = heightAt(x, z);
       const bridge = bridgeAt(x, z);

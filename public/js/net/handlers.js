@@ -7,7 +7,7 @@ import { clearGrenades, syncGrenades } from '../fx/grenades.js';
 import { clearStrikes } from '../fx/lightning.js';
 import { setStorm } from '../fx/weather.js';
 import { clearIce, spawnIce } from '../fx/icePatch.js';
-import { clearNuke, startNuke, stopNuke } from '../fx/nuke.js';
+import { clearNuke, startNuke } from '../fx/nuke.js';
 import { setPauseVisible } from '../ui/hud.js';
 import { hideMenu, showMenuError } from '../ui/menu.js';
 import { copyRoomLink } from '../ui/lobbyHud.js';
@@ -26,23 +26,19 @@ import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
 
 // Đồng hồ của server gửi dạng "còn bao nhiêu ms"; đổi sang mốc của đồng hồ máy mình.
-function applyMatch({ phase, timeLeft, ranking, result }) {
+function applyMatch({ phase, timeLeft, ranking }) {
   state.match.phase = phase;
   state.match.endsAt = performance.now() + timeLeft;
   state.match.ranking = ranking;
-  state.match.result = result ?? null;
-  state.match.showEndAt = 0; // vào phòng lúc đang xem kết quả: hiện luôn, không đợi
 }
 
 // Bỏ những thứ đang bay / chờ nổ / còn tồn tại (server cũng bỏ khi đổi pha): tên lửa, lựu đạn, vũng băng, sét, bom hạt nhân.
-// `keepNukeAftermath`: hết trận vì bom hạt nhân thì để mây nấm và màn trắng xoá tự tan (hiện kết quả đè lên), chỉ bỏ máy bay / bom đang bay.
-function clearProjectiles({ keepNukeAftermath = false } = {}) {
+function clearProjectiles() {
   clearRockets();
   clearGrenades();
   clearIce();
   clearStrikes();
-  if (keepNukeAftermath) stopNuke();
-  else clearNuke();
+  clearNuke();
 }
 
 // Sang trận mới / về phòng chờ: dọn hòm tiếp tế, tên lửa, lựu đạn, vũng băng, sét, bom còn sót.
@@ -115,7 +111,6 @@ const messageHandlers = {
     if (!m.cancelled) {
       clearField();
       state.match.ranking = [];
-      state.match.result = null;
     }
     announce(m.map
       ? `Map mới: ${m.map.name} · Bấm F khi sẵn sàng`
@@ -127,21 +122,16 @@ const messageHandlers = {
     state.match.phase = 'playing';
     state.match.endsAt = performance.now() + m.duration;
     state.match.ranking = [];
-    state.match.result = null;
     Sfx.horn();
     announce('TRẬN MỚI BẮT ĐẦU!');
   },
 
   end(m) {
-    const byNuke = m.result?.reason === 'nuke';
-    clearProjectiles({ keepNukeAftermath: byNuke });
+    clearProjectiles();
     state.match.phase = 'ended';
     state.match.endsAt = performance.now() + m.intermission;
     state.match.ranking = m.ranking;
-    state.match.result = m.result;
-    state.match.showEndAt = performance.now() + m.result.showIn; // bom hạt nhân: đợi xem xong vụ nổ mới hiện bảng kết quả
-    if (byNuke) announce(`${m.result.winnerName.toUpperCase()} THẮNG!`);
-    setTimeout(() => state.match.phase === 'ended' && Sfx.fanfare(), m.result.showIn);
+    Sfx.fanfare();
   },
 
   join(m) {
@@ -151,7 +141,10 @@ const messageHandlers = {
   setpos(m) {
     state.me.x = m.x;
     state.me.z = m.z;
-    state.me.y = groundAt(m.x, m.z, state.me.y); // đứng trên đất (hoặc mặt cầu nếu đang ở trên cầu)
+    // Đứng trên đất (hoặc mặt cầu nếu đang ở trên cầu). Hồi sinh có kèm `y`: chân lúc rơi xuống hư không còn ở rất thấp,
+    // tính theo độ cao đó thì chỗ hồi sinh trên cầu nổi không nhận chân và người chơi rơi mãi. Không có đất thì giữ độ cao cũ.
+    const ground = groundAt(m.x, m.z, m.y ?? state.me.y);
+    if (Number.isFinite(ground)) state.me.y = ground;
     state.vy = 0;
     if (m.yaw !== undefined) { // dịch chuyển có hướng nhìn (sự kiện solo: quay mặt vào võ đài)
       state.yaw = m.yaw;

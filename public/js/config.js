@@ -137,7 +137,8 @@ export const GROUND_STICK = 0.25; // đi xuống dốc, cách đất dưới ng�
 export const HOTBAR_SLOTS = 3; // số ô vũ khí trong túi, khớp INVENTORY_SLOTS ở server/config.js
 export const FIST_SLOT = HOTBAR_SLOTS; // ô tay không cố định nằm sau các ô vũ khí (phím 4), khớp FIST_SLOT ở server
 export const PICKUP_RADIUS = 1.2; // khớp PICKUP_RADIUS ở server/config.js (chỉ dùng để nhắc "túi đầy")
-export const RADIO_STREAK_KILLS = 3; // hạ gục liên tiếp (không chết) để gọi máy bay thả radio gọi bom, khớp server/config.js
+export const RADIO_STREAK_KILLS = 5; // hạ gục liên tiếp (không chết) để gọi máy bay thả radio gọi bom, khớp server/config.js
+export const ISLAND_FALL_MARGIN = 2; // đảo trời: chân thấp hơn mặt đảo quá ngần này là đã rơi, không kéo lên lại; khớp server/config.js
 
 // Ảnh mặt người chơi chọn: cắt giữa về đúng cỡ này rồi gửi lên server dạng điểm ảnh RGBA thô (base64). Khớp với FACE_IMAGE của server.
 export const FACE_IMAGE = { width: 64, height: 48 };
@@ -208,25 +209,28 @@ export const NUKE = {
   },
   raidFadeMs: 1200, // còi báo động nhỏ dần ngần này khi bom bắt đầu rơi
   planeLeaveMargin: 40, // máy bay bay quá điểm thả ngần này (mét) so với lúc vào thì xoá
-  flash: { holdMs: 1200, fadeMs: 5000 }, // màn hình trắng xoá: giữ kín rồi tan dần
-  rumble: { power: 0.16, seconds: 3.5 }, // rung camera sau vụ nổ, giảm dần
+  flash: { holdMs: 1200, fadeMs: 5000, farRange: 3 }, // màn hình trắng xoá: giữ kín rồi tan dần; ở xa hơn `farRange` lần bán kính vùng nổ thì chỉ còn `minStrength`
+  minStrength: 0.2,
+  rumble: { power: 0.16, seconds: 3.5 }, // rung camera sau vụ nổ, giảm dần (nhẹ đi theo khoảng cách như màn trắng)
   bomb: { length: 3.2, radius: 0.45 }, // quả bom rơi (mét)
+  // Vòng cảnh báo đỏ (fx/nukeZone.js) từ lúc còi kêu tới lúc nổ: tường mờ ở mép vùng nổ và vành chết ngay bên trong.
+  zone: { height: 30, alpha: 0.22, killAlpha: 0.35, pulse: 4, color: [1, 0.12, 0.08] },
   cloud: {
     life: 18, // giây từ lúc nổ tới khi tan hết
-    fireballRadius: 38,
+    fireballRadius: 18,
     fireballGrow: 1.0, // giây quả cầu lửa phình ra
     fireballFade: 5, // giây quả cầu lửa tắt hẳn
     rise: 10, // giây khối mây bốc lên tới đỉnh
-    stemHeight: 88,
-    stemBottom: 10, // bán kính chân / đỉnh cột khói
-    stemTop: 15,
-    capRadius: 44, // bán kính tán nấm khi nở hết
+    stemHeight: 55,
+    stemBottom: 5, // bán kính chân / đỉnh cột khói
+    stemTop: 8,
+    capRadius: 24, // bán kính tán nấm khi nở hết
     capGrow: 7, // giây tán nấm nở ra
     puffs: 30, // số cụm mây tạo thành tán nấm
     fadeFrom: 12, // giây bắt đầu mờ dần
-    shockRadius: 240, // sóng xung kích lan trên mặt đất
+    shockRadius: 70, // sóng xung kích lan trên mặt đất (rộng hơn vùng nổ cho đẹp, không gây sát thương)
     shockTime: 3,
-    domeRadius: 170, // vòm sóng xung kích
+    domeRadius: 40, // vòm sóng xung kích
     domeTime: 2.2,
   },
 };
@@ -237,6 +241,7 @@ export const AIRDROP = {
   crateHover: 1.6, // vũ khí trong hòm lơ lửng cao ngần này trên mặt đất sau khi hòm chạm đất
   dropHover: 0.6, // vũ khí người chơi vứt ra (không có hòm) lơ lửng thấp hơn
   dropBeam: { height: 4, diameter: 0.7 }, // cột sáng vàng của vũ khí vứt ra (hòm tiếp tế không có cột sáng, đã có khói đỏ)
+  bonusOffset: { x: 0.55, y: -0.35, scale: 0.8 }, // lựu đạn thưởng trong hòm: lệch sang cạnh vũ khí chính, nhỏ hơn chút
   sway: 0.18, // hòm đung đưa dưới dù (radian)
   smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì cột khói dựng sẵn cả cột
   // Cột khói ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.

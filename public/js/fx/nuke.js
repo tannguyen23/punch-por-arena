@@ -1,12 +1,13 @@
-// Radio gọi bom hạt nhân đang diễn ra. Server báo 'nuke' (các mốc thời gian + đường bay) và 'nukeboom' lúc bom nổ; ở đây là phần nghe và nhìn:
-// radio nói chuyện → còi báo động → máy bay bay qua → bom rơi (tiếng bom rít) → nổ (tiếng nổ, trắng xoá màn hình, mây nấm).
-// Âm thanh chạy theo các mốc server gửi nên mọi người trong phòng nghe cùng lúc.
+// Radio gọi bom hạt nhân đang diễn ra. Server báo 'nuke' (điểm rơi, vùng nổ, các mốc thời gian + đường bay) và 'nukeboom' lúc bom nổ; ở đây là phần nghe và nhìn:
+// radio nói chuyện → còi báo động (hiện vùng đỏ quanh điểm rơi) → máy bay bay qua → bom rơi (tiếng bom rít) → nổ (tiếng nổ, trắng xoá màn hình, mây nấm).
+// Âm thanh chạy theo các mốc server gửi nên mọi người trong phòng nghe cùng lúc. Trận không kết thúc sau vụ nổ.
 import { state } from '../state.js';
 import { createAirplane } from '../entities/airplane.js';
 import { createBomb } from '../entities/bomb.js';
 import { playClip, loadClip } from '../audio/clips.js';
 import { whiteout, clearWhiteout } from '../ui/nukeFlash.js';
 import { spawnCloud, clearCloud } from './nukeCloud.js';
+import { showNukeZone, updateNukeZone, clearNukeZone } from './nukeZone.js';
 import { NUKE } from '../config.js';
 
 const { sounds } = NUKE;
@@ -17,6 +18,7 @@ let plane = null; // máy bay: { airplane, dir, traveled }
 let bomb = null;
 let clips = []; // các tiếng đang phát, để dừng khi bị huỷ
 let rumbleUntil = 0;
+let rumblePower = 0;
 let boomClip = null;
 
 // Tải trước các file âm thanh để không bị trễ ở những mốc quan trọng. Gọi sau khi âm thanh đã khởi tạo (Sfx.init).
@@ -43,17 +45,15 @@ function removeBomb() {
   bomb = null;
 }
 
-// Bỏ máy bay, bom và các tiếng đang phát của quả bom trước (mây nấm và màn hình trắng thì để tự tan).
+// Bỏ máy bay, bom, vùng đỏ và các tiếng đang phát của quả bom trước (mây nấm và màn hình trắng thì để tự tan).
 function stopCurrent() {
   clips.forEach((clip) => clip.stop(0.2));
   clips = [];
   active = null;
   removePlane();
   removeBomb();
+  clearNukeZone();
 }
-
-// Dừng máy bay, bom và tiếng đang phát nhưng để mây nấm, màn trắng xoá và tiếng nổ tự tan (hết trận vì bom hạt nhân).
-export const stopNuke = stopCurrent;
 
 // Các mốc `radioIn`, `raidIn`, `planeIn`, `dropIn`, `boomIn` là mili giây kể từ bây giờ (âm = đã qua, với người vào phòng giữa chừng).
 // Ba tiếng được hẹn giờ ngay trên đồng hồ âm thanh (audio/clips.js) chứ không đợi khung hình: người chơi để tab ở nền hay vào giữa chừng vẫn nghe đủ.
@@ -103,28 +103,46 @@ function updateBomb(t) {
 export function updateNuke(dt) {
   if (performance.now() < rumbleUntil) {
     const left = (rumbleUntil - performance.now()) / 1000 / NUKE.rumble.seconds;
-    state.shake = Math.max(state.shake, NUKE.rumble.power * left);
+    state.shake = Math.max(state.shake, rumblePower * left);
   }
   if (!active) return;
   const t = performance.now() - active.startedAt;
+  if (!active.exploded && !active.zoneShown && t >= active.raidIn) { // còi báo động kêu: hiện vùng đỏ để mọi người kịp chạy
+    active.zoneShown = true;
+    showNukeZone(active);
+  }
+  updateNukeZone(dt);
   if (!active.exploded) updateBomb(t);
   updatePlane(dt, t);
   if (!plane && ((active.exploded && active.planeLeft) || t > active.boomIn + SAFETY_MS)) stopCurrent(); // máy bay đã bay khỏi sân sau vụ nổ (hoặc tin nổ bị mất)
 }
 
-// Bom nổ (server báo, cùng lúc mọi người mất máu): tiếng nổ, trắng xoá màn hình, mây nấm và rung camera.
-export function detonateNuke({ at }) {
+// Độ mạnh của màn trắng xoá và rung (0–1) theo khoảng cách ngang từ mình tới điểm nổ (cùng cách đo với sát thương ở server):
+// trong vùng nổ là đủ, xa dần tới `farRange` lần bán kính thì còn `minStrength` (ở xa vẫn thấy loé sáng, nhưng không bị mù).
+function strengthAt(at, radius) {
+  const d = Math.hypot(state.me.x - at[0], state.me.z - at[2]);
+  const far = radius * NUKE.flash.farRange;
+  if (!(radius > 0) || d <= radius) return 1;
+  const k = Math.min(1, (d - radius) / (far - radius));
+  return 1 - k * (1 - NUKE.minStrength);
+}
+
+// Bom nổ (server báo, cùng lúc người trong vùng mất máu): tiếng nổ, trắng xoá màn hình, mây nấm và rung camera (nhẹ dần theo khoảng cách).
+export function detonateNuke({ at, radius }) {
   removeBomb();
+  clearNukeZone();
   clips.forEach((clip) => clip.stop(0.05)); // tắt radio / còi / tiếng bom rít còn dở
   clips = [];
   if (active) active.exploded = true; // máy bay vẫn bay tiếp cho tới khi ra khỏi sân
   boomClip = playClip(sounds.boom.file, sounds.boom.gain); // không nằm trong `clips`: phải kêu hết dù máy bay bay đi rồi
-  whiteout();
+  const strength = strengthAt(at, radius ?? active?.radius);
+  whiteout(strength);
   spawnCloud(at);
+  rumblePower = NUKE.rumble.power * strength;
   rumbleUntil = performance.now() + NUKE.rumble.seconds * 1000;
 }
 
-// Sang trận mới / về phòng chờ / hết trận: dừng và dọn mọi thứ của quả bom đang tới (kể cả mây nấm và màn hình trắng).
+// Sang trận mới / về phòng chờ / hết trận: dừng và dọn mọi thứ của quả bom đang tới (kể cả vùng đỏ, mây nấm và màn hình trắng).
 export function clearNuke() {
   stopCurrent();
   boomClip?.stop(0.2);
