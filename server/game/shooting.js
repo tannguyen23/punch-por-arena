@@ -36,11 +36,11 @@ function handleFire(room, p, m) {
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất
+  const pitch = clamp(m.pitch, -PITCH_LIMIT, PITCH_LIMIT);
   if (weapon.kind === 'nuke') {
-    if (startNuke(room, p)) useAmmo(p); // phòng đang có bom khác tới thì không trừ đạn
+    if (startNuke(room, p, m.yaw, pitch)) useAmmo(p); // bom rơi chỗ đang ngắm; phòng đang có bom khác tới thì không trừ đạn
     return;
   }
-  const pitch = clamp(m.pitch, -PITCH_LIMIT, PITCH_LIMIT);
   if (weapon.kind === 'rocket') launchRocket(room, p, weapon, aimDirection(m.yaw, pitch));
   else fireBullet(room, p, weapon, m.yaw, pitch);
   useAmmo(p);

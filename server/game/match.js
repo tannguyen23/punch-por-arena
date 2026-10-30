@@ -1,5 +1,5 @@
 const {
-  MATCH_INTERMISSION_MS, MATCH_TICK_MS, AIRDROP_FIRST_MS, AIRDROP_INTERVAL_MS, COUNTDOWN_MS,
+  MATCH_INTERMISSION_MS, MATCH_TICK_MS, COUNTDOWN_MS,
   POTION, TEST,
 } = require('../config');
 const config = require('../config'); // MATCH_DURATION_MS và MIN_PLAYERS_TO_START đọc lúc dùng: /admin-test đổi được khi server đang chạy
@@ -81,25 +81,23 @@ function startMatch(room) {
   room.phase = 'playing';
   room.endsAt = now + config.MATCH_DURATION_MS;
   room.ranking = [];
-  room.result = null;
-  room.nextAirdropAt = now + AIRDROP_FIRST_MS;
+  room.nextAirdropAt = now + config.AIRDROP.firstMs;
   room.nextPotionAt = now + POTION.firstMs;
   startWeather(room, now);
   planEvents(room, now);
   broadcast(room, { t: 'start', duration: config.MATCH_DURATION_MS });
 }
 
-// Kết thúc trận. Hết giờ thì thắng là người nhiều kill nhất (client tự xét từ bảng xếp hạng); bom hạt nhân nổ (`winner` = người gọi bom,
-// xem nuke.js) thì trận kết thúc ngay và người gọi bom thắng. `showIn`: client đợi ngần này ms mới hiện bảng kết quả (cho xem vụ nổ xong đã).
-function endMatch(room, { winner = null, showIn = 0 } = {}) {
+// Hết giờ: kết thúc trận, người nhiều điểm nhất thắng (client tự xét từ bảng xếp hạng). Đây là cách duy nhất trận kết thúc
+// (bom hạt nhân chỉ là đòn không kích vào một vùng, xem nuke.js).
+function endMatch(room) {
   clearProjectiles(room);
   room.phase = 'ended';
-  room.endsAt = Date.now() + showIn + MATCH_INTERMISSION_MS;
+  room.endsAt = Date.now() + MATCH_INTERMISSION_MS;
   room.ranking = [...room.players.values()]
-    .sort((a, b) => (b.id === winner?.id) - (a.id === winner?.id) || b.score - a.score) // người thắng bom đứng đầu bảng
+    .sort((a, b) => b.score - a.score)
     .map((p) => ({ id: p.id, name: p.name, kills: p.kills, score: p.score }));
-  room.result = winner ? { reason: 'nuke', winnerId: winner.id, winnerName: winner.name, showIn } : { reason: 'time', showIn: 0 };
-  broadcast(room, { t: 'end', ranking: room.ranking, intermission: showIn + MATCH_INTERMISSION_MS, result: room.result });
+  broadcast(room, { t: 'end', ranking: room.ranking, intermission: MATCH_INTERMISSION_MS });
 }
 
 // Hết giờ xem bảng xếp hạng: dọn sân, mọi người về phòng chờ và phải bấm F lại để chơi ván mới.
@@ -110,7 +108,6 @@ function returnToLobby(room) {
   clearPickups(room);
   clearProjectiles(room);
   room.ranking = [];
-  room.result = null;
   enterLobby(room, { mapChanged });
 }
 
@@ -120,15 +117,21 @@ function setReady(room, p, ready) {
   p.ready = Boolean(ready);
 }
 
-// Cứ AIRDROP_INTERVAL_MS lại có một máy bay thả hòm tiếp tế. Hòm không kịp chạm đất trước khi hết trận thì thôi không thả.
+// Máy bay tiếp tế: phòng đông thì đợt tới dày hơn và mỗi đợt nhiều hòm hơn (mỗi hòm một máy bay riêng, công thức ở AIRDROP trong config.js)
+// để ai cũng có cơ hội tranh vũ khí. Chỉ hòm đầu của đợt báo động (`quiet` cho các hòm sau) để tiếng còi không kêu dồn.
+// Hòm không kịp chạm đất trước khi hết trận thì thôi không thả.
 function runAirdrops(room, now) {
   if (now < room.nextAirdropAt) return;
   if (isPaused(room, 'airdrop')) { // sự kiện đang chạy ngưng thả hòm: dời hẹn để hết sự kiện mới tới lượt, không dồn một loạt hòm
     room.nextAirdropAt = now + config.EVENTS.retryMs;
     return;
   }
-  room.nextAirdropAt += AIRDROP_INTERVAL_MS;
-  if (now + AIRDROP_LEAD_MS < room.endsAt) launchAirdrop(room);
+  const { baseIntervalMs, perPlayerMs, minIntervalMs, playersPerCrate, maxCrates } = config.AIRDROP;
+  const n = Math.max(1, room.players.size);
+  room.nextAirdropAt += Math.max(minIntervalMs, baseIntervalMs - perPlayerMs * (n - 1));
+  if (now + AIRDROP_LEAD_MS >= room.endsAt) return;
+  const crates = Math.min(maxCrates, Math.max(1, Math.ceil(n / playersPerCrate)));
+  for (let i = 0; i < crates; i++) launchAirdrop(room, { quiet: i > 0 });
 }
 
 function tickRoom(room) {
@@ -165,7 +168,7 @@ function tickRoom(room) {
 // Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ, đang bão không
 // (hòm tiếp tế nằm trong 'pickups').
 function matchInfo(room) {
-  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, result: room.result, weather: weatherView(room), event: eventView(room) };
+  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, weather: weatherView(room), event: eventView(room) };
 }
 
 function startMatchLoop() {

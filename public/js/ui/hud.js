@@ -15,7 +15,7 @@ const hpBar = document.getElementById('hpbar');
 const damageNotice = document.getElementById('damage-notice');
 
 const HEAL_GLOW_MS = 600; // thanh máu sáng xanh ngần này sau mỗi lần máu tăng (đang tự hồi)
-const DAMAGE_REASONS = { cactus: 'Gai xương rồng', fall: 'Rơi khỏi đảo', lightning: 'Sét đánh' }; // `source` của message hit
+const DAMAGE_REASONS = { cactus: 'Gai xương rồng', fall: 'Rơi khỏi đảo', lightning: 'Sét đánh', nuke: 'Bom hạt nhân' }; // `source` của message hit
 
 let lastHp = null;
 let healTimer = null;

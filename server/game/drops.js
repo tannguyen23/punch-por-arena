@@ -1,31 +1,14 @@
-const { broadcast } = require('../net/messaging');
 const { isPlaying } = require('./match');
 const { takeActive } = require('./inventory');
 const { cantAct } = require('./restrictions');
-const { pickupView } = require('./pickups');
+const { tossLoot } = require('./loot');
 
-// Phím G: vứt vũ khí đang cầm xuống chân, về tay không. Còn đạn thì nằm lại trên sân cho người khác nhặt;
-// hết đạn / dao gãy thì vứt luôn (không ai cần nhặt vũ khí rỗng).
+// Phím G: vứt vũ khí đang cầm, về tay không. Vũ khí văng ra trước mặt (loot.js) cho người khác nhặt; kể cả vũ khí đã hết đạn
+// cũng nằm lại trên sân (cùng loại thì nhặt vào chỉ để gộp ô, không thì chiếm một ô rỗng), không biến mất.
 function handleDrop(room, p) {
   if (!isPlaying(room) || p.dead || cantAct(room, p)) return;
   const slot = takeActive(p);
-  if (!slot || slot.ammo === 0) return;
-  const now = Date.now();
-  const pickup = {
-    id: room.nextPickupId++,
-    weapon: slot.weapon,
-    ammo: slot.ammo,
-    x: +p.x.toFixed(2),
-    z: +p.z.toFixed(2),
-    y: +room.terrain.heightAt(p.x, p.z).toFixed(2),
-    heading: 0,
-    releaseAt: now,
-    landsAt: now,
-    dropped: true,
-    ignore: p.id, // đang đứng trên nó, không tự nhặt lại ngay (xem tryPickup)
-  };
-  room.pickups.set(pickup.id, pickup);
-  broadcast(room, { t: 'drop', by: p.id, pickup: pickupView(pickup, now) });
+  if (slot) tossLoot(room, p, slot);
 }
 
 module.exports = { handleDrop };

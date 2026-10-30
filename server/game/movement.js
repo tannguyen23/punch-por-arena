@@ -31,9 +31,11 @@ function applyClientState(room, p, m) {
   p.x = clamp(m.x, -room.mapData.size, room.mapData.size);
   p.z = clamp(m.z, -room.mapData.size, room.mapData.size);
   p.yaw = m.yaw;
-  if (room.terrain.isSupported(p.x, p.z)) {
+  // Có chỗ đứng hay không xét theo cả độ cao chân (không chỉ mặt sân 2D): rơi dưới gầm cầu nổi / dưới đảo vẫn là đang rơi,
+  // nếu không đồng hồ rơi bị đặt lại mãi và người đó rơi không bao giờ chết để hồi sinh.
+  const ground = room.terrain.groundAt(p.x, p.z, Number.isFinite(m.y) ? m.y : p.y);
+  if (Number.isFinite(ground)) {
     p.fallStartedAt = 0;
-    const ground = room.terrain.groundAt(p.x, p.z, Number.isFinite(m.y) ? m.y : -Infinity);
     p.y = Number.isFinite(m.y) ? clamp(m.y, ground - 0.5, ground + 4) : ground;
   } else {
     const now = Date.now();

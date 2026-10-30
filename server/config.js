@@ -37,11 +37,17 @@ module.exports = {
   CACTUS_DAMAGE_COOLDOWN_MS: 1200,
   CACTUS_CONTACT_TOLERANCE: 0.1,
   VOID_FALL_DEATH_MS: 2200,
+  // Đảo trời: chân thấp hơn mặt đảo quá ngần này (đã rơi khỏi mép) thì coi như đang rơi dù đứng dưới đảo, không kéo ngược lên.
+  // Khớp ISLAND_FALL_MARGIN ở public/js/config.js (groundAt hai bên phải giống nhau).
+  ISLAND_FALL_MARGIN: 2,
 
   // Vũ khí trên sân
   PICKUP_RADIUS: 1.2, // đi vào trong bán kính này là nhặt
   PICKUP_MIN_GAP: 4, // khoảng cách tối thiểu giữa hai vũ khí
   INVENTORY_SLOTS: 3, // số ô vũ khí trong túi (chưa kể ô tay không cố định), khớp HOTBAR_SLOTS ở public/js/config.js
+  // Vũ khí rơi ra sân (server/game/loot.js): bấm G thì vũ khí văng ra trước mặt ngần này (mét) cho nhìn thấy;
+  // chết thì cả túi văng ra quanh xác trong vòng `deathSpread` mét. Nằm trên sân tới hết trận.
+  LOOT: { tossDistance: 1.6, deathSpread: 1.8 },
 
   // Phòng và phòng chờ
   ROOM_MAX_PLAYERS: 8, // số người tối đa trong một phòng
@@ -69,8 +75,19 @@ module.exports = {
 
   // Hòm tiếp tế (thả dù từ máy bay, kiểu PUBG). Máy bay bay thẳng qua điểm thả, thả hòm khi ở ngay trên đó,
   // hòm rơi dù xuống chạm đất mới nhặt được. Đợt cuối chỉ thả nếu hòm kịp chạm đất trước khi hết trận.
-  AIRDROP_FIRST_MS: 20000, // máy bay đầu tiên xuất hiện sau ngần này từ lúc bắt đầu trận
-  AIRDROP_INTERVAL_MS: 30000, // mỗi ngần này lại có một máy bay
+  // Phòng đông thì máy bay tới dày hơn và mỗi đợt nhiều hòm hơn (match.js `runAirdrops`):
+  //   khoảng cách = max(minIntervalMs, baseIntervalMs − perPlayerMs × (số người − 1)), số hòm = ceil(số người / playersPerCrate) (tối đa maxCrates).
+  // Mỗi hòm có một vũ khí chính (súng lục / AK / tên lửa theo `dropWeight`) và `bonusChance` cơ hội kèm một lựu đạn trong `bonus`.
+  AIRDROP: {
+    firstMs: 10000,
+    baseIntervalMs: 28000,
+    perPlayerMs: 3000,
+    minIntervalMs: 12000,
+    playersPerCrate: 3,
+    maxCrates: 3,
+    bonusChance: 0.35,
+    bonus: ['frag', 'flashbang', 'icegrenade'],
+  },
   PLANE_SPEED: 40, // m/giây
   PLANE_APPROACH: 160, // máy bay xuất hiện cách điểm thả ngần này (mét) rồi bay tới
   PLANE_ALTITUDE: 45, // độ cao bay so với mặt đất ở điểm thả (mét)
@@ -216,10 +233,12 @@ module.exports = {
   NUKE_PLANE_SPEED: 110, // m/giây
   NUKE_PLANE_APPROACH: 250, // máy bay xuất hiện cách điểm thả ngần này (mét) rồi bay thẳng qua
   NUKE_PLANE_ALTITUDE: 70, // độ cao bay so với mặt đất ở điểm thả
-  NUKE_FALL_MS: 3000, // bom rơi từ máy bay xuống đất (khớp độ dài falling bomb.mp3 ≈ 3s), hết thì nổ và mọi người chết
-  NUKE_END_SCREEN_MS: 7000, // sau vụ nổ trận kết thúc ngay (người gọi bom thắng) nhưng bảng kết quả chỉ hiện sau ngần này để xem xong màn trắng xoá và mây nấm
+  NUKE_FALL_MS: 3000, // bom rơi từ máy bay xuống đất (khớp độ dài falling bomb.mp3 ≈ 3s), hết thì nổ
+  // Vùng nổ: bom rơi xuống chỗ người gọi đang ngắm (xa nhất `maxRange` mét). Trong `killRadius` mét chết ngay, từ đó tới `radius`
+  // sát thương giảm dần về 0. Người gọi không được miễn. Trận đấu vẫn tiếp tục.
+  NUKE_AREA: { radius: 25, killRadius: 15, maxRange: 120 },
   // Radio gọi bom: số lần hạ gục liên tiếp (không chết) để gọi máy bay thả hòm chứa radio, và hòm rơi cách người gọi chừng này (mét).
-  RADIO_STREAK_KILLS: 3, // khớp RADIO_STREAK_KILLS ở public/js/config.js
+  RADIO_STREAK_KILLS: 5, // khớp RADIO_STREAK_KILLS ở public/js/config.js
   RADIO_DROP_DISTANCE: 8,
   // Hòm tiếp tế thường không còn radio. Để thử có thể cho mọi người bắt đầu với radio: [{ weapon: 'nuke', ammo: 1 }].
   START_WEAPONS: [],

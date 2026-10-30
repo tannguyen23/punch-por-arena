@@ -34,8 +34,6 @@ export const state = {
     endsAt: 0, // mốc performance.now() khi hết trận (hoặc hết giờ nghỉ)
     wave: null, // hòm tiếp tế sắp chạm đất: { at: mốc performance.now() }
     ranking: [], // bảng xếp hạng khi hết trận: [{ id, name, kills, score }]
-    result: null, // kết quả trận vừa kết thúc: { reason: 'time' | 'nuke', winnerId?, winnerName?, showIn } (server/game/match.js)
-    showEndAt: 0, // mốc performance.now() từ đó mới hiện bảng kết quả (sau bom hạt nhân đợi xem xong vụ nổ)
   },
   potion: null, // thuốc mình đang uống: { id, endsAt } (mốc performance.now()), null = không; chỉ số từng loại ở potionTypes
   potionTypes: {}, // id → { name, scale, hpMult, speedMult, collision, durationMs } do server gửi (server/game/potions.js)

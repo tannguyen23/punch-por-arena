@@ -1,10 +1,13 @@
 const { PICKUP_RADIUS, PICKUP_MIN_GAP, PLANE_SPEED, PLANE_APPROACH, PLANE_ALTITUDE, PARACHUTE_MS } = require('../config');
+const config = require('../config'); // AIRDROP, LOOT đọc lúc dùng
 const { randomFreePosition } = require('./spawn');
 const { randomDropWeapon, rollAmmo } = require('./weapons');
-const { addToInventory } = require('./inventory');
+const { addToInventory, selectSlot } = require('./inventory');
 const { broadcast } = require('../net/messaging');
 const { cantAct } = require('./restrictions');
 const { drinkPotion } = require('./potions');
+const { pickupView } = require('./pickupView');
+const { dropLoot, offset } = require('./loot');
 
 // Từ lúc máy bay xuất hiện tới lúc hòm chạm đất (mili giây).
 const AIRDROP_LEAD_MS = (PLANE_APPROACH / PLANE_SPEED) * 1000 + PARACHUTE_MS;
@@ -19,25 +22,28 @@ function findPickupPosition(room) {
   return pos;
 }
 
-// Hòm gửi cho client: thời điểm đổi sang "còn bao lâu" (âm = đã qua) để client tự tính theo đồng hồ của mình.
-// Máy bay đi qua (x, z) ở độ cao `y` theo hướng `heading` (cùng quy ước với yaw) đúng lúc thả, hòm rơi dù thẳng xuống.
-// `dropped`: vũ khí người chơi vứt ra hoặc lọ thuốc (nằm sẵn dưới đất, không có máy bay / hòm / khói); `potion`: lọ thuốc (thay cho `weapon`).
-function pickupView(pickup, now = Date.now()) {
-  const { id, weapon, potion, ammo, x, z, y, heading, dropped, smokeKind } = pickup;
-  return { id, weapon, potion, ammo, x, z, y, heading, dropped, smokeKind, speed: PLANE_SPEED, releaseIn: pickup.releaseAt - now, landIn: pickup.landsAt - now };
+// Hòm tiếp tế định kỳ có `AIRDROP.bonusChance` cơ hội kèm thêm một lựu đạn (chọn đều trong `AIRDROP.bonus`).
+function rollBonus() {
+  const { bonus, bonusChance } = config.AIRDROP;
+  if (!bonus.length || Math.random() >= bonusChance) return null;
+  const weapon = bonus[Math.floor(Math.random() * bonus.length)];
+  return { weapon, ammo: rollAmmo(weapon) };
 }
 
-// Máy bay xuất hiện ngay bây giờ, bay thẳng tới `pos` và thả hòm chứa `weapon` với ít đạn. Không truyền gì: máy bay tiếp tế định kỳ
-// (vũ khí ngẫu nhiên, điểm thả ngẫu nhiên, khói đỏ). `smokeKind` là màu khói ('red' | 'yellow', xem AIRDROP.smokeColors ở client);
-// `caller` là người gọi máy bay (radio gọi bom), để client báo tên.
-function launchAirdrop(room, { weapon = randomDropWeapon(), pos = findPickupPosition(room), smokeKind = 'red', caller = null } = {}) {
-  if (!weapon) return;
+// Máy bay xuất hiện ngay bây giờ, bay thẳng tới `pos` và thả hòm chứa `weapon` với ít đạn. Không truyền `weapon`: máy bay tiếp tế định kỳ
+// (vũ khí ngẫu nhiên, có thể kèm lựu đạn thưởng, khói đỏ); hòm có `weapon` truyền vào (radio) thì không có thưởng.
+// `smokeKind` là màu khói ('red' | 'yellow', xem AIRDROP.smokeColors ở client); `caller` là người gọi máy bay (radio gọi bom), để client báo tên.
+// `quiet`: hòm thứ hai trở đi của cùng một đợt, client không báo động lại.
+function launchAirdrop(room, { weapon = null, pos = findPickupPosition(room), smokeKind = 'red', caller = null, quiet = false } = {}) {
+  const main = weapon ?? randomDropWeapon();
+  if (!main) return;
   const now = Date.now();
   const releaseAt = now + (PLANE_APPROACH / PLANE_SPEED) * 1000;
   const pickup = {
     id: room.nextPickupId++,
-    weapon,
-    ammo: rollAmmo(weapon),
+    weapon: main,
+    ammo: rollAmmo(main),
+    bonus: weapon ? null : rollBonus(),
     x: +pos.x.toFixed(2),
     z: +pos.z.toFixed(2),
     y: +(room.terrain.heightAt(pos.x, pos.z) + PLANE_ALTITUDE).toFixed(2),
@@ -47,7 +53,20 @@ function launchAirdrop(room, { weapon = randomDropWeapon(), pos = findPickupPosi
     landsAt: releaseAt + PARACHUTE_MS,
   };
   room.pickups.set(pickup.id, pickup);
-  broadcast(room, { t: 'airdrop', pickup: pickupView(pickup, now), by: caller?.id ?? null });
+  broadcast(room, { t: 'airdrop', pickup: pickupView(pickup, now), by: caller?.id ?? null, ...(quiet ? { quiet: true } : {}) });
+}
+
+// Lựu đạn thưởng trong hòm: vừa túi thì vào túi (vẫn cầm vũ khí chính), không vừa thì văng ra cạnh hòm
+// (phía bên kia so với người nhặt) để vứt bớt bằng G rồi nhặt sau. Trả về id lựu đạn nếu đã vào túi.
+function takeBonus(room, p, crate) {
+  const held = p.activeSlot;
+  if (addToInventory(p, crate.bonus.weapon, crate.bonus.ammo)) {
+    selectSlot(p, held);
+    return crate.bonus.weapon;
+  }
+  const away = Math.atan2(crate.x - p.x, crate.z - p.z);
+  dropLoot(room, crate.bonus, offset(crate, away, config.LOOT.tossDistance), { x: crate.x, z: crate.z, y: p.y }, { by: p.id });
+  return undefined;
 }
 
 // Người vừa vứt vũ khí đang đứng ngay trên nó: phải bước ra khỏi bán kính nhặt rồi mới nhặt lại được.
@@ -58,6 +77,7 @@ function blockedFor(pickup, p, near) {
 }
 
 // Đi tới gần hòm đã chạm đất thì nhặt luôn vào túi đồ và cầm lên (cùng loại thì cộng dồn đạn). Túi đầy thì hòm nằm lại. Lọ thuốc thì uống luôn.
+// Hòm có lựu đạn thưởng: chỉ cần vũ khí chính vừa túi là nhặt được hòm (xem takeBonus).
 function tryPickup(room, p) {
   if (p.dead || cantAct(room, p)) return; // chó không cầm được gì
   const now = Date.now();
@@ -67,7 +87,8 @@ function tryPickup(room, p) {
     if (pickup.potion) drinkPotion(p, pickup.potion, now); // thuốc không vào túi: uống ngay
     else if (!addToInventory(p, pickup.weapon, pickup.ammo)) continue;
     room.pickups.delete(pickup.id);
-    broadcast(room, { t: 'pickup', id: pickup.id, by: p.id, weapon: pickup.weapon, potion: pickup.potion });
+    const bonus = pickup.bonus ? takeBonus(room, p, pickup) : undefined;
+    broadcast(room, { t: 'pickup', id: pickup.id, by: p.id, weapon: pickup.weapon, potion: pickup.potion, bonus });
     return;
   }
 }

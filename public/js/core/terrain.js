@@ -1,5 +1,7 @@
 // Địa hình do server gửi trong 'welcome': lưới độ cao (cm), mực nước và các cây cầu.
 // `interpolate` phải khớp từng chữ với server/maps/terrain.js để chân đứng đúng mặt đất nhìn thấy.
+import { ISLAND_FALL_MARGIN } from '../config.js';
+
 let terrain = null;
 
 export function setTerrain(data) {
@@ -57,7 +59,9 @@ export function groundAt(x, z, feetY) {
   if (terrain?.floating) {
     const bridge = bridgeAt(x, z);
     if (bridge && feetY >= bridge.deckY - 0.5) return bridge.deckY;
-    return islandAt(x, z) ? heightAt(x, z) : -Infinity;
+    if (!islandAt(x, z)) return -Infinity;
+    const ground = heightAt(x, z);
+    return feetY < ground - ISLAND_FALL_MARGIN ? -Infinity : ground; // đã rơi xuống dưới đảo: không được kéo ngược lên mặt đảo
   }
   const ground = heightAt(x, z);
   const bridge = bridgeAt(x, z);

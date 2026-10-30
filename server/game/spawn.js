@@ -42,8 +42,11 @@ function freePositionNear(room, center, distance) {
 
 function respawn(room, p) {
   clearPotion(p); // hồi sinh với thân hình và máu bình thường
-  Object.assign(p, randomFreePosition(room), { hp: MAX_HP, dead: false, fallStartedAt: 0 });
-  send(p.ws, { t: 'setpos', x: p.x, z: p.z });
+  const pos = randomFreePosition(room);
+  // Gửi kèm y: chân của người vừa rơi xuống hư không còn ở rất thấp, client mà tự tính mặt đất từ độ cao đó thì chỗ hồi sinh
+  // trên cầu nổi (đảo trời) không nhận chân và rơi mãi.
+  Object.assign(p, pos, { y: room.terrain.groundAt(pos.x, pos.z, Infinity), hp: MAX_HP, dead: false, fallStartedAt: 0 });
+  send(p.ws, { t: 'setpos', x: p.x, z: p.z, y: p.y });
 }
 
 module.exports = { isFree, randomFreePosition, freePositionNear, respawn };
