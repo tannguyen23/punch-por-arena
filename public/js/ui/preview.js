@@ -9,6 +9,7 @@ let engine = null;
 let scene = null;
 let avatar = null;
 let currentLook = null;
+let resizeObserver = null;
 
 const resize = () => engine?.resize();
 
@@ -46,7 +47,12 @@ export function initPreview() {
     scene.render();
   });
   addEventListener('resize', resize);
-  loadCharacter(scene).then(() => currentLook && setPreviewLook(currentLook)); // dựng lại bằng model khi nạp xong
+  resizeObserver = new ResizeObserver(resize);
+  resizeObserver.observe(canvas);
+  const previewScene = scene;
+  loadCharacter(previewScene).then(() => {
+    if (scene === previewScene && currentLook) setPreviewLook(currentLook);
+  }); // có thể đã vào phòng trước khi model nạp xong
 }
 
 export function setPreviewLook(look) {
@@ -59,6 +65,8 @@ export function setPreviewLook(look) {
 export function stopPreview() {
   if (!engine) return;
   removeEventListener('resize', resize);
+  resizeObserver?.disconnect();
+  resizeObserver = null;
   engine.stopRenderLoop();
   scene.dispose();
   engine.dispose();

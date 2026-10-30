@@ -4,9 +4,11 @@ const { timeLeft } = require('./match');
 const { allRooms } = require('./rooms');
 const { slotsView } = require('./inventory');
 const { grenadesView } = require('./grenades');
+const { updateReload } = require('./magazines');
 
 function buildSnapshot(room) {
   const now = Date.now();
+  for (const p of room.players.values()) updateReload(room, p, now);
   return {
     t: 'snap',
     ph: room.phase,
@@ -25,6 +27,7 @@ function buildSnapshot(room) {
       pt: p.potion?.id ?? 0, // thuốc đang có hiệu lực (0 = không)
       pl: p.potion ? Math.max(0, p.potion.endsAt - now) : 0, // thuốc còn bao lâu (mili giây)
       dead: p.dead,
+      st: p.dead ? 0 : Math.max(0, (p.stunnedUntil ?? 0) - now),
       kills: p.kills,
       ks: p.streak, // chuỗi hạ gục liên tiếp
       score: p.score,
@@ -33,7 +36,9 @@ function buildSnapshot(room) {
       pn: p.dog && p.poopNextAt ? Math.max(0, p.poopNextAt - now) : 0, // còn bao lâu (ms) hồi thêm một cục; 0 = đã đầy
       w: p.weapon,
       a: p.ammo, // số đạn còn lại (null = dùng mãi)
-      s: slotsView(p), // túi đồ: [vũ khí, đạn] hoặc 0 từng ô
+      mg: p.magazine,
+      rl: p.reload ? Math.max(0, p.reload.endsAt - now) : 0,
+      s: slotsView(p), // túi đồ: [vũ khí, tổng đạn, đạn trong băng] hoặc 0 từng ô
       as: p.activeSlot, // ô đang cầm (bằng số ô vũ khí = ô tay không)
       r: p.ready ? 1 : 0,
     })),

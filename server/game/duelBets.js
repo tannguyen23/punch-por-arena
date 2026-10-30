@@ -1,7 +1,7 @@
 const { DUEL } = require('../config');
 const { send } = require('../net/messaging');
 
-// Cược của sự kiện solo: `ev.bets` là Map người xem → võ sĩ mình chọn (0 hoặc 1, theo thứ tự `ev.fighters`).
+// Cược võ đài: `ev.bets` là Map người xem → đội mình chọn (0 hoặc 1, theo thứ tự `ev.teams`).
 // Mỗi người một cược `DUEL.stake` điểm, đổi ý được tới hết giai đoạn cược. Kết thúc: đúng +stake, sai −stake (không xuống dưới 0).
 
 function countBets(ev) {

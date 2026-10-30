@@ -34,6 +34,7 @@ function dropLoot(room, item, spot, from, { by = null, ignore = null } = {}) {
     id: room.nextPickupId++,
     weapon: item.weapon,
     ammo: item.ammo,
+    magazine: item.magazine,
     x: +pos.x.toFixed(2),
     z: +pos.z.toFixed(2),
     y: +pos.y.toFixed(2),
@@ -42,6 +43,7 @@ function dropLoot(room, item, spot, from, { by = null, ignore = null } = {}) {
     landsAt: now,
     dropped: true,
     ignore,
+    duelLoot: room.event?.kind === 'duel' && room.event.fighters.includes(by),
   };
   room.pickups.set(pickup.id, pickup);
   broadcast(room, { t: 'drop', by, pickup: pickupView(pickup, now) });

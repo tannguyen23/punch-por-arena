@@ -16,16 +16,20 @@ function moveTo(room, p, { x, z }, lookX, lookZ) {
   send(p.ws, { t: 'setpos', x, z, yaw: p.yaw });
 }
 
-// Mỗi hiệp: hai võ sĩ đứng hai bên tâm, đối mặt nhau, máu đầy, còn sống.
-function placeFighters(room, fighters) {
-  const { x, z } = room.mapData.ring;
-  const spots = [{ x: x - DUEL.fighterOffset, z }, { x: x + DUEL.fighterOffset, z }];
-  fighters.forEach((p, i) => {
+// Mỗi đội một phía; giãn hàng theo bề rộng võ đài để không chồng lên nhau.
+function placeFighters(room, teams) {
+  const { x, z, half } = room.mapData.ring;
+  const offset = Math.min(DUEL.fighterOffset, half - DUEL.fighterMargin);
+  const span = Math.max(0, half - DUEL.fighterMargin - DUEL.formationInset);
+  teams.forEach((players, side) => players.forEach((p, i) => {
     p.dead = false;
     p.hp = p.maxHp;
     p.lastHurtAt = 0;
-    moveTo(room, p, spots[i], spots[1 - i].x, z);
-  });
+    p.stunnedUntil = 0;
+    p.sprinting = false;
+    const rowZ = z + (players.length > 1 ? (i / (players.length - 1) * 2 - 1) * span : 0);
+    moveTo(room, p, { x: x + (side === 0 ? -offset : offset), z: rowZ }, x, rowZ);
+  }));
 }
 
 // Vòng quanh võ đài, ngoài dây ít nhất `spectatorGap`, trong phạm vi `leash`, chỗ trống không đè lên vật cản. Hết cách thì đứng sát dây phía đông.

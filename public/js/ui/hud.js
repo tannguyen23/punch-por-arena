@@ -4,6 +4,7 @@ import { updateHotbar } from './hotbar.js';
 import { updateAmmo } from './ammo.js';
 import { updateStreak } from './streak.js';
 import { updatePotion } from './potionHud.js';
+import { duelOf, isFighter } from '../core/duel.js';
 
 const pauseEl = document.getElementById('pause');
 const hpFill = document.getElementById('hpfill');
@@ -15,7 +16,7 @@ const hpBar = document.getElementById('hpbar');
 const damageNotice = document.getElementById('damage-notice');
 
 const HEAL_GLOW_MS = 600; // thanh máu sáng xanh ngần này sau mỗi lần máu tăng (đang tự hồi)
-const DAMAGE_REASONS = { cactus: 'Gai xương rồng', fall: 'Rơi khỏi đảo', lightning: 'Sét đánh', nuke: 'Bom hạt nhân' }; // `source` của message hit
+const DAMAGE_REASONS = { cactus: 'Gai xương rồng', fall: 'Rơi khỏi đảo', lightning: 'Sét đánh', nuke: 'Bom hạt nhân', tnt: 'TNT nổ' }; // `source` của message hit
 
 let lastHp = null;
 let healTimer = null;
@@ -84,6 +85,8 @@ export function updateHud(snapshotPlayers) {
   hpFill.style.width = `${(Math.max(0, state.hp) / state.maxHp) * 100}%`;
   showHealing();
   deadText.style.display = state.alive ? 'none' : 'block';
+  const duel = duelOf();
+  if (!state.alive && duel && isFighter(duel)) deadText.style.display = 'none';
   updateWeaponPanel();
   updateCrosshair();
   updateHotbar();

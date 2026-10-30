@@ -1,5 +1,7 @@
 const { INVENTORY_SLOTS, START_WEAPONS } = require('../config');
 const { WEAPONS, DEFAULT_WEAPON } = require('./weapons');
+const { isTntCarrier, isStunned } = require('./restrictions');
+const { prepareMagazine, cancelReload } = require('./magazines');
 
 // Túi đồ: `p.slots` có INVENTORY_SLOTS ô vũ khí ({ weapon, ammo } hoặc null), cộng một ô tay không cố định ở cuối (FIST_SLOT).
 // `p.activeSlot` là ô đang cầm. `p.weapon` / `p.ammo` luôn là bản sao của ô đang cầm để combat / shooting / rockets
@@ -11,7 +13,7 @@ const emptySlots = () => Array(INVENTORY_SLOTS).fill(null);
 // Túi lúc bắt đầu / hồi sinh: các món trong START_WEAPONS (config.js, để thử) vào những ô đầu, còn lại trống.
 function startingSlots() {
   const slots = emptySlots();
-  START_WEAPONS.slice(0, INVENTORY_SLOTS).forEach((item, i) => (slots[i] = { ...item }));
+  START_WEAPONS.slice(0, INVENTORY_SLOTS).forEach((item, i) => (slots[i] = prepareMagazine({ ...item })));
   return slots;
 }
 
@@ -19,10 +21,12 @@ function syncHeld(p) {
   const slot = p.slots[p.activeSlot] ?? null;
   p.weapon = slot ? slot.weapon : DEFAULT_WEAPON;
   p.ammo = slot ? slot.ammo : null;
+  p.magazine = slot ? prepareMagazine(slot).magazine ?? null : null;
 }
 
 // Chết / sang trận mới: mất hết vũ khí, về tay không (chỉ còn các món khởi đầu).
 function clearInventory(p) {
+  cancelReload(p);
   p.slots = startingSlots();
   p.activeSlot = FIST_SLOT;
   syncHeld(p);
@@ -30,6 +34,7 @@ function clearInventory(p) {
 
 // Mất sạch vũ khí kể cả món khởi đầu (người hoá chó, xem dogEvent.js).
 function stripInventory(p) {
+  cancelReload(p);
   p.slots = emptySlots();
   p.activeSlot = FIST_SLOT;
   syncHeld(p);
@@ -37,7 +42,8 @@ function stripInventory(p) {
 
 // Nhặt vũ khí: đã có cùng loại thì cộng dồn đạn vào ô đó (lựu đạn tối đa `stack` quả), không thì vào ô trống đầu tiên;
 // xong thì cầm luôn. Trả về false khi túi đầy / ô lựu đạn đã đủ quả (phải bấm G vứt bớt) để hòm nằm lại trên sân.
-function addToInventory(p, weapon, ammo) {
+function addToInventory(p, weapon, ammo, magazine) {
+  if (isTntCarrier(p.room, p)) return false;
   const stack = WEAPONS[weapon]?.stack ?? Infinity;
   let index = p.slots.findIndex((s) => s?.weapon === weapon);
   if (index >= 0) {
@@ -47,8 +53,9 @@ function addToInventory(p, weapon, ammo) {
   } else {
     index = p.slots.indexOf(null);
     if (index < 0) return false;
-    p.slots[index] = { weapon, ammo };
+    p.slots[index] = prepareMagazine({ weapon, ammo, ...(magazine === undefined ? {} : { magazine }) });
   }
+  if (p.activeSlot !== index) cancelReload(p);
   p.activeSlot = index;
   syncHeld(p);
   return true;
@@ -56,9 +63,12 @@ function addToInventory(p, weapon, ammo) {
 
 // Phím 1–4: chọn ô. Ô vũ khí trống thì bỏ qua (giống các game khác), ô tay không lúc nào cũng chọn được.
 function selectSlot(p, index) {
+  if (isStunned(p)) return;
+  if (isTntCarrier(p.room, p) && index !== FIST_SLOT) return;
   if (p.tableId != null) return;
   if (p.dead || !Number.isInteger(index) || index < 0 || index > FIST_SLOT) return;
   if (index !== FIST_SLOT && !p.slots[index]) return;
+  if (index !== p.activeSlot) cancelReload(p);
   p.activeSlot = index;
   syncHeld(p);
 }
@@ -67,6 +77,7 @@ function selectSlot(p, index) {
 function takeActive(p) {
   const slot = p.slots[p.activeSlot] ?? null;
   if (!slot) return null;
+  cancelReload(p);
   p.slots[p.activeSlot] = null;
   p.activeSlot = FIST_SLOT;
   syncHeld(p);
@@ -79,6 +90,7 @@ function useAmmo(p) {
   const slot = p.slots[p.activeSlot];
   if (!slot || slot.ammo === null) return;
   slot.ammo = Math.max(0, slot.ammo - 1);
+  if (WEAPONS[slot.weapon].magazineSize) slot.magazine = Math.max(0, slot.magazine - 1);
   if (slot.ammo === 0 && WEAPONS[slot.weapon].kind === 'throwable') {
     p.slots[p.activeSlot] = null;
     p.activeSlot = FIST_SLOT;
@@ -89,7 +101,7 @@ function useAmmo(p) {
 // Vũ khí dùng mãi (ammo null) hoặc còn đạn thì đánh / bắn được.
 const hasAmmo = (p) => p.ammo === null || p.ammo > 0;
 
-// Gửi trong snapshot: mỗi ô là [vũ khí, đạn] hoặc 0 (trống).
-const slotsView = (p) => p.slots.map((s) => (s ? [s.weapon, s.ammo] : 0));
+// Gửi trong snapshot: mỗi ô là [vũ khí, tổng đạn, đạn trong băng] hoặc 0 (trống).
+const slotsView = (p) => p.slots.map((s) => (s ? [s.weapon, s.ammo, s.magazine ?? null] : 0));
 
 module.exports = { FIST_SLOT, emptySlots, startingSlots, clearInventory, stripInventory, addToInventory, selectSlot, takeActive, useAmmo, hasAmmo, slotsView };

@@ -1,6 +1,6 @@
 const { DOG_EVENT, PLAYER_RADIUS } = require('../config');
 const { broadcast, send } = require('../net/messaging');
-const { isFrozen } = require('./restrictions');
+const { isFrozen, isStunned } = require('./restrictions');
 const { radiusOf } = require('./potions');
 
 // Kỹ năng "thả shit" của con chó trong sự kiện hoá chó (dogEvent.js): bấm Q thả một cục sau lưng, tích trữ tối đa `max` cục và hồi dần
@@ -26,7 +26,7 @@ function tickPoop(p, now) {
 // Tin 'poop': chó thả một cục sau lưng (cách chân 0.5 mét ngược hướng nhìn).
 function handlePoop(room, p) {
   const now = Date.now();
-  if (!p.dog || p.dead || room.phase !== 'playing' || isFrozen(room)) return;
+  if (!p.dog || p.dead || room.phase !== 'playing' || isFrozen(room) || isStunned(p)) return;
   if (p.poopCharges <= 0 || now - p.lastPoopAt < POOP.gapMs) return;
   if (p.poopCharges === POOP.max) p.poopNextAt = now + POOP.rechargeMs; // vừa rời mức đầy thì bắt đầu đếm hồi
   p.poopCharges--;

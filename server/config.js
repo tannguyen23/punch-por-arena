@@ -47,6 +47,12 @@ module.exports = {
   PICKUP_RADIUS: 1.2, // đi vào trong bán kính này là nhặt
   PICKUP_MIN_GAP: 4, // khoảng cách tối thiểu giữa hai vũ khí
   INVENTORY_SLOTS: 3, // số ô vũ khí trong túi (chưa kể ô tay không cố định), khớp HOTBAR_SLOTS ở public/js/config.js
+  WEAPON_RARITIES: {
+    common: { name: 'Thường', color: '#d5dce5' },
+    rare: { name: 'Hiếm', color: '#63baff' },
+    epic: { name: 'Sử thi', color: '#d18aff' },
+    legendary: { name: 'Huyền thoại', color: '#ffc857' },
+  },
   // Vũ khí rơi ra sân (server/game/loot.js): bấm G thì vũ khí văng ra trước mặt ngần này (mét) cho nhìn thấy;
   // chết thì cả túi văng ra quanh xác trong vòng `deathSpread` mét. Nằm trên sân tới hết trận.
   LOOT: { tossDistance: 1.6, deathSpread: 1.8 },
@@ -71,7 +77,7 @@ module.exports = {
   },
 
   // Trận đấu. Rút ngắn khi thử bằng --match-seconds=40.
-  MATCH_DURATION_MS: (Number(arg('match-seconds') ?? process.env.MATCH_SECONDS) || 5 * 60) * 1000,
+  MATCH_DURATION_MS: (Number(arg('match-seconds') ?? process.env.MATCH_SECONDS) || 7 * 60) * 1000,
   MATCH_INTERMISSION_MS: 15000, // thời gian xem bảng xếp hạng giữa hai trận
   MATCH_TICK_MS: 250,
 
@@ -79,7 +85,7 @@ module.exports = {
   // hòm rơi dù xuống chạm đất mới nhặt được. Đợt cuối chỉ thả nếu hòm kịp chạm đất trước khi hết trận.
   // Phòng đông thì máy bay tới dày hơn và mỗi đợt nhiều hòm hơn (match.js `runAirdrops`):
   //   khoảng cách = max(minIntervalMs, baseIntervalMs − perPlayerMs × (số người − 1)), số hòm = ceil(số người / playersPerCrate) (tối đa maxCrates).
-  // Mỗi hòm có một vũ khí chính (súng lục / AK / tên lửa theo `dropWeight`) và `bonusChance` cơ hội kèm một lựu đạn trong `bonus`.
+  // Mỗi hòm có một vũ khí chính (85% cận chiến / 15% súng theo `dropWeight`) và `bonusChance` cơ hội kèm một lựu đạn trong `bonus`.
   AIRDROP: {
     firstMs: 10000,
     baseIntervalMs: 28000,
@@ -131,11 +137,19 @@ module.exports = {
     tailMs: 20000, // sự kiện phải xong trước lúc hết trận ngần này
     introMs: (Number(arg('event-intro-seconds') ?? process.env.EVENT_INTRO_SECONDS) || 6) * 1000,
     retryMs: 3000, // tới hẹn mà chưa bắt đầu được (đang có bom, thiếu người sống...) thì thử lại sau ngần này
-    only: arg('event-kind') ?? process.env.EVENT_KIND ?? null, // chỉ chạy loại sự kiện này ('dog' | 'duel') để thử: --event-kind=duel
+    only: arg('event-kind') ?? process.env.EVENT_KIND ?? null, // chỉ chạy loại sự kiện này ('dog' | 'duel' | 'tnt') để thử
     // Danh sách loại sự kiện được phép, theo thứ tự khi chạy chế độ test: --events=dog,duel. Rỗng = tất cả.
     sequence: (arg('events') ?? process.env.EVENTS ?? '').split(',').map((kind) => kind.trim()).filter(Boolean),
     count: Number(arg('event-count') ?? process.env.EVENT_COUNT) || null, // số sự kiện mỗi trận (mặc định theo độ dài trận)
     testGapMs: (Number(arg('event-gap-seconds') ?? process.env.EVENT_GAP_SECONDS) || 1.5) * 1000, // nghỉ giữa hai sự kiện khi test
+  },
+  TNT_EVENT: {
+    speedMult: 1.25,
+    minFuseMs: 15000,
+    maxFuseMs: 45000,
+    penalty: 100,
+    reward: 30,
+    explosionRadius: 3,
   },
   // Sự kiện "hoá chó" (server/game/dogEvent.js): một người ngẫu nhiên thành chó, mất hết vũ khí, chỉ chạy được.
   // Bị hạ: người hạ gục được `bounty` điểm (cộng thêm điểm hạ gục thường). Chạy thoát tới hết giờ: chính con chó được `bounty` điểm.
@@ -148,25 +162,31 @@ module.exports = {
     poop: { max: 3, rechargeMs: 8000, gapMs: 700, radius: 1.5, jumpClear: 0.5, slowMs: 5000 },
   },
 
-  // Sự kiện "solo võ đài" (server/game/duelEvent.js): hai người ngẫu nhiên bị nhốt trong võ đài đánh tay không BO3, những người còn lại
-  // đứng xem quanh võ đài (không đánh được) và cược điểm xem ai thắng. Mỗi giai đoạn: `betMs` cược, mỗi hiệp đánh tới khi một người cạn máu (KHÔNG giới hạn giờ;
-  // `stallMs` là lưới chống treo: không ai trúng đòn ngần đó thì hiệp kết thúc, ai còn nhiều máu hơn thắng), nghỉ `breakMs` giữa hai hiệp, `finishMs` xem người thắng sau hiệp cuối. Thắng `winsNeeded` hiệp là thắng trận
-  // (2 = BO3). Cược: đặt `stake` điểm vào một võ sĩ, đúng +stake, sai −stake (điểm không xuống dưới 0). Võ sĩ thắng nhận `prize` điểm.
-  // `roundEstimateMs` là thời gian DỰ TÍNH của một hiệp, chỉ để xếp lịch: tổng dự tính (intro + cược + 3 hiệp + 2 lần nghỉ + xem) phải vừa một "ô" sự kiện
+  // Võ đài BO1: chia ngẫu nhiên hai đội cân người, số lẻ dư một người xem/cược.
+  // Cược tối đa betMs; không có người xem hoặc tất cả đã cược thì đánh ngay. Hạ hết đội kia mới thắng.
+  // stallMs chống treo: so số người sống, rồi tổng máu. Mỗi thành viên thắng nhận prize; cược theo đội đúng +stake, sai −stake (không âm).
+  // `roundEstimateMs` là thời gian DỰ TÍNH của một hiệp, chỉ để xếp lịch: tổng dự tính (intro + cược + 1 hiệp + xem) phải vừa một "ô" sự kiện
   // (xem planEvents trong events.js). Hiệp thật có thể dài hơn; sự kiện kết thúc khi xong trận hoặc khi hết trận (khi đó không ai mất điểm cược).
   DUEL: {
-    betMs: (Number(arg('duel-bet-seconds') ?? process.env.DUEL_BET_SECONDS) || 20) * 1000,
+    betMs: (Number(arg('duel-bet-seconds') ?? process.env.DUEL_BET_SECONDS) || 5) * 1000,
     roundEstimateMs: (Number(arg('duel-round-seconds') ?? process.env.DUEL_ROUND_SECONDS) || 25) * 1000, // dự tính, chỉ để xếp lịch (không phải giới hạn)
     stallMs: (Number(arg('duel-stall-seconds') ?? process.env.DUEL_STALL_SECONDS) || 20) * 1000, // không ai trúng đòn ngần này thì hiệp tự kết thúc
     breakMs: (Number(arg('duel-break-seconds') ?? process.env.DUEL_BREAK_SECONDS) || 4) * 1000,
     finishMs: (Number(arg('duel-finish-seconds') ?? process.env.DUEL_FINISH_SECONDS) || 3) * 1000,
-    winsNeeded: 2,
+    winsNeeded: 1,
     stake: 50,
     prize: 100,
     fighterOffset: 3.5, // đầu mỗi hiệp mỗi võ sĩ đứng cách tâm võ đài ngần này (hai bên đối diện nhau)
+    formationInset: 0.5,
     fighterMargin: 1.2, // võ sĩ không ra sát dây hơn ngần này: cũng là cách bịt hai lối vào ở cạnh bắc / nam
     spectatorGap: 2, // lúc bắt đầu người xem được đưa tới cách dây ít nhất ngần này
     spectatorEdge: 0.9, // người xem không được đứng gần võ đài hơn ngần này tính từ dây
+  },
+
+  DUEL_AUDIENCE: {
+    knives: 1, tomatoes: 2, knifeAmmo: 3, gapMs: 3000, splatMs: 500,
+    speed: 18, lift: 4, gravity: 18, stepMs: 20, maxFlightMs: 2500,
+    landingInset: 0.6, maxYaw: 1000000,
   },
 
   // Thuốc (server/game/potions.js, potionDrops.js): nằm sẵn trên sân (không máy bay, không hòm), nhặt là uống ngay.
@@ -185,12 +205,12 @@ module.exports = {
   BIG_PUNCH: {
     chargeMs: 800,
     slackMs: 150, // thả sớm hơn `chargeMs` ngần này vẫn tính là đủ (mạng giật)
-    cooldownMs: 8000,
+    cooldownMs: 2500,
     impactMs: 500,
     reach: 3,
-    radius: 8,
+    radius: 15,
     vertical: 4,
-    damage: 35,
+    damage: 70,
     edgeDamageMult: 0.4,
     knockSpeed: 22,
     edgeKnockMult: 0.5,
@@ -206,13 +226,15 @@ module.exports = {
     gapMs: 45000, // tạnh rồi ít nhất ngần này mới có bão tiếp
     fadeMs: 4000, // mưa nặng hạt / tạnh dần trong ngần này (client)
   },
-  // Sét: đông người thì nhiều sét hơn nhưng có trần, đứng tụm lại hoặc giữa sông / trên đồi dễ bị nhắm hơn.
+  // Sét theo đợt; đứng tụm lại hoặc giữa sông / trên đồi dễ bị nhắm hơn.
   // Luôn báo trước warnMs (vòng sáng dưới đất) để chạy kịp; trúng tâm cũng không chết người đang đầy máu.
   LIGHTNING: {
-    basePerMin: 2, // số sét mỗi phút khi bão...
-    perPlayerPerMin: 0.5, // ...cộng thêm ngần này cho mỗi người còn sống...
-    maxPerMin: 6, // ...nhưng không quá ngần này
-    minGapMs: 4000, // hai tia sét cách nhau ít nhất ngần này
+    waveCount: 10,
+    waveMs: 5000,
+    waveGapMs: 8000, // nghỉ tính từ tia cuối đánh xuống
+    pointGap: 6,
+    pointAttempts: 80, // bản đồ đảo có nhiều vùng hư không
+    stunMs: 2000,
     warnMs: 1200, // báo trước khi đánh
     damage: 25, // sát thương ở tâm
     edgeMult: 0.3, // ở mép vùng sét chỉ mất ngần này lần sát thương ở tâm

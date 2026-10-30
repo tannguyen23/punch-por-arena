@@ -2,6 +2,7 @@ const config = require('../config');
 const { broadcast } = require('../net/messaging');
 const dogEvent = require('./dogEvent');
 const duelEvent = require('./duelEvent');
+const tntEvent = require('./tntEvent');
 const { clearTableGames } = require('./tableGames');
 
 // Sự kiện ngẫu nhiên trong trận. Đầu trận lên lịch 1–3 sự kiện rải đều (mỗi sự kiện một "ô" thời gian riêng, không chồng nhau);
@@ -11,7 +12,7 @@ const { clearTableGames } = require('./tableGames');
 // nền tạm ngưng trong lúc sự kiện chạy, xem `isPaused`). Không require match.js
 // (match.js require file này).
 
-const KINDS = { dog: dogEvent, duel: duelEvent };
+const KINDS = { dog: dogEvent, duel: duelEvent, tnt: tntEvent };
 const { EVENTS, TEST } = config; // các object này được sửa tại chỗ khi chạy /admin-test nên đọc thuộc tính lúc dùng, không sao chép giá trị
 
 // Loại sự kiện được phép lúc này (đọc lại mỗi lần vì /admin-test đổi được khi server đang chạy).
@@ -50,10 +51,12 @@ function planEvents(room, now) {
 
   const longest = Math.max(...ids.map(lengthOf));
   const count = Math.min(wanted, Math.floor((end - start) / longest));
+  let previous = room.lastEventKind;
   for (let i = 0; i < count; i++) {
     const slot = (end - start) / count;
-    const kind = pickKind(ids);
+    const kind = pickKind(ids.length > 1 ? ids.filter((id) => id !== previous) : ids);
     room.eventPlan.push({ kind, at: start + slot * i + Math.random() * (slot - lengthOf(kind)) });
+    previous = kind;
   }
 }
 
@@ -82,6 +85,7 @@ function canStart(room) {
 function startEvent(room, kind, now) {
   const state = KINDS[kind].begin(room);
   if (!state) return;
+  room.lastEventKind = kind;
   clearTableGames(room, 'event');
   room.event = { kind, ...state, introEndsAt: now + EVENTS.introMs, endsAt: now + lengthOf(kind) };
   room.frozenUntil = room.event.introEndsAt;
@@ -89,25 +93,35 @@ function startEvent(room, kind, now) {
 }
 
 // Kết thúc sự kiện đang chạy: trả lại trạng thái bình thường cho người liên quan rồi báo kết quả cho cả phòng.
-function endEvent(room, { reason, winner = null }) {
+function endEvent(room, { reason, winner = null, ...result }) {
   const ev = room.event;
   if (!ev) return;
-  KINDS[ev.kind].finish(room, ev);
+  KINDS[ev.kind].finish(room, ev, reason);
   room.event = null;
   room.frozenUntil = 0;
-  broadcast(room, { t: 'eventEnd', kind: ev.kind, reason, winnerId: winner?.id ?? null, winnerName: winner?.name ?? '', bounty: ev.bounty });
+  broadcast(room, { t: 'eventEnd', kind: ev.kind, reason, winnerId: winner?.id ?? null, winnerName: winner?.name ?? '', bounty: ev.bounty, ...result });
 }
 
-// Gọi mỗi nhịp của trận khi đang 'playing'.
-function tickEvents(room, now) {
+// Gọi mỗi nhịp khi đang 'playing'; truyền applyDamage từ match.js để tránh vòng damage → events → damage.
+function tickEvents(room, now, dealDamage) {
   const ev = room.event;
   if (ev) {
-    const result = KINDS[ev.kind].tick(room, ev, now);
+    const result = KINDS[ev.kind].tick(room, ev, now, dealDamage);
     if (result) endEvent(room, result);
     return;
   }
   const next = room.eventPlan[0];
   if (!next || now < next.at) return;
+  // Sự kiện trong lịch có thể bị bỏ qua; đối chiếu lần chạy thật thay vì chỉ dựa vào hai ô kế nhau.
+  const ids = kindIds();
+  if (!TEST.enabled && ids.length > 1 && next.kind === room.lastEventKind) {
+    const choices = ids.filter((kind) => kind !== room.lastEventKind && now + lengthOf(kind) <= room.endsAt);
+    if (choices.length === 0) {
+      room.eventPlan.shift();
+      return;
+    }
+    next.kind = pickKind(choices);
+  }
   if (now + lengthOf(next.kind) > room.endsAt) { // trễ hẹn quá, không kịp xong trước khi hết trận
     room.eventPlan.shift();
     return;

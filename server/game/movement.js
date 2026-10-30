@@ -7,6 +7,14 @@ const { applyDamage } = require('./damage');
 const { isFrozen, isHeld } = require('./restrictions');
 const { checkPoopContact } = require('./poop');
 const { confinedSpot } = require('./duelRing');
+const { randomFreePosition } = require('./spawn');
+
+// TNT chặn sát thương rơi: đưa lại sân thay vì để người chơi kẹt mãi dưới đảo.
+function recoverTntFall(room, p) {
+  const pos = randomFreePosition(room);
+  Object.assign(p, pos, { y: room.terrain.groundAt(pos.x, pos.z, Infinity), fallStartedAt: 0 });
+  send(p.ws, { t: 'setpos', x: p.x, y: p.y, z: p.z });
+}
 
 // Lưới an toàn: nếu client báo vị trí chồng sâu vào người khác thì đẩy ra và bắt client cập nhật lại.
 function separate(room, p) {
@@ -42,7 +50,8 @@ function applyClientState(room, p, m) {
     p.fallStartedAt ||= now;
     p.y = Number.isFinite(m.y) ? clamp(m.y, p.y - 2, p.y + 2) : p.y;
     if (now - p.fallStartedAt >= VOID_FALL_DEATH_MS) {
-      applyDamage(room, null, p, p.hp, 'fall');
+      if (room.event?.kind === 'tnt') recoverTntFall(room, p);
+      else applyDamage(room, null, p, p.hp, 'fall');
       return;
     }
   }

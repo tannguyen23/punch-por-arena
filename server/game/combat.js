@@ -3,10 +3,11 @@ const { broadcast } = require('../net/messaging');
 const { WEAPONS } = require('./weapons');
 const { useAmmo, hasAmmo } = require('./inventory');
 const { isPlaying } = require('./match');
-const { cantAct } = require('./restrictions');
+const { cantAct, sameDuelTeam } = require('./restrictions');
 const { applyDamage } = require('./damage');
 const { wallBetween } = require('./raycast');
 const { radiusOf } = require('./potions');
+const { transferTnt } = require('./tntEvent');
 
 // Người gần nhất trong phòng nằm trong tầm `range` của vũ khí, trong góc 35° phía trước mặt người đấm,
 // không chênh độ cao quá `PUNCH_VERTICAL` và không bị tường chắn. Tầm tính từ tâm nên cộng thêm phần bán kính va chạm lớn hơn bình thường
@@ -17,7 +18,7 @@ function findPunchTarget(room, p, range) {
   let target = null;
   let best = Infinity;
   for (const o of room.players.values()) {
-    if (o === p || o.dead) continue;
+    if (o === p || o.dead || sameDuelTeam(room, p, o)) continue;
     const dx = o.x - p.x;
     const dz = o.z - p.z;
     const dist = Math.hypot(dx, dz);
@@ -42,7 +43,7 @@ function handlePunch(room, p, hand) {
   broadcast(room, { t: 'punch', id: p.id, hand });
   const target = findPunchTarget(room, p, weapon.range);
   useAmmo(p);
-  if (target) applyDamage(room, p, target, weapon.damage);
+  if (target && !transferTnt(room, p, target, now)) applyDamage(room, p, target, weapon.damage);
 }
 
 module.exports = { handlePunch };

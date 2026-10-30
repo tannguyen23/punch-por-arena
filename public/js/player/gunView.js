@@ -81,8 +81,11 @@ export function showGun(id) {
 // `lift`: 1 = vừa đổi súng (hạ xuống dưới màn hình) → 0 = đã nâng lên. Ghi chỗ đầu nòng vào state.muzzle cho lửa đầu nòng và vệt đạn.
 export function updateGunView(visible, lift) {
   root.setEnabled(visible && current !== null);
-  root.position.set(0, -GUN_VIEW.raiseDrop * lift, -GUN_VIEW.recoilBack * state.recoil);
-  root.rotation.x = -GUN_VIEW.recoilLift * state.recoil - GUN_VIEW.raiseTilt * lift; // hếch nòng lên khi giật
+  const reloadMs = state.weaponTypes[state.weapon]?.reloadMs;
+  const progress = state.reloading && reloadMs ? Math.max(0, Math.min(1, 1 - (state.reloadEndsAt - performance.now()) / reloadMs)) : 0;
+  const reload = Math.sin(progress * Math.PI);
+  root.position.set(0, -GUN_VIEW.raiseDrop * lift - GUN_VIEW.reloadDrop * reload, -GUN_VIEW.recoilBack * state.recoil);
+  root.rotation.x = -GUN_VIEW.recoilLift * state.recoil - GUN_VIEW.raiseTilt * lift - GUN_VIEW.reloadTilt * reload;
   if (!visible || !current) {
     state.muzzle = null;
     return;

@@ -58,8 +58,9 @@ function ensureViewmodel() {
 }
 
 function syncWeapon() {
-  if (state.weapon === equipped) return;
-  equipped = state.weapon;
+  const visual = state.event?.kind === 'tnt' && state.event.targetId === state.myId ? 'tnt' : state.weapon;
+  if (visual === equipped) return;
+  equipped = visual;
   showGun(isGun(equipped) ? equipped : null);
   equipLoadout(hands, isGun(equipped) ? 'fist' : equipped, WEAPON_MODELS[equipped]?.firstPersonTilt);
   raise = 1;

@@ -20,7 +20,10 @@ import { grenadeHandlers } from './grenadeHandlers.js';
 import { weatherHandlers } from './weatherHandlers.js';
 import { nukeHandlers } from './nukeHandlers.js';
 import { eventHandlers, applyEvent } from './eventHandlers.js';
+import { tntHandlers } from './tntHandlers.js';
 import { duelHandlers } from './duelHandlers.js';
+import { duelAudienceHandlers } from './duelAudienceHandlers.js';
+import { reloadHandlers } from './reloadHandlers.js';
 import { roomHandlers } from './roomHandlers.js';
 import { tableHandlers, applyTableGames } from './tableHandlers.js';
 import { applySnapshot } from './snapshot.js';
@@ -58,7 +61,10 @@ const messageHandlers = {
   ...weatherHandlers,
   ...nukeHandlers,
   ...eventHandlers,
+  ...tntHandlers,
   ...duelHandlers,
+  ...duelAudienceHandlers,
+  ...reloadHandlers,
   ...roomHandlers,
   ...tableHandlers,
 

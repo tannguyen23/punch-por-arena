@@ -8,6 +8,8 @@ export const state = {
   readyIds: new Set(), // id những người đã sẵn sàng (từ snapshot)
   myId: null,
   alive: true,
+  stunnedUntil: 0,
+  tomatoUntil: 0,
   hp: 100,
   maxHp: 100,
   arena: 20,
@@ -49,12 +51,15 @@ export const state = {
   event: null, // sự kiện đang chạy: { kind, targetId, targetName, bounty, duel?, introEndsAt, endsAt } (mốc performance.now()), xem net/eventHandlers.js; `duel` của sự kiện solo xem core/duel.js
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
   ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
+  magazine: null,
+  reloading: false,
+  reloadEndsAt: 0,
   lastFireAt: 0, // mốc performance.now() lần bắn gần nhất (xem AMMO_SYNC_GRACE_MS)
   inventory: [], // túi đồ do server gửi: { weapon, ammo } hoặc null (trống) từng ô vũ khí
   activeSlot: null, // ô đang cầm (ô tay không là FIST_SLOT trong config.js); null khi chưa có snapshot
   slotChangedAt: 0, // mốc performance.now() lần mình bấm đổi ô (xem SLOT_SYNC_GRACE_MS)
   weaponTypes: {}, // id → { kind, name, damage, range, cooldown, splash } do server gửi
-  streak: 0, // số lần mình hạ gục liên tiếp không chết (từ snapshot); đủ RADIO_STREAK_KILLS thì bấm R gọi máy bay thả radio
+  streak: 0, // số lần mình hạ gục liên tiếp không chết (từ snapshot); đủ RADIO_STREAK_KILLS thì bấm T gọi máy bay thả radio
 
   knock: { x: 0, z: 0 }, // vận tốc bị đánh văng (m/giây), tan dần, xem player/knockback.js
   bigPunch: { charging: false, charge: 0, startedAt: 0, readyAt: 0, wasDown: false }, // đấm trời giáng của người hoá to: charge 0–1, readyAt = mốc performance.now() dùng lại được (player/bigPunch.js)

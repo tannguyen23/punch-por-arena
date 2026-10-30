@@ -9,6 +9,7 @@ const { applyDamage } = require('./damage');
 const { eyeOf, pointAt, aimDirection, obstacleDistance, firstBodyHit } = require('./raycast');
 const { launchRocket } = require('./rockets');
 const { startNuke } = require('./nuke');
+const { updateReload } = require('./magazines');
 
 const pack = (p) => [p.x, p.y, p.z].map((v) => +v.toFixed(2));
 const wobble = (angle, spread) => angle + (Math.random() * 2 - 1) * spread;
@@ -32,7 +33,9 @@ function handleFire(room, p, m) {
   if (!Number.isFinite(m.yaw) || !Number.isFinite(m.pitch)) return;
   const weapon = WEAPONS[p.weapon];
   const now = Date.now();
+  updateReload(room, p, now);
   if (!FIRE_KINDS.has(weapon.kind) || !isPlaying(room) || p.dead || cantAct(room, p) || !hasAmmo(p)) return;
+  if (p.reload || (weapon.magazineSize && !(p.magazine > 0))) return;
   if (now - p.lastAttack < weapon.cooldown - FIRE_SLACK_MS) return;
   p.lastAttack = now;
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất

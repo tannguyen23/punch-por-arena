@@ -1,0 +1,37 @@
+const { test } = require('node:test');
+const assert = require('node:assert/strict');
+const { setup } = require('./helpers/tableGame');
+const { DUEL, MATCH_DURATION_MS } = require('../server/config');
+const duel = require('../server/game/duelEvent');
+
+test('Mặc định trận 7 phút, cược 5 giây; BO1 kết thúc ngay sau hiệp đầu', (t) => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000000 });
+  assert.equal(MATCH_DURATION_MS, 7 * 60 * 1000);
+  assert.equal(DUEL.betMs, 5000);
+  assert.equal(DUEL.winsNeeded, 1);
+  assert.equal(duel.debug.options.find((o) => o.key === 'bet').default, 5);
+  assert.equal(duel.debug.length.find((o) => o.key === 'round').times, 1);
+  assert.equal(duel.debug.length.find((o) => o.key === 'break').times, 0);
+  const { room } = setup();
+  room.phase = 'playing';
+  const ev = { ...duel.begin(room), kind: 'duel', introEndsAt: Date.now() };
+  room.event = ev;
+  duel.tick(room, ev, Date.now());
+  assert.equal(ev.stage, 'bet');
+  t.mock.timers.tick(4999);
+  duel.tick(room, ev, Date.now());
+  assert.equal(ev.stage, 'bet');
+  t.mock.timers.tick(1);
+  duel.tick(room, ev, Date.now());
+  assert.equal(ev.stage, 'fight');
+  assert.equal(ev.round, 1);
+  const loser = room.players.get(ev.fighters[0]);
+  assert.equal(duel.absorbLethal(room, ev, loser), true);
+  assert.equal(ev.stage, 'finish');
+  assert.equal(ev.winnerTeam, 1);
+  assert.deepEqual(ev.wins, [0, 1]);
+  t.mock.timers.tick(DUEL.finishMs);
+  const result = duel.tick(room, ev, Date.now());
+  assert.equal(result.reason, 'duel');
+  assert.deepEqual(result.winnerIds, ev.teams[1]);
+});

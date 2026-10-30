@@ -12,7 +12,8 @@ import { BIG_PUNCH } from '../config.js';
 
 const settings = () => state.potionTypes[state.potion?.id]?.bigPunch ?? null; // { chargeMs, cooldownMs } hoặc null
 
-const canUse = () => state.alive && !actionBlocked() && state.match.phase === 'playing' && state.weapon === 'fist' && settings() !== null;
+const canUse = () => state.alive && !actionBlocked() && state.match.phase === 'playing' && state.weapon === 'fist' && settings() !== null
+  && !(state.event?.kind === 'tnt' && state.event.targetId === state.myId);
 
 function startCharge(now) {
   const big = state.bigPunch;
