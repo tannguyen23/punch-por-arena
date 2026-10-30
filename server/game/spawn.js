@@ -41,6 +41,7 @@ function freePositionNear(room, center, distance) {
 }
 
 function respawn(room, p) {
+  p.stunnedUntil = 0;
   clearPotion(p); // hồi sinh với thân hình và máu bình thường
   const pos = randomFreePosition(room);
   // Gửi kèm y: chân của người vừa rơi xuống hư không còn ở rất thấp, client mà tự tính mặt đất từ độ cao đó thì chỗ hồi sinh

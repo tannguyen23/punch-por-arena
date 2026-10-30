@@ -31,6 +31,7 @@ function createPlayer(ws) {
     fallStartedAt: 0,
     regenCarry: 0,
     dead: false,
+    stunnedUntil: 0,
     kills: 0,
     streak: 0, // số lần hạ gục liên tiếp từ lần chết gần nhất (đủ RADIO_STREAK_KILLS thì gọi được máy bay thả radio)
     score: 0,
@@ -40,6 +41,8 @@ function createPlayer(ws) {
     activeSlot: FIST_SLOT,
     weapon: DEFAULT_WEAPON, // bản sao của ô đang cầm (inventory.js giữ cho khớp)
     ammo: null, // số đạn còn lại của vũ khí đang cầm; null = dùng mãi (tay không, vũ khí cận chiến cũ)
+    magazine: null,
+    reload: null,
     joined: false,
     name: '',
     look: null,

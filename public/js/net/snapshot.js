@@ -11,9 +11,22 @@ import * as Sfx from '../audio/sfx.js';
 // Vũ khí đang cầm và ô đang chọn. Vừa bấm đổi ô (player/inventory.js) thì snapshot có thể còn là ô cũ: đợi một lúc.
 function syncHeld(p) {
   const now = performance.now();
+  if (state.event?.kind === 'tnt' && state.event.targetId === state.myId) {
+    state.weapon = 'fist';
+    state.ammo = null;
+    state.magazine = null;
+    state.reloading = false;
+    state.activeSlot = p.as;
+    return;
+  }
   if (now - state.slotChangedAt < SLOT_SYNC_GRACE_MS) return;
   // Đạn trừ ngay khi bắn (player/attack.js); snapshot tới chậm hơn nên chỉ ghi đè khi đổi vũ khí hoặc đã ngừng bắn một lúc.
-  if (p.w !== state.weapon || now - state.lastFireAt > AMMO_SYNC_GRACE_MS) state.ammo = p.a;
+  if (p.w !== state.weapon || p.rl > 0 || state.reloading || now - state.lastFireAt > AMMO_SYNC_GRACE_MS) {
+    state.ammo = p.a;
+    state.magazine = p.mg ?? null;
+  }
+  state.reloading = p.rl > 0;
+  state.reloadEndsAt = p.rl > 0 ? now + p.rl : 0;
   state.weapon = p.w; // player/viewmodel.js tự đổi vũ khí cầm trên tay khi thấy giá trị này đổi
   state.activeSlot = p.as;
 }
@@ -26,10 +39,11 @@ function syncLocalPlayer(p) {
   state.potion = p.pt ? { id: p.pt, endsAt: performance.now() + p.pl } : null; // server gửi "còn bao lâu", đổi sang đồng hồ máy mình
   state.streak = p.ks;
   state.alive = !p.dead;
+  state.stunnedUntil = performance.now() + (p.st ?? 0);
   state.dog = p.dg === 1;
   state.poopCharges = p.pc;
   state.poopNextAt = p.pn ? performance.now() + p.pn : 0;
-  state.inventory = p.s.map((s) => (s ? { weapon: s[0], ammo: s[1] } : null));
+  state.inventory = p.s.map((s) => (s ? { weapon: s[0], ammo: s[1], magazine: s[2] ?? null } : null));
   syncHeld(p);
 }
 
@@ -47,6 +61,7 @@ function syncRemote(p) {
   r.tz = p.z;
   r.tc = p.c;
   r.sprinting = p.sp === 1;
+  r.stunnedUntil = performance.now() + (p.st ?? 0);
   r.tyaw = p.yaw;
   r.hp = p.hp;
   r.maxHp = p.mh;
@@ -60,9 +75,11 @@ function syncRemote(p) {
     r.root.position.set(p.x, p.y, p.z); // đặt thẳng tới chỗ hồi sinh, không trượt từ chỗ chết
   }
   r.dead = p.dead;
-  if (p.w !== r.weapon) {
-    r.weapon = p.w;
-    equipLoadout(r.fists, p.w, thirdPersonTilt(p.w)); // súng chĩa ra trước, vũ khí cận chiến theo cẳng tay
+  const visual = state.event?.kind === 'tnt' && state.event.targetId === p.id ? 'tnt' : p.w;
+  r.weapon = p.w;
+  if (visual !== r.visualWeapon) {
+    r.visualWeapon = visual;
+    equipLoadout(r.fists, visual, thirdPersonTilt(visual)); // súng chĩa ra trước, vũ khí cận chiến theo cẳng tay
   }
   if (!r.initialised) {
     r.root.position.set(p.x, p.y, p.z);

@@ -1,7 +1,7 @@
 import { send } from '../net/socket.js';
 import { duelOf, isFighter } from '../core/duel.js';
 
-// Phím 1 / 2 trong giai đoạn cược của sự kiện solo: cược cho võ sĩ thứ nhất / thứ hai (đổi ý được tới hết giai đoạn cược).
+// Phím 1 / 2 cược cho đội xanh / cam; đủ người chọn thì server bắt đầu đánh ngay.
 // Trả về true nếu phím đã dùng vào việc cược, để input.js không coi nó là phím đổi ô vũ khí.
 export function betOn(side) {
   const duel = duelOf();

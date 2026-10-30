@@ -13,6 +13,7 @@ import { frag } from './frag.js';
 import { flashbang } from './flashbang.js';
 import { icegrenade } from './icegrenade.js';
 import { nuke } from './nuke.js';
+import { tnt } from './tnt.js';
 
 // Hình dạng và cách cầm của từng vũ khí. Id phải khớp bảng WEAPONS ở server/game/weapons.js ('fist' không có hình).
 // Mỗi định nghĩa có `icon`, `firstPersonTilt` và MỘT trong hai cách có hình:
@@ -27,7 +28,7 @@ import { nuke } from './nuke.js';
 // Vũ khí ném (kind 'grenade', icegrenade.js): `attack: 'slide'` làm cú vung tay ném; hình dựng bằng `build` dùng lại cho quả đang bay (fx/grenades.js).
 // Có .glb thật cho vũ khí nào thì đổi định nghĩa của nó từ `build` sang `url`; nơi khác không phải sửa.
 // Thêm vũ khí mới: tạo file định nghĩa rồi đăng ký ở đây.
-export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket, frag, flashbang, icegrenade, nuke };
+export const WEAPON_MODELS = { sword, dagger, axe, spear, gauntlet, thunder, knife, pistol, ak47, rocket, frag, flashbang, icegrenade, nuke, tnt };
 
 const templates = new Map(); // id → Promise<template>
 

@@ -10,7 +10,7 @@ const { MAX_HP, PLAYER_RADIUS, POTION, BIG_PUNCH } = require('../config');
 // Client nhận bảng này trong 'welcome' (potionInfo) để dựng hình, HUD và va chạm, không có bản sao riêng.
 // Thêm thuốc mới: thêm một dòng vào đây, màu nước thuốc trong POTION ở public/js/config.js.
 const POTIONS = {
-  grow: { name: 'Thuốc hoá to', scale: 3, hpMult: 2, speedMult: 0.8, collision: 1.5, bigPunch: true, dropWeight: 50 },
+  grow: { name: 'Thuốc hoá to', scale: 3, hpMult: 4, speedMult: 0.8, collision: 1.5, bigPunch: true, dropWeight: 50 },
   shrink: { name: 'Thuốc hoá nhỏ', scale: 0.5, hpMult: 0.5, speedMult: 1.4, collision: 0.7, dropWeight: 50 }, // 2 × 0.7 × PLAYER_RADIUS phải > HARD_OVERLAP
 };
 

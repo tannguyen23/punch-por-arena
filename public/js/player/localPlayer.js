@@ -8,7 +8,8 @@ import { updateViewmodel } from './viewmodel.js';
 import { updateSprint } from './sprint.js';
 import { slideVelocity, settleSlide, resetSlide } from './iceSlide.js';
 import { groundAt, waterLevel } from '../core/terrain.js';
-import { isImmobile } from '../core/freeze.js';
+import { isImmobile, isStunned } from '../core/freeze.js';
+import { tntSpeedMult } from '../core/tnt.js';
 import { sizeOf, speedOf } from '../core/bodySize.js';
 import { updateBodyView } from './bodyView.js';
 import { applyKnockback, resetKnockback } from './knockback.js';
@@ -34,7 +35,7 @@ function applyMovement(dt) {
   state.crouching = keys.has('KeyC') && !state.dog; // chó không ngồi
   updateSprint(moving && !state.crouching && (keys.has('ShiftLeft') || keys.has('ShiftRight')), dt);
   const speed = MOVE_SPEED * (state.sprinting ? SPRINT_MULT : state.crouching ? CROUCH_MULT : 1) * (isWading() ? WATER_SPEED_MULT : 1)
-    * (state.dog ? DOG.speedMult : 1) * speedOf(state.potion?.id) * stinkSpeedMult();
+    * (state.dog ? DOG.speedMult : 1) * speedOf(state.potion?.id) * stinkSpeedMult() * tntSpeedMult();
   const scale = moving ? speed / len : 0;
   const { x, z } = slideVelocity((sin * fwd + cos * strafe) * scale, (cos * fwd - sin * strafe) * scale, dt);
   state.me.x += x * dt;
@@ -96,7 +97,12 @@ export function updateLocalPlayer(dt) {
   if (state.alive && state.myId !== null) {
     const { x, z } = state.me;
     if (!isImmobile()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật; võ sĩ solo ngoài hiệp cũng đứng yên
-    if (!state.tableGame) {
+    if (isStunned()) {
+      resetSlide();
+      resetKnockback();
+      state.vy = 0;
+      updateSprint(false, dt);
+    } else if (!state.tableGame) {
       applyKnockback(dt);
       applyVertical(dt);
       updateWading();

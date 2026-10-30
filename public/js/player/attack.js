@@ -26,15 +26,20 @@ const emptyText = () => (kindOf(state.weapon) === 'melee' ? 'VŨ KHÍ ĐÃ GÃY!
 function spendAmmo() {
   if (state.ammo === null) return;
   state.ammo = Math.max(0, state.ammo - 1);
+  if (state.weaponTypes[state.weapon]?.magazineSize) state.magazine = Math.max(0, state.magazine - 1);
   state.lastFireAt = performance.now();
   if (state.ammo === 0) announce(`${emptyText()} ${DROP_HINT}`);
+  else if (state.magazine === 0 && state.weaponTypes[state.weapon]?.magazineSize) announce('HẾT BĂNG! BẤM R ĐỂ THAY BĂNG');
 }
 
 // Đánh / bắn bằng vũ khí đã hết đạn: súng kêu "cạch", dao gãy thì nhắc vứt đi.
 function dryAttack() {
   state.cooldown = DRY_FIRE_COOLDOWN;
   if (kindOf(state.weapon) === 'melee') announce(`${emptyText()} ${DROP_HINT}`);
-  else Sfx.dryFire();
+  else {
+    Sfx.dryFire();
+    if (state.weaponTypes[state.weapon]?.magazineSize) announce(state.ammo > 0 ? 'BẤM R ĐỂ THAY BĂNG' : `HẾT ĐẠN! ${DROP_HINT}`);
+  }
 }
 
 // Vũ khí cận chiến (tay không, dao...): vung tay, server tìm người trúng. Dao mất một độ bền mỗi lần chém.
@@ -96,9 +101,10 @@ export function attack(button) {
   if (!state.alive || state.cooldown > 0 || state.match.phase !== 'playing') return false;
   if (state.bigPunch.charging) return false; // đang tích lực đấm lớn: tay đang giữ tư thế lấy đà
   if (actionBlocked()) return false; // chó chỉ chạy; đứng hình thì không ai đánh được; sự kiện solo chỉ hai võ sĩ trong hiệp mới đánh
+  if (state.reloading) return false;
   if (button !== 0 && button !== 2) return false;
   const kind = kindOf(state.weapon);
-  if (state.ammo === 0) dryAttack();
+  if (state.ammo === 0 || (state.weaponTypes[state.weapon]?.magazineSize && !(state.magazine > 0))) dryAttack();
   else if (kind === 'melee') punch(button);
   else if (kind === 'throwable') throwGrenade(button);
   else if (kind === 'nuke') callNuke();

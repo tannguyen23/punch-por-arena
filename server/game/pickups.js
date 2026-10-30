@@ -4,7 +4,7 @@ const { randomFreePosition } = require('./spawn');
 const { randomDropWeapon, rollAmmo } = require('./weapons');
 const { addToInventory, selectSlot } = require('./inventory');
 const { broadcast } = require('../net/messaging');
-const { cantAct } = require('./restrictions');
+const { cantAct, isTntCarrier } = require('./restrictions');
 const { drinkPotion } = require('./potions');
 const { pickupView } = require('./pickupView');
 const { dropLoot, offset } = require('./loot');
@@ -79,13 +79,15 @@ function blockedFor(pickup, p, near) {
 // Đi tới gần hòm đã chạm đất thì nhặt luôn vào túi đồ và cầm lên (cùng loại thì cộng dồn đạn). Túi đầy thì hòm nằm lại. Lọ thuốc thì uống luôn.
 // Hòm có lựu đạn thưởng: chỉ cần vũ khí chính vừa túi là nhặt được hòm (xem takeBonus).
 function tryPickup(room, p) {
-  if (p.dead || cantAct(room, p)) return; // chó không cầm được gì
+  if (p.dead || cantAct(room, p)) return;
   const now = Date.now();
   for (const pickup of room.pickups.values()) {
+    if (room.event?.kind === 'duel' && !pickup.duelLoot) continue;
+    if (isTntCarrier(room, p) && !pickup.potion) continue;
     const near = Math.hypot(pickup.x - p.x, pickup.z - p.z) < PICKUP_RADIUS;
     if (blockedFor(pickup, p, near) || !near || now < pickup.landsAt) continue;
     if (pickup.potion) drinkPotion(p, pickup.potion, now); // thuốc không vào túi: uống ngay
-    else if (!addToInventory(p, pickup.weapon, pickup.ammo)) continue;
+    else if (!addToInventory(p, pickup.weapon, pickup.ammo, pickup.magazine)) continue;
     room.pickups.delete(pickup.id);
     const bonus = pickup.bonus ? takeBonus(room, p, pickup) : undefined;
     broadcast(room, { t: 'pickup', id: pickup.id, by: p.id, weapon: pickup.weapon, potion: pickup.potion, bonus });

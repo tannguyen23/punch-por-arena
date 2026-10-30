@@ -1,10 +1,11 @@
-// Màn hình đầu: nhập tên (bắt buộc) rồi "Bắt đầu" (tạo phòng / vào phòng) hoặc "Tuỳ chỉnh nhân vật" (không bắt buộc:
-// chưa chỉnh gì thì mặc ngoại hình mặc định DEFAULT_LOOK, đã chỉnh thì nhớ trong máy).
+// Menu và tuỳ chỉnh cạnh nhau; mỗi lần tải trang random ngoại hình, giữ tên và ảnh mặt.
 import { loadProfile, saveProfile } from './profileStorage.js';
 import { initCustomize, openCustomize } from './customize.js';
 import { stopPreview } from './preview.js';
 import { initRoomList, setRoomListActive } from './roomList.js';
 import { DEFAULT_LOOK, KICKED_NOTICE_KEY } from '../config.js';
+import { initGuide } from './guide.js';
+import { randomLook } from './lookOptions.js';
 
 const ERRORS = {
   room_not_found: 'Không tìm thấy phòng này',
@@ -15,7 +16,7 @@ const ERRORS = {
   kicked: 'Bạn đã bị chủ phòng mời ra khỏi phòng',
 };
 const NAME_REQUIRED = 'Hãy nhập tên trước khi chơi';
-const PANELS = ['home', 'play', 'customize'];
+const PANELS = ['home', 'play'];
 
 const errorEl = document.getElementById('menu-error');
 
@@ -41,8 +42,9 @@ const invitedCode = () => (new URLSearchParams(location.search).get('room') ?? '
 
 // onJoin(name, look, intent) được gọi khi bấm "Tạo phòng" (intent = { create: true }) hoặc "Vào phòng" (intent = { room }).
 export function initMenu(onJoin) {
+  initGuide();
   const saved = loadProfile();
-  const look = { ...DEFAULT_LOOK, ...saved?.look };
+  const look = { ...DEFAULT_LOOK, ...randomLook(), face: saved?.look?.face ?? null };
   const nameInput = document.getElementById('name');
   const nameError = document.getElementById('name-error');
   const roomInput = document.getElementById('room-code');
@@ -50,10 +52,8 @@ export function initMenu(onJoin) {
   nameInput.value = typeof saved?.name === 'string' ? saved.name : '';
 
   const save = () => saveProfile({ name: nameInput.value.trim(), look });
-  initCustomize(look, () => {
-    save();
-    showPanel('home');
-  });
+  initCustomize(look, save);
+  openCustomize();
 
   // Tên là bắt buộc: thiếu thì quay về màn hình đầu và nhắc.
   const requireName = () => {
@@ -148,12 +148,11 @@ export function initMenu(onJoin) {
   };
 
   startButton.addEventListener('click', start);
-  nameInput.addEventListener('input', () => nameInput.value.trim() && (nameError.textContent = ''));
-  nameInput.addEventListener('keydown', (e) => e.key === 'Enter' && start());
-  document.getElementById('customize-open').addEventListener('click', () => {
-    showPanel('customize');
-    openCustomize();
+  nameInput.addEventListener('input', () => {
+    if (nameInput.value.trim()) nameError.textContent = '';
+    save();
   });
+  nameInput.addEventListener('keydown', (e) => e.key === 'Enter' && start());
   document.getElementById('play-back').addEventListener('click', () => showPanel('home'));
   createButton.addEventListener('click', createRoom);
   document.getElementById('join').addEventListener('click', joinRoom);

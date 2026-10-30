@@ -2,7 +2,7 @@ import { state } from '../state.js';
 import { isFrozen } from '../core/freeze.js';
 import { toDuelState } from '../core/duel.js';
 import { EVENT_RESULT_MS } from '../config.js';
-import { introFor, resultFor } from './eventText.js';
+import { introFor, resultFor, tntStatus } from './eventText.js';
 import * as Sfx from '../audio/sfx.js';
 
 // Giao diện sự kiện: bảng luật lúc đứng hình (có đếm ngược), dòng trạng thái trong lúc sự kiện chạy và thông báo kết quả.
@@ -46,9 +46,9 @@ function buildIntro(ev) {
 }
 
 // Tin nhắn 'event' (và `welcome.match.event` cho người vào giữa chừng): `introLeft` / `left` là mili giây còn lại.
-export function beginEvent({ kind, targetId, targetName, bounty, poop = null, duel = null, introLeft, left }) {
+export function beginEvent({ kind, targetId, targetName, bounty, poop = null, duel = null, tnt = null, introLeft, left }) {
   const now = performance.now();
-  state.event = { kind, targetId, targetName, bounty, poop, duel: duel && toDuelState(duel), introEndsAt: now + introLeft, endsAt: now + left };
+  state.event = { kind, targetId, targetName, bounty, poop, tnt, duel: duel && toDuelState(duel), introEndsAt: now + introLeft, endsAt: now + left };
   introTotal = Math.max(1, introLeft);
   buildIntro(state.event);
   lastBeep = null;
@@ -87,6 +87,9 @@ export function updateEventHud() {
   if (ev?.kind === 'dog' && !frozen) { // sự kiện solo có bảng riêng (duelHud.js)
     statusEl.textContent = `CHÓ: ${ev.targetName} · còn ${Math.max(0, Math.ceil((ev.endsAt - now) / 1000))}s · thưởng ${ev.bounty} điểm`;
     statusEl.className = ev.targetId === state.myId ? 'me' : '';
+  } else if (ev?.kind === 'tnt' && !frozen) {
+    statusEl.textContent = tntStatus(ev);
+    statusEl.className = ev.targetId === state.myId ? 'tnt me' : 'tnt';
   } else {
     statusEl.textContent = '';
   }

@@ -9,7 +9,9 @@ let drawn = null;
 
 // Số đạn (súng) hoặc độ bền (dao) của vũ khí đang cầm, góc dưới bên phải. Ẩn khi vũ khí dùng mãi (tay không...).
 export function updateAmmo() {
-  const signature = `${state.weapon}|${state.ammo}`;
+  const weapon = state.weaponTypes[state.weapon];
+  const remaining = state.reloading ? Math.max(0, Math.ceil((state.reloadEndsAt - performance.now()) / 100) / 10) : 0;
+  const signature = `${state.weapon}|${state.ammo}|${state.magazine}|${state.reloading}|${remaining}`;
   if (signature === drawn) return;
   drawn = signature;
   if (state.ammo === null) {
@@ -18,10 +20,19 @@ export function updateAmmo() {
   }
   const count = document.createElement('div');
   count.className = 'ammo-count';
-  count.textContent = `${state.ammo}`;
+  count.textContent = weapon?.magazineSize ? `${state.magazine} / ${Math.max(0, state.ammo - state.magazine)}` : `${state.ammo}`;
   const label = document.createElement('div');
   label.className = 'ammo-label';
-  label.textContent = LABELS[state.weaponTypes[state.weapon]?.kind] ?? 'ĐẠN';
+  label.textContent = state.reloading ? `ĐANG THAY BĂNG · ${remaining.toFixed(1)}s`
+    : weapon?.magazineSize ? 'TRONG BĂNG / DỰ TRỮ · R: THAY BĂNG' : LABELS[weapon?.kind] ?? 'ĐẠN';
   el.replaceChildren(count, label);
-  el.classList.toggle('low', state.ammo <= LOW_AMMO && state.weaponTypes[state.weapon]?.kind !== 'throwable'); // lựu đạn vốn ít quả
+  if (state.reloading) {
+    const progress = document.createElement('progress');
+    progress.className = 'reload-progress';
+    progress.max = weapon.reloadMs;
+    progress.value = Math.max(0, weapon.reloadMs - (state.reloadEndsAt - performance.now()));
+    progress.setAttribute('aria-label', 'Tiến trình thay băng');
+    el.append(progress);
+  }
+  el.classList.toggle('low', !state.reloading && (weapon?.magazineSize ? state.magazine : state.ammo) <= LOW_AMMO && weapon?.kind !== 'throwable');
 }

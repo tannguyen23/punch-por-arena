@@ -1,8 +1,9 @@
 const { LIGHTNING, MAP_MARGIN } = require('../config');
 const { broadcast } = require('../net/messaging');
 const { applyDamage } = require('./damage');
+const { stunPlayer } = require('./stun');
 
-// Sét trong lúc bão. Nhịp sét tăng theo số người còn sống nhưng có trần; chọn người bị nhắm theo trọng số:
+// Sét trong lúc bão đánh theo đợt; chọn người bị nhắm theo trọng số:
 // đứng tụm lại, đứng giữa sông, đứng trên cao thì dễ bị nhắm hơn. Mỗi tia báo trước LIGHTNING.warnMs (client vẽ vòng sáng)
 // rồi mới đánh, nên chạy ra khỏi vòng là thoát. Đứng dưới gầm cầu thì không bị sét đánh. Sét không tính điểm cho ai.
 
@@ -10,12 +11,6 @@ const { applyDamage } = require('./damage');
 const highGroundOf = (room) => room.terrain.minHeight + (room.terrain.maxHeight - room.terrain.minHeight) * LIGHTNING.highFraction;
 
 const alive = (room) => [...room.players.values()].filter((p) => !p.dead);
-
-// Khoảng chờ tới tia tiếp theo: trung bình theo nhịp mỗi phút, lệch ngẫu nhiên ±50%, không ngắn hơn minGapMs.
-function nextGap(count) {
-  const perMin = Math.min(LIGHTNING.maxPerMin, LIGHTNING.basePerMin + LIGHTNING.perPlayerPerMin * count);
-  return Math.max(LIGHTNING.minGapMs, (60000 / perMin) * (0.5 + Math.random()));
-}
 
 function weightOf(room, p, players) {
   const neighbours = players.filter((o) => o !== p && Math.hypot(o.x - p.x, o.z - p.z) < LIGHTNING.crowdRadius).length;
@@ -40,20 +35,33 @@ function pickTarget(room, now) {
   return null;
 }
 
-function strikePoint(room, target) {
+function strikePoint(room, target, previous) {
   const range = room.mapData.size - MAP_MARGIN;
-  if (!target) return { x: (Math.random() * 2 - 1) * range, z: (Math.random() * 2 - 1) * range };
-  const angle = Math.random() * Math.PI * 2;
-  const offset = Math.random() * LIGHTNING.jitter;
-  return { x: target.x + Math.cos(angle) * offset, z: target.z + Math.sin(angle) * offset };
+  let fallback = null;
+  for (let i = 0; i < LIGHTNING.pointAttempts; i++) {
+    const angle = Math.random() * Math.PI * 2;
+    const offset = Math.random() * LIGHTNING.jitter;
+    const x = target && i === 0 ? target.x + Math.cos(angle) * offset : (Math.random() * 2 - 1) * range;
+    const z = target && i === 0 ? target.z + Math.sin(angle) * offset : (Math.random() * 2 - 1) * range;
+    const y = room.terrain.groundAt(x, z, Infinity);
+    if (!Number.isFinite(y)) continue;
+    fallback = { x, y, z };
+    if (previous.every((p) => Math.hypot(p.x - x, p.z - z) >= LIGHTNING.pointGap)) return fallback;
+  }
+  return fallback;
 }
 
 // Báo trước một tia sét: chỗ đánh (mặt cầu nếu đánh trúng cầu) và còn bao lâu.
 function announceStrike(room, now) {
   const target = pickTarget(room, now);
   if (target) room.lastTargetedAt.set(target.id, now);
-  const { x, z } = strikePoint(room, target);
-  const strike = { id: room.nextStrikeId++, x, z, y: room.terrain.groundAt(x, z, Infinity), at: now + LIGHTNING.warnMs };
+  const point = strikePoint(room, target, room.lightningWave.points);
+  if (!point) {
+    console.warn(`Không tìm được mặt đất cho sét trong phòng ${room.code}`);
+    return;
+  }
+  room.lightningWave.points.push(point);
+  const strike = { id: room.nextStrikeId++, ...point, at: now + LIGHTNING.warnMs };
   room.strikes.push(strike);
   const pos = [strike.x, strike.y, strike.z].map((v) => +v.toFixed(2));
   broadcast(room, { t: 'lightning', id: strike.id, at: pos, in: LIGHTNING.warnMs, r: LIGHTNING.radius });
@@ -65,12 +73,14 @@ function sheltered(room, p) {
   return Boolean(bridge) && p.y < bridge.deckY - 0.5;
 }
 
-function strike(room, s) {
+function strike(room, s, now) {
   for (const p of alive(room)) {
     const dist = Math.hypot(p.x - s.x, p.z - s.z);
     if (dist >= LIGHTNING.radius || sheltered(room, p)) continue;
     const falloff = 1 - (1 - LIGHTNING.edgeMult) * (dist / LIGHTNING.radius);
+    const before = p.hp;
     applyDamage(room, null, p, LIGHTNING.damage * falloff, 'lightning');
+    if (p.hp < before && !p.dead) stunPlayer(room, p, now);
   }
 }
 
@@ -78,19 +88,26 @@ function strike(room, s) {
 function runLightning(room, now) {
   room.strikes = room.strikes.filter((s) => {
     if (now < s.at) return true;
-    strike(room, s);
+    strike(room, s, now);
     return false;
   });
-  if (room.nextStrikeAt === 0) room.nextStrikeAt = now + nextGap(alive(room).length);
   if (now < room.nextStrikeAt) return;
+  room.lightningWave ??= { count: 0, points: [], startedAt: now };
   announceStrike(room, now);
-  room.nextStrikeAt = now + nextGap(alive(room).length);
+  room.lightningWave.count++;
+  if (room.lightningWave.count >= LIGHTNING.waveCount) {
+    room.lightningWave = null;
+    room.nextStrikeAt = now + LIGHTNING.warnMs + LIGHTNING.waveGapMs;
+  } else {
+    room.nextStrikeAt = room.lightningWave.startedAt + room.lightningWave.count * LIGHTNING.waveMs / (LIGHTNING.waveCount - 1);
+  }
 }
 
 // Tạnh / đổi pha: bỏ các tia đã báo mà chưa đánh (client cũng tự dọn khi nhận 'weather' tạnh / 'end' / 'lobby').
 function clearLightning(room) {
   room.strikes = [];
   room.nextStrikeAt = 0;
+  room.lightningWave = null;
   room.lastTargetedAt.clear();
 }
 

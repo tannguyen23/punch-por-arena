@@ -13,7 +13,7 @@ let drawnSecond = null;
 export function updateBigPunchHud() {
   const config = state.potionTypes[state.potion?.id]?.bigPunch;
   const big = state.bigPunch;
-  el.hidden = !config || !state.alive;
+  el.hidden = !config || !state.alive || (state.event?.kind === 'tnt' && state.event.targetId === state.myId);
   if (el.hidden) {
     drawnMode = null;
     return;

@@ -1,4 +1,17 @@
 export const PUNCH_TIME = 0.25;
+export const DUEL_THROW_PREVIEW = {
+  samples: 64, diameter: 1, thickness: 0.05, lift: 0.08,
+  valid: '#69ff91', invalid: '#ff5964', wait: '#ffc857',
+};
+export const DUEL_TEAM_FX = {
+  colors: ['#63baff', '#ffad63'],
+  diameter: 1.1, thickness: 0.055, lift: 0.06, headHeight: 2.5, markerSize: 0.22,
+};
+export const TNT_MODEL = {
+  url: '/models/tnt.glb',
+  length: 0.45,
+  colors: { explosive: '#ce3029', strap: '#40352f', fuse: '#d8b576' },
+};
 export const TABLE_GAME = { key: 'KeyE', tagHeight: 3.2, tagMargin: 110, inviteRange: 45 };
 export const TABLE_MODEL = {
   url: '/models/table.glb', height: 0.79, flipClip: 'flip',
@@ -348,6 +361,8 @@ export const GUN_VIEW = {
   recoilLift: 0.12, // nòng hếch lên khi giật (radian)
   raiseDrop: 0.3, // vừa đổi súng thì súng hạ xuống ngần này rồi đưa lên
   raiseTilt: 0.5, // và chúc nòng xuống ngần này (radian)
+  reloadDrop: 0.18,
+  reloadTilt: 0.3,
 };
 
 // Khung xem trước nhân vật trong menu.
@@ -411,4 +426,15 @@ export const LIGHTNING_FX = {
   speedOfSound: 343, // tiếng sấm tới trễ theo khoảng cách (m/giây)
   shakeRange: 12, // đứng gần hơn ngần này (mét) thì rung camera
   shake: 0.25,
+};
+export const STUN_FX = {
+  color: [1, 0.85, 0.12],
+  arcs: 8, segments: 6, refreshSeconds: 0.08,
+  radius: 0.65, height: 1.9, dogHeight: 0.85, jitter: 0.16,
+  shake: 0.08,
+};
+export const DUEL_AUDIENCE_FX = {
+  red: '#e73c32', markerColor: '#ffe56b', diameter: 0.22, spin: 12,
+  markerDiameter: 1.5, markerThickness: 0.07, markerLift: 0.08,
+  splashDiameter: 0.7, splashMs: 300,
 };

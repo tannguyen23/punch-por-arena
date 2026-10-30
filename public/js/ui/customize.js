@@ -1,19 +1,25 @@
-// Màn hình tuỳ chỉnh ngoại hình (không bắt buộc, mở từ nút "Tuỳ chỉnh nhân vật" ở màn hình đầu).
+// Tuỳ chỉnh cạnh menu; cập nhật preview và lưu ngay khi chọn.
 // Sửa thẳng vào object `look` mà menu.js giữ, nên lúc vào phòng menu.js luôn gửi lựa chọn mới nhất.
 import { SHIRT, PANTS, GLOVE, SKIN, HAIR, PATTERNS, randomLook } from './lookOptions.js';
-import { initPreview, setPreviewLook, stopPreview } from './preview.js';
+import { initPreview, setPreviewLook } from './preview.js';
 import { initFaceUpload } from './faceUpload.js';
 import { DEFAULT_LOOK } from '../config.js';
 
 let look = null;
 let showFace = () => {};
+let onChange = () => {};
 const buttons = [];
 const faceError = document.getElementById('face-error');
 
 function refresh() {
-  for (const b of buttons) b.el.classList.toggle('on', look[b.key] === b.value);
+  for (const b of buttons) {
+    const selected = look[b.key] === b.value;
+    b.el.classList.toggle('on', selected);
+    b.el.setAttribute('aria-pressed', String(selected));
+  }
   showFace(look.face);
   setPreviewLook(look);
+  onChange();
 }
 
 function addOption(key, value, className, setup) {
@@ -28,14 +34,15 @@ function addOption(key, value, className, setup) {
   buttons.push({ el, key, value });
 }
 
-// `onDone` được gọi khi bấm "Xong" (menu.js lưu lựa chọn và quay về màn hình đầu).
-export function initCustomize(sharedLook, onDone) {
+export function initCustomize(sharedLook, save) {
   look = sharedLook;
+  onChange = save;
   const swatches = { shirt: SHIRT, pants: PANTS, glove: GLOVE, skin: SKIN, hair: HAIR };
   for (const [key, colors] of Object.entries(swatches)) {
     for (const color of colors) {
       addOption(key, color, 'sw', (el) => {
         el.style.background = color;
+        el.setAttribute('aria-label', `${document.getElementById('opt-' + key).previousElementSibling.textContent}: ${color}`);
       });
     }
   }
@@ -59,10 +66,6 @@ export function initCustomize(sharedLook, onDone) {
   document.getElementById('look-default').addEventListener('click', () => {
     Object.assign(look, DEFAULT_LOOK);
     refresh();
-  });
-  document.getElementById('customize-done').addEventListener('click', () => {
-    stopPreview(); // khung xem trước chỉ chạy khi đang tuỳ chỉnh, đỡ tốn GPU ở các màn hình khác
-    onDone();
   });
 }
 

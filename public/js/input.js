@@ -6,7 +6,9 @@ import { look } from './player/localPlayer.js';
 import { attack } from './player/attack.js';
 import { selectSlot, dropWeapon } from './player/inventory.js';
 import { callRadio } from './player/radioCall.js';
+import { reloadWeapon } from './player/reload.js';
 import { betOn } from './player/duelBet.js';
+import { throwAudienceItem } from './player/duelAudience.js';
 import { setPauseVisible, onPauseClick } from './ui/hud.js';
 import { copyRoomLink } from './ui/lobbyHud.js';
 import { isBetFrameOpen } from './ui/betFrame.js';
@@ -37,8 +39,9 @@ export function initInput() {
     if (e.code === TABLE_GAME.key && !e.repeat && !isBetFrameOpen() && !isPlayerListOpen()) joinNearbyTable();
     if (e.code === 'KeyF' && !e.repeat) toggleReady();
     if (e.code === 'KeyL' && !e.repeat) copyRoomLink();
-    if (e.code === 'KeyG' && !e.repeat) dropWeapon();
-    if (e.code === 'KeyR' && !e.repeat) callRadio();
+    if (e.code === 'KeyG' && !e.repeat && !throwAudienceItem('knife')) dropWeapon();
+    if (e.code === 'KeyT' && !e.repeat) callRadio();
+    if (e.code === 'KeyR' && !e.repeat) reloadWeapon();
     const slotKey = SLOT_KEY.exec(e.code);
     const slotIndex = slotKey ? Number(slotKey[1]) - 1 : -1;
     if (slotIndex >= 0 && !betOn(slotIndex) && slotIndex <= FIST_SLOT) selectSlot(slotIndex); // trong lúc cược solo phím 1 / 2 là chọn người cược
@@ -61,6 +64,7 @@ export function initInput() {
   });
   canvas.addEventListener('mousedown', (e) => {
     if (!hasPointerLock()) return;
+    if (e.button === 0 && throwAudienceItem('tomato')) return;
     state.attacking = e.button === 0 || e.button === 2;
     attack(e.button);
   });

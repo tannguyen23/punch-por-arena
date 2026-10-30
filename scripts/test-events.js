@@ -8,8 +8,8 @@ const http = require('http');
 const path = require('path');
 const { mapOptions } = require('../server/maps');
 
-const KNOWN_EVENTS = ['dog', 'duel'];
-const EVENT_NAMES = { dog: 'hoá chó', duel: 'solo võ đài' };
+const KNOWN_EVENTS = ['dog', 'duel', 'tnt'];
+const EVENT_NAMES = { dog: 'hoá chó', duel: 'đấu đội võ đài', tnt: 'chuyền TNT' };
 const GAP_SECONDS = 1.5;
 const TAIL_SECONDS = 20; // events.js: sự kiện cuối phải xong trước khi hết trận ngần này
 
@@ -21,13 +21,14 @@ function printHelp() {
   --match=90            Độ dài trận (giây)
   --first=2             Sự kiện đầu tiên bắt đầu sau bao nhiêu giây
   --count=2             Số sự kiện mỗi trận (mặc định bằng số mục ở --events)
-  --players=3           Số người tối thiểu để bắt đầu (mặc định 3 nếu có solo, 1 nếu chỉ có chó)
+  --players=3           Số người tối thiểu (mặc định: solo 3, TNT 2, chó 1)
   --tabs=3              Số tab tự mở (mặc định bằng --players)
   --port=3000           Cổng server
   --no-open             Không tự mở tab, chỉ in URL
   --intro=2             Thời gian đứng hình đọc luật mỗi sự kiện (giây)
   --dog=15              Thời gian chạy trốn của sự kiện hoá chó (giây)
-  --bet=10 --round=6 --break=2 --finish=2
+                        TNT nổ ngẫu nhiên sau 15–45 giây, không tính phần đọc luật
+  --bet=5 --round=6 --break=2 --finish=2
                         Các giai đoạn của solo võ đài (giây); --round chỉ là thời gian DỰ TÍNH mỗi hiệp để xếp lịch
                         (hiệp thật đánh tới khi một người hết máu)
   --stall=10            Solo võ đài: không ai trúng đòn ngần này giây thì hiệp tự kết thúc (chống treo)
@@ -58,7 +59,7 @@ function parseArgs(argv) {
     open: true,
     intro: 2,
     dog: 15,
-    bet: 10,
+    bet: 5,
     round: 6,
     stall: 10,
     break: 2,
@@ -97,7 +98,7 @@ function parseArgs(argv) {
     fail(`không có map "${options.map}". Chọn một trong: ${mapOptions.map((map) => map.id).join(', ')}`);
   }
 
-  if (options.players === null) options.players = options.events.includes('duel') ? 3 : 1;
+  if (options.players === null) options.players = options.events.includes('duel') ? 3 : options.events.includes('tnt') ? 2 : 1;
   if (options.tabs === null) options.tabs = options.players;
   if (options.count === null) options.count = options.events.length;
   return options;
@@ -105,8 +106,8 @@ function parseArgs(argv) {
 
 function eventLengths(options) {
   const dog = options.intro + options.dog;
-  const duel = options.intro + options.bet + 3 * options.round + 2 * options.break + options.finish; // tối đa BO3
-  return { dog, duel };
+  const duel = options.intro + options.bet + options.round + options.finish; // BO1, không nghỉ giữa hiệp
+  return { dog, duel, tnt: options.intro + 45 };
 }
 
 function describe(options) {
@@ -121,7 +122,7 @@ function describe(options) {
   console.log(`  Map:            ${options.map === 'all' ? 'xoay vòng tất cả' : options.map}`);
   console.log(`  Trận:           ${options.match}s`);
   console.log(`  Sự kiện:        ${names.join(' → ')} (${options.count} sự kiện, bắt đầu sau ${options.first}s)`);
-  console.log(`  Thời lượng:     chó ${lengths.dog}s · solo ${lengths.duel}s · nghỉ giữa ${GAP_SECONDS}s`);
+  console.log(`  Thời lượng:     chó ${lengths.dog}s · solo ${lengths.duel}s · TNT tối đa ${lengths.tnt}s · nghỉ giữa ${GAP_SECONDS}s`);
   console.log(`  Người tối thiểu: ${options.players} · tab tự mở: ${options.open ? options.tabs : 0}`);
 
   const needed = Math.ceil(total + TAIL_SECONDS);

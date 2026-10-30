@@ -1,5 +1,6 @@
 import { state } from '../state.js';
 import { weaponIcon } from './weaponIcon.js';
+import { rarityBadge, applyWeaponRarity } from './weaponRarity.js';
 
 const panel = document.getElementById('weapon-panel');
 
@@ -47,7 +48,8 @@ export function updateWeaponPanel() {
   if (!weapon || shown === state.weapon) return;
   shown = state.weapon;
 
-  nameEl.replaceChildren(weaponIcon(state.weapon), document.createTextNode(weapon.name));
+  nameEl.replaceChildren(weaponIcon(state.weapon), document.createTextNode(weapon.name), rarityBadge(state.weapon));
+  applyWeaponRarity(panel, state.weapon);
   const peers = Object.values(state.weaponTypes).filter((w) => isMelee(w) === isMelee(weapon));
   for (const { stat, fill, value } of rows) {
     const max = Math.max(...peers.map(stat.value));

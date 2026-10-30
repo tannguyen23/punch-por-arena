@@ -26,6 +26,7 @@ class Room {
     this.weather = { storm: false, endsAt: 0, nextAt: 0 }; // bão của trận đang chơi (weather.js)
     this.strikes = []; // sét đã báo trước, sắp đánh xuống (lightning.js)
     this.nextStrikeAt = 0;
+    this.lightningWave = null;
     this.nextStrikeId = 1;
     this.lastTargetedAt = new Map(); // id người chơi → mốc Date.now() lần gần nhất bị sét nhắm
     this.icePatches = []; // vũng băng do lựu đạn băng tạo ra: { id, x, z, r, endsAt } (ice.js)
@@ -33,6 +34,7 @@ class Room {
     this.nextNukeId = 1;
     this.event = null; // sự kiện đang chạy: { kind, targetId, bounty, introEndsAt, endsAt } (events.js)
     this.eventPlan = []; // các sự kiện sẽ xảy ra trong trận: { kind, at } (events.js)
+    this.lastEventKind = null; // giữ qua trận mới, chỉ cập nhật khi sự kiện thật sự bắt đầu
     this.frozenUntil = 0; // mốc Date.now() hết đứng hình (restrictions.js)
     this.phase = 'lobby';
     this.endsAt = 0; // mốc Date.now() hết pha hiện tại (countdown / playing / ended)

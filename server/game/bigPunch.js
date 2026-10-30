@@ -2,7 +2,7 @@ const { BIG_PUNCH } = require('../config');
 const { broadcast, send } = require('../net/messaging');
 const { POTIONS } = require('./potions');
 const { DEFAULT_WEAPON } = require('./weapons');
-const { cantAct, isFrozen } = require('./restrictions');
+const { cantAct, isFrozen, isTntCarrier, isStunned } = require('./restrictions');
 const { applyDamage } = require('./damage');
 const { wallBetween } = require('./raycast');
 
@@ -12,7 +12,7 @@ const { wallBetween } = require('./raycast');
 // Vị trí người chơi do client quyết định nên đánh văng = gửi vận tốc cho máy của nạn nhân (tin 'knockback'), nó tự đẩy mình đi.
 
 const canUse = (room, p) =>
-  room.phase === 'playing' && !p.dead && !cantAct(room, p) && Boolean(POTIONS[p.potion?.id]?.bigPunch) && p.weapon === DEFAULT_WEAPON;
+  room.phase === 'playing' && !p.dead && !cantAct(room, p) && !isTntCarrier(room, p) && Boolean(POTIONS[p.potion?.id]?.bigPunch) && p.weapon === DEFAULT_WEAPON;
 
 // Tin 'bigcharge': bắt đầu giữ phím. Mọi người trong phòng thấy tư thế lấy đà.
 function startCharge(room, p) {
@@ -38,7 +38,7 @@ function releaseCharge(room, p) {
 // Sóng xung kích: tâm cách người đấm `reach` mét theo hướng nhìn. Người trong bán kính (không bị tường chặn, không chênh độ cao quá `vertical`)
 // mất máu và bị đẩy ra xa tâm; đứng đúng tâm thì bị đẩy theo hướng đấm.
 function impact(room, p) {
-  if (room.phase !== 'playing' || room.players.get(p.id) !== p || p.dead || isFrozen(room) || p.tableId != null) return;
+  if (room.phase !== 'playing' || room.players.get(p.id) !== p || p.dead || isFrozen(room) || isStunned(p) || p.tableId != null) return;
   const { reach, radius, vertical, damage, edgeDamageMult, knockSpeed, edgeKnockMult, lift } = BIG_PUNCH;
   const forward = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
   const x = p.x + forward.x * reach;

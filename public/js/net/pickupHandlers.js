@@ -64,7 +64,8 @@ function announcePickup({ weapon, potion, ammo }, bonus) {
   if (!info) return;
   const amount = ammo === null || ammo === undefined ? '' : ` · ${ammo} ${info.kind === 'melee' ? 'lần chém' : 'viên'}`;
   const extra = state.weaponTypes[bonus];
-  announce(`NHẶT ĐƯỢC ${info.name.toUpperCase()}${amount}${extra ? ` + ${extra.name.toUpperCase()}` : ''}`);
+  const rarity = info.rarity ? ` [${info.rarity.name.toUpperCase()}]` : '';
+  announce(`NHẶT ĐƯỢC ${info.name.toUpperCase()}${rarity}${amount}${extra ? ` + ${extra.name.toUpperCase()}` : ''}`);
 }
 
 export const pickupHandlers = {

@@ -15,6 +15,12 @@
   <div id="stink" hidden></div>
   <div id="stink-text" hidden>Thúi quá dậm phải C*t chó rồi</div>
   <div id="damage-notice" aria-live="polite"></div>
+  <div id="stun-overlay" hidden>
+    <svg class="stun-bolts" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M2 5 L9 18 L4 25 L13 38 L5 46 L11 62 L3 73 L9 94 M98 3 L91 17 L97 29 L88 41 L96 55 L89 69 L97 82 L92 97 M14 2 L27 10 L34 4 L48 12 L60 3 L73 9 L86 2 M12 98 L25 90 L38 97 L53 88 L67 96 L81 90 L91 98"/>
+    </svg>
+    <div class="stun-label" role="status"></div>
+  </div>
   <div id="nuke-flash"></div>
   <div id="dead">Bạn bị hạ gục!</div>
   <div id="hud">
@@ -48,13 +54,14 @@
   </div>
   <div id="bet-frame" hidden>
     <div class="bet-title">ĐẶT CƯỢC</div>
-    <div class="bet-sub">Chọn người bạn nghĩ sẽ thắng</div>
+    <div class="bet-sub">Chọn đội bạn nghĩ sẽ thắng</div>
     <div class="bet-time"></div>
     <div class="bet-bar"><div></div></div>
     <div class="bet-choices">
       <button class="bet-option bet-left" type="button">
         <span class="bet-key">1</span>
         <span class="bet-name"></span>
+        <span class="bet-members"></span>
         <span class="bet-count"></span>
         <span class="bet-cta"></span>
       </button>
@@ -62,6 +69,7 @@
       <button class="bet-option bet-right" type="button">
         <span class="bet-key">2</span>
         <span class="bet-name"></span>
+        <span class="bet-members"></span>
         <span class="bet-count"></span>
         <span class="bet-cta"></span>
       </button>
@@ -101,14 +109,15 @@
   <div id="menu" class="screen">
     <h1>Đấm Nhau FPP</h1>
 
+    <div class="menu-layout">
+    <div class="menu-actions">
     <div class="panel" id="menu-home">
       <input id="name" maxlength="16" placeholder="Tên của bạn" autocomplete="off">
       <p id="name-error" class="menu-error"></p>
       <p id="menu-invite"></p>
       <button id="start" class="menu-main">Bắt đầu</button>
-      <button id="customize-open" class="menu-second">Tuỳ chỉnh nhân vật</button>
       <button class="settings-open menu-settings">Cài đặt</button>
-      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Lựu đạn: chuột trái ném xa · chuột phải tung nhẹ<br>Hòm tiếp tế thả dù định kỳ (phòng càng đông càng nhiều hòm): chạy tới nhặt, có khi kèm lựu đạn · Chết thì rơi hết vũ khí ra đất · Không bị trúng đòn 10 giây thì tự hồi máu (3 máu/giây)<br>Hạ gục liên tiếp 5 lần không chết: R gọi máy bay thả radio; dùng radio ngắm vào đâu thì bom hạt nhân rơi xuống đó (vùng đỏ)<br>Bão: thấy vòng sáng dưới chân thì chạy ra, đứng tụm lại dễ bị sét đánh<br>Sự kiện ngẫu nhiên (1–3 lần/trận): có người hoá chó, hạ gục chó hoặc chạy thoát được 150 điểm; lúc đọc luật cả phòng đứng yên vài giây<br>1–4: đổi ô · G: vứt · M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè<br>Gần bàn: E chơi cờ 3×3 · Thắng +75đ, thua −75đ, cho phép điểm âm · Nguy cơ thua ở lượt tới: có thể lật bàn chịu −50đ, đối thủ vẫn +75đ<br>Ở bàn được miễn sát thương · Rời hoặc mất kết nối giữa ván xử thua · Hệ thống huỷ ván không mất điểm · Người xung quanh thấy quân cờ ngay trên bàn</p>
+      <button id="guide-open" class="menu-settings" type="button">Hướng dẫn chơi</button>
     </div>
 
     <div class="panel" id="menu-play" hidden>
@@ -127,10 +136,12 @@
       <p id="menu-error" class="menu-error"></p>
       <button id="play-back" class="menu-settings">Quay lại</button>
     </div>
+    </div>
 
-    <div class="panel" id="menu-customize" hidden>
-      <h2>Tuỳ chỉnh nhân vật</h2>
-      <canvas id="preview"></canvas>
+    <section class="panel" id="menu-customize" aria-labelledby="customize-title">
+      <h2 id="customize-title">Nhân vật của bạn</h2>
+      <p class="customize-hint">Ngoại hình ngẫu nhiên mỗi lần vào · Bấm để đổi theo ý bạn</p>
+      <canvas id="preview" aria-label="Xem trước ngoại hình nhân vật"></canvas>
       <div class="row"><label>Áo</label><div class="opts" id="opt-shirt"></div></div>
       <div class="row"><label>Họa tiết áo</label><div class="opts" id="opt-pattern"></div></div>
       <div class="row"><label>Quần</label><div class="opts" id="opt-pants"></div></div>
@@ -147,10 +158,22 @@
       <div class="buttons">
         <button id="look-default">Mặc định</button>
         <button id="random">Ngẫu nhiên</button>
-        <button id="customize-done">Xong</button>
       </div>
+    </section>
     </div>
   </div>
+
+  <dialog id="guide" aria-labelledby="guide-title" aria-describedby="guide-subtitle">
+    <header class="guide-header">
+      <div>
+        <h1 id="guide-title">HƯỚNG DẪN CHƠI</h1>
+        <p id="guide-subtitle">Chọn một mục · Xem nhanh · Vào đấu!</p>
+      </div>
+      <button id="guide-close" type="button" aria-label="Đóng hướng dẫn">Đóng <kbd>Esc</kbd></button>
+    </header>
+    <nav id="guide-nav" aria-label="Các mục hướng dẫn"></nav>
+    <div id="guide-content"></div>
+  </dialog>
 
   <div id="pause" class="screen">
     <h1 id="pause-title">Đã tạm dừng</h1>

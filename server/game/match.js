@@ -19,6 +19,8 @@ const { allRooms } = require('./rooms');
 const { clearInventory } = require('./inventory');
 const { getMap } = require('../maps');
 const { clearTableGames, tickTableGames } = require('./tableGames');
+const { applyDamage } = require('./damage');
+const { clearStuns } = require('./stun');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
@@ -26,6 +28,7 @@ const { clearTableGames, tickTableGames } = require('./tableGames');
 // Bỏ mọi thứ đang bay / chờ nổ trên sân khi đổi pha (tên lửa, lựu đạn, vũng băng, bom hạt nhân, sét đã báo), cho trời tạnh
 // và huỷ sự kiện đang chạy.
 function clearProjectiles(room) {
+  clearStuns(room);
   clearRockets(room);
   clearGrenades(room);
   clearIce(room);
@@ -162,7 +165,7 @@ function tickRoom(room) {
         tickPotions(room, now);
         regenerate(room, now);
         tickWeather(room, now);
-        tickEvents(room, now);
+        tickEvents(room, now, applyDamage);
       }
       break;
     case 'ended':
