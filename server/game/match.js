@@ -18,6 +18,7 @@ const { respawn } = require('./spawn');
 const { allRooms } = require('./rooms');
 const { clearInventory } = require('./inventory');
 const { getMap } = require('../maps');
+const { clearTableGames, tickTableGames } = require('./tableGames');
 
 // Vòng đời của một phòng (xem Room.js): lobby → countdown → playing → ended → lobby → ...
 // Mọi hàm ở đây nhận `room`, các phòng không ảnh hưởng nhau.
@@ -68,12 +69,14 @@ function enterLobby(room, { cancelled = false, mapChanged = false } = {}) {
 }
 
 function beginCountdown(room) {
+  clearTableGames(room, 'match');
   room.phase = 'countdown';
   room.endsAt = Date.now() + COUNTDOWN_MS;
   broadcast(room, { t: 'countdown', duration: COUNTDOWN_MS });
 }
 
 function startMatch(room) {
+  clearTableGames(room, 'match');
   const now = Date.now();
   resetPlayers(room);
   clearPickups(room);
@@ -91,6 +94,7 @@ function startMatch(room) {
 // Hết giờ: kết thúc trận, người nhiều điểm nhất thắng (client tự xét từ bảng xếp hạng). Đây là cách duy nhất trận kết thúc
 // (bom hạt nhân chỉ là đòn không kích vào một vùng, xem nuke.js).
 function endMatch(room) {
+  clearTableGames(room, 'match');
   clearProjectiles(room);
   room.phase = 'ended';
   room.endsAt = Date.now() + MATCH_INTERMISSION_MS;
@@ -102,6 +106,7 @@ function endMatch(room) {
 
 // Hết giờ xem bảng xếp hạng: dọn sân, mọi người về phòng chờ và phải bấm F lại để chơi ván mới.
 function returnToLobby(room) {
+  clearTableGames(room, 'match');
   const mapChanged = room.mapIds.length > 1;
   room.advanceMap(getMap);
   resetPlayers(room);
@@ -136,6 +141,7 @@ function runAirdrops(room, now) {
 
 function tickRoom(room) {
   const now = Date.now();
+  tickTableGames(room, now);
   switch (room.phase) {
     case 'lobby':
       if (TEST.autoReady) for (const p of room.players.values()) p.ready = true; // chế độ test: tự sẵn sàng, chơi lặp liên tục

@@ -56,6 +56,7 @@ function addToInventory(p, weapon, ammo) {
 
 // Phím 1–4: chọn ô. Ô vũ khí trống thì bỏ qua (giống các game khác), ô tay không lúc nào cũng chọn được.
 function selectSlot(p, index) {
+  if (p.tableId != null) return;
   if (p.dead || !Number.isInteger(index) || index < 0 || index > FIST_SLOT) return;
   if (index !== FIST_SLOT && !p.slots[index]) return;
   p.activeSlot = index;

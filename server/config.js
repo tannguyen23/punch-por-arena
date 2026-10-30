@@ -19,6 +19,8 @@ module.exports = {
   },
 
   MAX_HP: 100,
+  TABLE_GAME: { size: 3, range: 3, vertical: 1.2, groundTolerance: 0.2, waitMs: 30000, turnMs: 20000, resultMs: 20000,
+    stake: 75, flipLoss: 50 },
   PUNCH_RANGE: 2.2,
   PUNCH_COS: Math.cos((35 * Math.PI) / 180),
   PUNCH_COOLDOWN: 350,

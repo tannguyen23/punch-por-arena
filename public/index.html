@@ -70,6 +70,30 @@
     <button class="bet-watch" type="button" hidden>VÀO XEM TRẬN →</button>
   </div>
   <div id="match-end" class="screen"></div>
+  <div id="table-hint" hidden></div>
+  <div id="table-invites" hidden></div>
+  <section id="table-game" role="dialog" aria-modal="true" aria-labelledby="table-title" hidden>
+    <h1 id="table-title" class="table-title"></h1>
+    <div class="table-mission"></div>
+    <div class="table-seats">
+      <div class="table-player"><b>X</b><span class="table-name"></span></div>
+      <div class="table-player"><b>O</b><span class="table-name"></span></div>
+    </div>
+    <div class="table-status" role="status" aria-live="polite"></div>
+    <div class="table-reward" aria-live="polite"></div>
+    <div class="table-board" role="group" aria-label="Bàn cờ 3 nhân 3"></div>
+    <div class="table-symbol"></div>
+    <div class="table-time"></div>
+    <div class="table-bar"><div class="table-fill"></div></div>
+    <div class="table-note"></div>
+    <div class="table-error" role="alert"></div>
+    <div class="table-flip-hint" role="status"></div>
+    <div class="table-actions">
+      <button class="table-flip" type="button" hidden></button>
+      <button class="table-replay" type="button" hidden></button>
+      <button class="table-leave" type="button"></button>
+    </div>
+  </section>
   <div id="room-badge"></div>
   <div id="lobby"></div>
   <div id="countdown"></div>
@@ -84,7 +108,7 @@
       <button id="start" class="menu-main">Bắt đầu</button>
       <button id="customize-open" class="menu-second">Tuỳ chỉnh nhân vật</button>
       <button class="settings-open menu-settings">Cài đặt</button>
-      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Lựu đạn: chuột trái ném xa · chuột phải tung nhẹ<br>Hòm tiếp tế thả dù định kỳ (phòng càng đông càng nhiều hòm): chạy tới nhặt, có khi kèm lựu đạn · Chết thì rơi hết vũ khí ra đất · Không bị trúng đòn 10 giây thì tự hồi máu (3 máu/giây)<br>Hạ gục liên tiếp 5 lần không chết: R gọi máy bay thả radio; dùng radio ngắm vào đâu thì bom hạt nhân rơi xuống đó (vùng đỏ)<br>Bão: thấy vòng sáng dưới chân thì chạy ra, đứng tụm lại dễ bị sét đánh<br>Sự kiện ngẫu nhiên (1–3 lần/trận): có người hoá chó, hạ gục chó hoặc chạy thoát được 150 điểm; lúc đọc luật cả phòng đứng yên vài giây<br>1–4: đổi ô · G: vứt · M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè</p>
+      <p class="help">WASD: di chuyển · Shift: chạy nhanh · Space: nhảy · C (giữ): ngồi<br>Chuột trái: đấm tay trái · Chuột phải: đấm tay phải · Cầm súng: chuột trái/phải để bắn<br>Lựu đạn: chuột trái ném xa · chuột phải tung nhẹ<br>Hòm tiếp tế thả dù định kỳ (phòng càng đông càng nhiều hòm): chạy tới nhặt, có khi kèm lựu đạn · Chết thì rơi hết vũ khí ra đất · Không bị trúng đòn 10 giây thì tự hồi máu (3 máu/giây)<br>Hạ gục liên tiếp 5 lần không chết: R gọi máy bay thả radio; dùng radio ngắm vào đâu thì bom hạt nhân rơi xuống đó (vùng đỏ)<br>Bão: thấy vòng sáng dưới chân thì chạy ra, đứng tụm lại dễ bị sét đánh<br>Sự kiện ngẫu nhiên (1–3 lần/trận): có người hoá chó, hạ gục chó hoặc chạy thoát được 150 điểm; lúc đọc luật cả phòng đứng yên vài giây<br>1–4: đổi ô · G: vứt · M: tắt/bật tiếng · Esc: thả chuột<br>Trong phòng: F sẵn sàng · L sao chép link mời bạn bè<br>Gần bàn: E chơi cờ 3×3 · Thắng +75đ, thua −75đ, cho phép điểm âm · Nguy cơ thua ở lượt tới: có thể lật bàn chịu −50đ, đối thủ vẫn +75đ<br>Ở bàn được miễn sát thương · Rời hoặc mất kết nối giữa ván xử thua · Hệ thống huỷ ván không mất điểm · Người xung quanh thấy quân cờ ngay trên bàn</p>
     </div>
 
     <div class="panel" id="menu-play" hidden>

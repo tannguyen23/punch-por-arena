@@ -14,6 +14,7 @@ class Room {
     this.mapIndex = 0;
     this.setMap(initialMap);
     this.players = new Map(); // id → người chơi đã vào phòng
+    this.tableGames = new Map();
     this.pickups = new Map(); // id → hòm tiếp tế (đang rơi hoặc đã nằm trên sân)
     this.poops = new Map(); // id → cục shit của con chó trong sự kiện hoá chó: { id, x, y, z } (poop.js)
     this.nextPoopId = 1;

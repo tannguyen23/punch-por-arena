@@ -9,17 +9,18 @@ const duelOf = (room) => (room.event?.kind === 'duel' ? room.event : null);
 
 const isDuelFighter = (room, p) => duelOf(room)?.fighters.includes(p.id) ?? false;
 
-// Võ sĩ ngoài hiệp đấu (đang cược / nghỉ giữa hiệp): đứng yên tại chỗ, server bỏ qua vị trí client báo.
-const isHeld = (room, p) => isDuelFighter(room, p) && !duelOf(room).fighting;
+// Người chơi cờ và võ sĩ ngoài hiệp đấu đứng yên tại chỗ, server bỏ qua vị trí client báo.
+const isHeld = (room, p) => p.tableId != null || (isDuelFighter(room, p) && !duelOf(room).fighting);
 
-// Không được đánh / bắn / ném / vứt / nhặt: đang đứng hình, đang hoá chó (chỉ được chạy), hoặc trong sự kiện solo mà không phải võ sĩ đang trong hiệp.
+// Không được đánh / bắn / ném / vứt / nhặt khi chơi cờ, đứng hình, hoá chó hoặc là người xem solo.
 const cantAct = (room, p) => {
   const duel = duelOf(room);
-  return p.dog || isFrozen(room) || (duel !== null && !(duel.fighting && duel.fighters.includes(p.id)));
+  return p.tableId != null || p.dog || isFrozen(room) || (duel !== null && !(duel.fighting && duel.fighters.includes(p.id)));
 };
 
-// Võ sĩ chỉ bị thương bởi đòn của đối thủ trong hiệp: sét, bom, đạn lạc, rơi... đều vô hiệu để trận solo công bằng.
+// Chơi cờ thì miễn sát thương; võ sĩ chỉ bị thương bởi đòn của đối thủ trong hiệp.
 function shieldedFromDamage(room, attacker, target) {
+  if (target.tableId != null) return true;
   const duel = duelOf(room);
   if (!duel || !duel.fighters.includes(target.id)) return false;
   return !(duel.fighting && attacker && attacker !== target && duel.fighters.includes(attacker.id));

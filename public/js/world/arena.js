@@ -47,6 +47,7 @@ export function buildArena(map) {
   state.colliders = map.props.filter((p) => p.r > 0);
   state.walls = map.walls;
   state.ring = map.ring;
+  state.tables = map.props.flatMap((prop, id) => prop.type === 'table' ? [{ id, x: prop.x, z: prop.z }] : []);
   setTerrain(map.terrain); // phải có trước khi đặt tường, vật phẩm lên mặt đất
   ground = createGround(map.terrain, map.ground, arenaRoot);
   water = map.terrain.floating ? null : createWater(map.terrain, arenaRoot);
@@ -57,5 +58,5 @@ export function buildArena(map) {
   }
   map.terrain.bridges.filter((bridge) => !bridge.floating).forEach((bridge) => createBridge(bridge, arenaRoot));
   map.walls.forEach((wall) => createWall(wall, arenaRoot));
-  map.props.forEach((prop) => createProp(prop, arenaRoot));
+  map.props.forEach((prop, id) => createProp(prop, arenaRoot, id));
 }

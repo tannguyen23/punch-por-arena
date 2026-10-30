@@ -1,6 +1,7 @@
 import { scene } from '../core/scene.js';
 import { heightAt } from '../core/terrain.js';
 import { part, box, ball, cylinder, colorMaterial as mat } from '../core/meshes.js';
+import { createTableModel } from './tableModel.js';
 
 const WOOD = '#8a5a33';
 const WOOD_DARK = '#6b4423';
@@ -40,13 +41,6 @@ const builders = {
     for (const y of [0.04, 0.96]) part(box(1.04, 0.1, 1.04), root, 0, y, 0, mat(WOOD_DARK));
   },
 
-  table(root) {
-    part(box(1.6, 0.08, 0.9), root, 0, 0.75, 0, mat(WOOD));
-    for (const sx of [-1, 1]) {
-      for (const sz of [-1, 1]) part(box(0.08, 0.75, 0.08), root, sx * 0.72, 0.375, sz * 0.38, mat(WOOD_DARK));
-    }
-  },
-
   // Mặt ghế quay về +z, lưng tựa ở phía -z.
   chair(root) {
     part(box(0.45, 0.06, 0.45), root, 0, 0.45, 0, mat(WOOD));
@@ -71,12 +65,16 @@ const builders = {
   },
 };
 
-export function createProp(prop, parent) {
+export function createProp(prop, parent, id) {
   const { type, x, z, rot = 0 } = prop;
   const root = new BABYLON.TransformNode(type, scene);
   root.parent = parent;
   root.position.set(x, heightAt(x, z), z);
   root.rotation.y = rot;
+  if (type === 'table') {
+    createTableModel(root, id);
+    return root;
+  }
   builders[type]?.(root, prop);
   for (const mesh of root.getChildMeshes()) mesh.freezeWorldMatrix(); // vật thể tĩnh, khỏi tính lại mỗi khung hình
   return root;

@@ -2,6 +2,7 @@ import { state } from '../state.js';
 import { STATE_SEND_MS } from '../config.js';
 import { showPause } from '../ui/hud.js';
 import { handleMessage } from './handlers.js';
+import { applyTableGames } from './tableHandlers.js';
 
 let ws = null;
 let syncing = false;
@@ -27,13 +28,17 @@ export function connect(name, look, intent = {}) {
   }
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
   ws.onopen = () => send({ t: 'join', name, look, ...intent });
-  ws.onclose = () => !state.kicked && showPause('Mất kết nối', 'Tải lại trang (F5) để vào lại'); // bị kick thì roomHandlers.js đã đưa về menu
+  ws.onclose = () => {
+    applyTableGames([]);
+    if (!state.kicked) showPause('Mất kết nối', 'Tải lại trang (F5) để vào lại');
+  };
   ws.onmessage = handleMessage;
   startStateSync();
 }
 
 // Bấm F ở phòng chờ: sẵn sàng / huỷ sẵn sàng.
 export function toggleReady() {
+  if (state.tableGame) return;
   const { phase } = state.match;
   if (phase === 'lobby' || phase === 'countdown') send({ t: 'ready', ready: !state.ready });
 }

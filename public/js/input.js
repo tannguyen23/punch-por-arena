@@ -13,7 +13,8 @@ import { isBetFrameOpen } from './ui/betFrame.js';
 import { isPlayerListOpen, togglePlayerList } from './ui/playerList.js';
 import { toggleReady } from './net/socket.js';
 import * as Sfx from './audio/sfx.js';
-import { FIST_SLOT } from './config.js';
+import { FIST_SLOT, TABLE_GAME } from './config.js';
+import { joinNearbyTable } from './player/tableGame.js';
 
 const SLOT_KEY = /^Digit([1-9])$/; // Digit1 = ô đầu tiên ... ô cuối là tay không
 
@@ -22,6 +23,10 @@ const hasPointerLock = () => document.pointerLockElement === canvas;
 export function initInput() {
   addEventListener('keydown', (e) => {
     if (e.target instanceof HTMLInputElement) return; // đang gõ tên
+    if (state.tableGame) {
+      if (e.code === 'KeyM' && !e.repeat) Sfx.toggleMute();
+      return;
+    }
     if (e.code === 'Space') e.preventDefault();
     keys.add(e.code);
     if (e.code === 'Tab') {
@@ -29,6 +34,7 @@ export function initInput() {
       if (!e.repeat && !isBetFrameOpen()) togglePlayerList();
     }
     if (e.code === 'KeyM') Sfx.toggleMute();
+    if (e.code === TABLE_GAME.key && !e.repeat && !isBetFrameOpen() && !isPlayerListOpen()) joinNearbyTable();
     if (e.code === 'KeyF' && !e.repeat) toggleReady();
     if (e.code === 'KeyL' && !e.repeat) copyRoomLink();
     if (e.code === 'KeyG' && !e.repeat) dropWeapon();
@@ -46,7 +52,7 @@ export function initInput() {
 
   onPauseClick(() => canvas.requestPointerLock());
   document.addEventListener('pointerlockchange', () => {
-    if (state.joined) setPauseVisible(!hasPointerLock() && !isBetFrameOpen() && !isPlayerListOpen()); // khung cược / danh sách người chơi (chủ phòng) tự thả chuột ra để bấm
+    if (state.joined) setPauseVisible(!hasPointerLock() && !isBetFrameOpen() && !isPlayerListOpen() && !state.tableGame); // các màn hình tương tác tự thả chuột
     if (!hasPointerLock()) state.attacking = false;
   });
 
@@ -60,7 +66,7 @@ export function initInput() {
   });
   // ?autoplay vào thẳng trận mà không có cú click nào để khoá chuột: bấm vào sân là khoá lại như màn hình tạm dừng.
   canvas.addEventListener('click', () => {
-    if (state.joined && !hasPointerLock()) canvas.requestPointerLock();
+    if (state.joined && !state.tableGame && !hasPointerLock()) canvas.requestPointerLock();
   });
   document.addEventListener('mouseup', () => {
     state.attacking = false;

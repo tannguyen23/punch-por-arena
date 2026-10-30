@@ -2,6 +2,7 @@ const config = require('../config');
 const { broadcast } = require('../net/messaging');
 const dogEvent = require('./dogEvent');
 const duelEvent = require('./duelEvent');
+const { clearTableGames } = require('./tableGames');
 
 // Sự kiện ngẫu nhiên trong trận. Đầu trận lên lịch 1–3 sự kiện rải đều (mỗi sự kiện một "ô" thời gian riêng, không chồng nhau);
 // tới giờ thì bắt đầu: `introMs` đầu cả phòng đứng hình để đọc luật (restrictions.js), sau đó sự kiện chạy tới hết giờ hoặc có kết quả.
@@ -81,6 +82,7 @@ function canStart(room) {
 function startEvent(room, kind, now) {
   const state = KINDS[kind].begin(room);
   if (!state) return;
+  clearTableGames(room, 'event');
   room.event = { kind, ...state, introEndsAt: now + EVENTS.introMs, endsAt: now + lengthOf(kind) };
   room.frozenUntil = room.event.introEndsAt;
   broadcast(room, { t: 'event', ...eventView(room, now) });

@@ -16,7 +16,7 @@ function settleBets(room, ev, winnerIdx) {
     const p = room.players.get(id);
     if (!p) continue;
     const won = side === winnerIdx;
-    const delta = won ? DUEL.stake : -Math.min(DUEL.stake, p.score);
+    const delta = won ? DUEL.stake : -Math.min(DUEL.stake, Math.max(0, p.score));
     p.score += delta;
     send(p.ws, { t: 'betresult', won, delta });
   }

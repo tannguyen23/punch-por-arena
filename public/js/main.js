@@ -41,6 +41,9 @@ import { updateNuke, preloadNukeSounds } from './fx/nuke.js';
 import { updateCloud } from './fx/nukeCloud.js';
 import { updateSprintEffects } from './fx/sprintEffects.js';
 import * as Sfx from './audio/sfx.js';
+import { initTableGame, updateTableGame } from './ui/tableGame.js';
+import { tableAction } from './player/tableGame.js';
+import { updateTableInvites } from './ui/tableInvites.js';
 
 loadSettings();
 initSettings();
@@ -48,6 +51,7 @@ loadCharacter(scene);
 initInput();
 initBetFrame(betOn);
 initPlayerList(kickPlayer);
+initTableGame(tableAction);
 
 // ?autoplay: vào thẳng phòng test (scripts/test-events.js); ở mode này không có cú click nào để xin khoá chuột.
 const autoplay = new URLSearchParams(location.search).has('autoplay');
@@ -76,6 +80,8 @@ scene.onBeforeRenderObservable.add(() => {
   updateEventHud();
   updateDuelHud();
   updateBetFrame();
+  updateTableGame();
+  updateTableInvites();
   updatePlayerList();
   updateRingGates(dt);
   updateRingZone(dt);

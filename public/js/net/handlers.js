@@ -22,6 +22,7 @@ import { nukeHandlers } from './nukeHandlers.js';
 import { eventHandlers, applyEvent } from './eventHandlers.js';
 import { duelHandlers } from './duelHandlers.js';
 import { roomHandlers } from './roomHandlers.js';
+import { tableHandlers, applyTableGames } from './tableHandlers.js';
 import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
 
@@ -59,15 +60,19 @@ const messageHandlers = {
   ...eventHandlers,
   ...duelHandlers,
   ...roomHandlers,
+  ...tableHandlers,
 
   welcome(m) {
     state.myId = m.id;
+    state.tableRules = m.tableRules;
     state.maxHp = m.maxHp;
     buildArena(m.map);
     state.me.x = m.x;
     state.me.z = m.z;
     state.me.y = groundAt(m.x, m.z, Infinity);
     for (const o of m.players) infos.set(o.id, o);
+    applyTableGames(m.tables);
+    state.tableNuke = Boolean(m.nuke);
     state.weaponTypes = m.weapons;
     state.potionTypes = m.potions;
     state.room = m.room;
@@ -118,6 +123,7 @@ const messageHandlers = {
   },
 
   start(m) {
+    state.tableNuke = false;
     clearField();
     state.match.phase = 'playing';
     state.match.endsAt = performance.now() + m.duration;
@@ -127,6 +133,7 @@ const messageHandlers = {
   },
 
   end(m) {
+    state.tableNuke = false;
     clearProjectiles();
     state.match.phase = 'ended';
     state.match.endsAt = performance.now() + m.intermission;
