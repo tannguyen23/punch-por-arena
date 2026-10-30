@@ -3,6 +3,7 @@ const { clamp } = require('../utils/math');
 const { broadcast } = require('../net/messaging');
 const { applyDamage } = require('./damage');
 const { eyeOf, pointAt, aimDirection, obstacleDistance } = require('./raycast');
+const { clearTableGames } = require('./tableGames');
 
 // Radio gọi bom hạt nhân: không kết thúc trận nữa mà là một đòn không kích vào một vùng. Người gọi ngắm vào đâu thì bom rơi đó;
 // cả phòng nghe radio, còi báo động (client vẽ vùng đỏ quanh điểm rơi), máy bay bay qua điểm rơi, thả bom, bom nổ:
@@ -29,6 +30,7 @@ function aimPoint(room, p, yaw, pitch) {
 function startNuke(room, p, yaw, pitch) {
   if (room.nuke) return false;
   const { NUKE_PLANE_IN_MS, NUKE_PLANE_APPROACH, NUKE_PLANE_SPEED, NUKE_FALL_MS, NUKE_AREA } = config;
+  clearTableGames(room, 'nuke');
   const planeIn = NUKE_PLANE_IN_MS;
   const dropIn = planeIn + (NUKE_PLANE_APPROACH / NUKE_PLANE_SPEED) * 1000;
   const boomIn = dropIn + NUKE_FALL_MS;

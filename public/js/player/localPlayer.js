@@ -96,11 +96,13 @@ export function updateLocalPlayer(dt) {
   if (state.alive && state.myId !== null) {
     const { x, z } = state.me;
     if (!isImmobile()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật; võ sĩ solo ngoài hiệp cũng đứng yên
-    applyKnockback(dt);
-    applyVertical(dt);
-    updateWading();
-    resolveCollisions();
-    settleSlide(x, z, dt);
+    if (!state.tableGame) {
+      applyKnockback(dt);
+      applyVertical(dt);
+      updateWading();
+      resolveCollisions();
+      settleSlide(x, z, dt);
+    }
   } else if (!state.alive) {
     state.crouching = false;
     resetSlide();

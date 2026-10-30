@@ -1,6 +1,70 @@
 html, body { margin: 0; height: 100%; overflow: hidden; background: #111; font-family: system-ui, sans-serif; }
 #c { width: 100%; height: 100%; display: block; outline: none; }
 
+/* ---------- Cờ tại bàn ---------- */
+#table-hint { position: fixed; bottom: 24%; left: 50%; transform: translateX(-50%); max-width: 90vw; padding: 10px 20px; border: 2px solid #fd3; background: #101420e8; color: #fd3; font-size: clamp(16px, 2vw, 24px); font-weight: 800; text-align: center; pointer-events: none; }
+#table-game[hidden], #table-hint[hidden] { display: none; }
+#table-game { position: fixed; inset: 0; z-index: 8; display: flex; flex-direction: column; align-items: center; justify-content: safe center; gap: 8px; box-sizing: border-box; padding: 16px; overflow: auto; background: radial-gradient(ellipse at center, rgba(16,20,32,.88), rgba(4,6,10,.97)); backdrop-filter: blur(4px); color: #fff; text-align: center; }
+#table-game > * { flex-shrink: 0; }
+#table-game .table-title { margin: 0; font-size: clamp(34px, 5vw, 64px); font-weight: 900; letter-spacing: 4px; line-height: 1; color: #fd3; text-shadow: 4px 4px #725522; }
+.table-mission { font-size: clamp(16px, 2vw, 25px); font-weight: 700; }
+.table-seats { display: flex; gap: 12px; width: min(520px, 100%); }
+.table-player { display: flex; flex: 1; align-items: center; gap: 10px; min-width: 0; padding: 8px 12px; box-sizing: border-box; border: 3px solid #444d61; background: #171d2b; }
+.table-player.active { border-color: #fd3; box-shadow: 4px 4px #725522; }
+.table-player.me .table-name { text-decoration: underline; text-underline-offset: 4px; }
+.table-player b { font: 900 28px monospace; color: #62e5df; }
+.table-player + .table-player b { color: #ff9a72; }
+.table-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: clamp(15px, 2vw, 22px); font-weight: 800; }
+.table-status { font-size: clamp(20px, 2.8vw, 32px); font-weight: 900; color: #fd3; }
+.table-board { width: min(34vh, 76vw, 320px); box-sizing: border-box; aspect-ratio: 1; display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(3, 1fr); gap: 6px; padding: 8px; border: 4px solid #b98f42; background: #080d18; box-shadow: 6px 6px #503c21; }
+#table-game .table-cell { min-width: 0; min-height: 0; display: grid; place-items: center; margin: 0; padding: 12%; border: 3px solid #4d5a74; border-radius: 0; background: #222c40; box-shadow: inset -4px -4px #151c2d, inset 3px 3px #34425b; cursor: pointer; }
+#table-game .table-cell:disabled { opacity: 1; cursor: default; }
+#table-game .table-cell:enabled:hover { background: #354b61; border-color: #fd3; }
+#table-game button:focus-visible { outline: 3px solid #fff; outline-offset: 3px; }
+.table-cell svg { width: 100%; height: 100%; shape-rendering: crispEdges; fill: #62e5df; fill-rule: evenodd; filter: drop-shadow(3px 3px #07111c); }
+.table-cell[data-mark="O"] svg { fill: #ff9a72; }
+#table-game .table-cell.winning { background: #355a43; border-color: #fd3; }
+.table-symbol { color: #c3ccdc; font-size: clamp(12px, 1.4vw, 17px); }
+.table-time { font-size: clamp(16px, 2vw, 23px); font-weight: 800; font-variant-numeric: tabular-nums; }
+.table-bar { width: min(440px, 80vw); height: 6px; background: #ffffff24; }
+.table-fill { height: 100%; background: #fd3; }
+.table-note { max-width: 100%; box-sizing: border-box; padding: 6px 14px; border: 2px dashed #ffffff50; color: #cad3e2; font-size: clamp(12px, 1.5vw, 18px); }
+.table-error:empty { display: none; }
+.table-error { color: #ff9a72; font-weight: 700; }
+.table-actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }
+#table-game .table-actions button { padding: 10px 22px; border: 3px solid #b98f42; border-radius: 0; background: #fd3; color: #171a24; box-shadow: 4px 4px #725522; font-size: clamp(14px, 1.8vw, 20px); font-weight: 900; cursor: pointer; }
+#table-game .table-actions button:disabled { opacity: .6; cursor: default; }
+#table-game .table-actions .table-leave { background: #202a3b; color: #e2e8f3; border-color: #65728a; box-shadow: 4px 4px #111724; }
+.table-reward { color: #fd3; font-size: clamp(16px, 2vw, 24px); font-weight: 900; }
+.table-flip-hint { max-width: 90vw; color: #ffae83; font-size: clamp(13px, 1.5vw, 18px); font-weight: 800; }
+.table-flip-hint:empty { display: none; }
+#table-game .table-actions .table-flip { background: #ff8059; border-color: #ffbe89; box-shadow: 4px 4px #743421; }
+.table-flipped .table-board { transform: perspective(600px) rotateX(18deg) rotateZ(-8deg); transition: transform .3s ease-out; }
+#table-invites { position: fixed; inset: 0; pointer-events: none; z-index: 3; overflow: hidden; }
+.table-invite { position: absolute; top: 0; left: 0; box-sizing: border-box; max-width: min(340px, 80vw); padding: 10px 16px; border: 3px solid #fd3; background: #111827ee; color: #fd3; font-size: clamp(15px, 1.8vw, 23px); font-weight: 900; text-align: center; text-shadow: 2px 2px #000; box-shadow: 4px 4px #0009, 0 0 18px #ffdd3360; }
+.table-invite::after { content: ''; position: absolute; left: calc(50% - 7px); bottom: -10px; width: 10px; height: 10px; background: #fd3; transform: rotate(45deg); }
+@media (max-height: 780px) {
+  #table-game { gap: 6px; padding: 12px; }
+  #table-game .table-title { font-size: clamp(26px, 4.5vh, 40px); }
+  .table-board { width: min(32vh, 70vw, 250px); gap: 4px; padding: 6px; }
+  .table-player { padding: 4px 8px; }
+  .table-status { font-size: clamp(18px, 3.2vh, 25px); }
+  .table-mission { font-size: clamp(14px, 2.5vh, 20px); }
+  .table-note { padding: 4px 8px; font-size: 13px; }
+  #table-game .table-actions button { padding: 7px 16px; }
+}
+@media (max-height: 480px) {
+  #table-game { gap: 3px; padding: 8px; }
+  #table-game .table-title { font-size: 24px; }
+  .table-board { width: min(24vh, 55vw, 150px); }
+  .table-player b { font-size: 22px; }
+  .table-time, .table-name, .table-reward { font-size: 14px; }
+  .table-mission, .table-flip-hint { font-size: 12px; }
+  .table-status { font-size: 16px; }
+  .table-note, .table-symbol { font-size: 11px; }
+  #table-game .table-actions button { padding: 5px 12px; font-size: 12px; }
+}
+
 /* ---------- HUD ---------- */
 #crosshair { --ch: rgba(255,255,255,.85); position: fixed; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: var(--ch); pointer-events: none; transition: transform .12s; }
 #crosshair.hit { --ch: #f33; transform: scale(2.4); }

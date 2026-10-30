@@ -1,4 +1,14 @@
 export const PUNCH_TIME = 0.25;
+export const TABLE_GAME = { key: 'KeyE', tagHeight: 3.2, tagMargin: 110, inviteRange: 45 };
+export const TABLE_MODEL = {
+  url: '/models/table.glb', height: 0.79, flipClip: 'flip',
+  colors: { table_top: '#8a5a33', table_leg: '#6b4423' },
+};
+export const TABLE_BOARD = {
+  surface: 'table_top', inset: 0.1, lift: 0.004,
+  thickness: 0.008, gridWidth: 0.014, markWidth: 0.035, markSize: 0.6, ringSegments: 24,
+  colors: { background: '#f4e5bf', grid: '#594329', x: '#c52e32', o: '#186cc4', win: '#edaa12' },
+};
 export const PUNCH_COOLDOWN = 0.35;
 export const MOVE_SPEED = 6;
 export const EYE_HEIGHT = 1.7;

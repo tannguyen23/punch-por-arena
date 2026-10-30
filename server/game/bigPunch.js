@@ -38,14 +38,14 @@ function releaseCharge(room, p) {
 // Sóng xung kích: tâm cách người đấm `reach` mét theo hướng nhìn. Người trong bán kính (không bị tường chặn, không chênh độ cao quá `vertical`)
 // mất máu và bị đẩy ra xa tâm; đứng đúng tâm thì bị đẩy theo hướng đấm.
 function impact(room, p) {
-  if (room.phase !== 'playing' || room.players.get(p.id) !== p || p.dead || isFrozen(room)) return;
+  if (room.phase !== 'playing' || room.players.get(p.id) !== p || p.dead || isFrozen(room) || p.tableId != null) return;
   const { reach, radius, vertical, damage, edgeDamageMult, knockSpeed, edgeKnockMult, lift } = BIG_PUNCH;
   const forward = { x: Math.sin(p.yaw), z: Math.cos(p.yaw) };
   const x = p.x + forward.x * reach;
   const z = p.z + forward.z * reach;
   broadcast(room, { t: 'bigimpact', id: p.id, at: [x, room.terrain.heightAt(x, z), z].map((v) => +v.toFixed(2)), r: radius });
   for (const o of [...room.players.values()]) {
-    if (o === p || o.dead) continue;
+    if (o === p || o.dead || o.tableId != null) continue;
     const dx = o.x - x;
     const dz = o.z - z;
     const dist = Math.hypot(dx, dz);

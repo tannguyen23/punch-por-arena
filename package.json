@@ -8,7 +8,8 @@
     "dev": "node --watch server/index.js",
     "dev:solo": "node --watch server/index.js --min-players=1",
     "dev:debug": "node --watch server/index.js --debug=1",
-    "test:events": "node scripts/test-events.js"
+    "test:events": "node scripts/test-events.js",
+    "test:tables": "node --test scripts/test-tic-tac-toe.js scripts/test-table-games.js scripts/test-table-stakes.js"
   },
   "dependencies": {
     "babylonjs": "^9.32.1",

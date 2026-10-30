@@ -25,6 +25,7 @@ const { potionInfo } = require('../game/potions');
 const { matchInfo, setReady } = require('../game/match');
 const { send } = require('./messaging');
 const { mapOptions, defaultMapIds, getMap } = require('../maps');
+const { handleTable, tableViews } = require('../game/tableGames');
 
 const ROOM_CODE = /^\d{3}$/;
 
@@ -84,6 +85,8 @@ function handleJoin(p, m) {
     map: room.mapData,
     weapons: weaponInfo(),
     potions: potionInfo(),
+    tableRules: config.TABLE_GAME,
+    tables: tableViews(room),
     pickups: [...room.pickups.values()].map((pickup) => pickupView(pickup)),
     ice: iceView(room),
     nuke: nukeView(room),
@@ -108,6 +111,7 @@ function handleJoin(p, m) {
 
 // Các tin nhắn chỉ được xử lý sau khi người chơi đã vào phòng.
 const gameHandlers = {
+  table: (p, m) => handleTable(p.room, p, m),
   state: (p, m) => applyClientState(p.room, p, m),
   punch: (p, m) => (m.hand === 'L' || m.hand === 'R') && handlePunch(p.room, p, m.hand),
   fire: (p, m) => handleFire(p.room, p, m),

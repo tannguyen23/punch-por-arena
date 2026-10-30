@@ -14,6 +14,14 @@ export const state = {
   colliders: [], // vật phẩm chặn đường: { x, z, r }
   walls: [], // tường chặn đường: { x, z, w, d }
   ring: null, // võ đài của map: { x, z, half, leash, gate } (null nếu map không có), xem fx/ringGates.js
+  tables: [],
+  tableRules: null,
+  tableGames: [],
+  tableModels: new Map(),
+  tableGame: null,
+  tablePending: false,
+  tableError: '',
+  tableNuke: false,
 
   me: { x: 0, y: 0, z: 0 }, // y là độ cao của chân (0 khi đứng trên sân)
   vy: 0,
