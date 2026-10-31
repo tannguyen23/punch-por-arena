@@ -119,3 +119,20 @@ test('Hẹn đã tới hoặc còn ít hơn 5 giây (sự kiện trước chạy
   assert.equal(warns().at(-1).in, config.EVENTS.warnMs);
   assert.equal(room.eventPlan[0].at, now + config.EVENTS.warnMs);
 });
+
+for (const kind of ['dog', 'duel', 'tnt']) {
+  test(`Cả ba sự kiện đều báo đủ 5 giây rồi mới bắt đầu: ${kind}`, (t) => {
+    const room = start(t);
+    const now = Date.now();
+    const warns = () => [...room.players.values()].flatMap((p) => p.messages).filter((m) => m.t === 'eventWarn');
+    config.EVENTS.only = kind; // không đổi loại lúc chốt
+    room.eventPlan = [{ kind, at: now }]; // hẹn đã tới
+    tickEvents(room, now);
+    assert.equal(room.event, null);
+    assert.deepEqual({ kind: warns().at(-1).kind, in: warns().at(-1).in }, { kind, in: config.EVENTS.warnMs });
+    tickEvents(room, now + config.EVENTS.warnMs - 1);
+    assert.equal(room.event, null);
+    tickEvents(room, now + config.EVENTS.warnMs);
+    assert.equal(room.event?.kind, kind);
+  });
+}

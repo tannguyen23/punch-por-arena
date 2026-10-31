@@ -13,7 +13,7 @@ function fixture(t, mockTime = true) {
   room.terrain.isSupported = () => true;
   room.event = null;
   room.phase = 'playing';
-  Object.assign(giant, { x: 0, y: 0, z: 0, yaw: 0, hp: 100, potion: { id: 'grow', endsAt: Infinity }, bigPunchReadyAt: 0 });
+  Object.assign(giant, { x: 0, y: 0, z: 0, yaw: 0, hp: 100, potion: { id: 'grow3', endsAt: Infinity }, bigPunchReadyAt: 0 });
   Object.assign(target, { x: 0, y: 0, z: 20, hp: 400, maxHp: 400 });
   return { room, giant, target };
 }

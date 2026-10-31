@@ -74,10 +74,10 @@ test('Người cầm giữ túi, không đổi / nhặt vũ khí nhưng vẫn u�
   selectSlot(carrier, 0);
   assert.equal(carrier.activeSlot, FIST_SLOT);
   assert.equal(addToInventory(carrier, 'pistol', 4), false);
-  room.pickups.set(1, { id: 1, potion: 'grow', x: carrier.x, z: carrier.z, landsAt: 0 });
+  room.pickups.set(1, { id: 1, potion: 'grow3', x: carrier.x, z: carrier.z, landsAt: 0 });
   t.mock.timers.tick(EVENTS.introMs);
   tryPickup(room, carrier);
-  assert.equal(carrier.potion.id, 'grow');
+  assert.equal(carrier.potion.id, 'grow3');
   assert.equal(carrier.slots[0].ammo, 8);
 });
 

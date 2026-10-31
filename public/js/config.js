@@ -69,6 +69,9 @@ export const POOP = {
 
 // Thuốc hoá to / nhỏ (entities/potionModel.js, ui/potionHud.js). Chỉ số từng loại (kích thước, máu, tốc độ, va chạm) do server gửi trong `welcome`;
 // ở đây chỉ là phần hình. Model potion.glb không có màu nên tô theo tên khối (`kinds`), nước thuốc đổi màu theo loại thuốc.
+// Mọi loại thuốc (to ×2/×3/×4, nhỏ) CÙNG MỘT MÀU để người chơi không đoán được trước khi uống. Muốn tách màu từng loại thì sửa `liquid` bên dưới.
+const POTION_COLOR = '#b04bff';
+
 export const POTION = {
   url: '/models/potion.glb',
   height: 0.55, // lọ thuốc nằm trên sân cao ngần này (mét)
@@ -76,7 +79,7 @@ export const POTION = {
   beam: { height: 30, diameter: 1 }, // cột sáng vàng trên lọ thuốc cho dễ thấy từ xa (lọ không có hòm / khói nên chỉ có cột này để tìm)
   kinds: { beveled_cuboid: 'liquid', tube: 'glass', cylinder: 'cork' },
   colors: { glass: '#d3edf5', cork: '#8a5a2b' },
-  liquid: { grow: '#e8453c', shrink: '#3fa7ff' }, // màu nước thuốc, cũng là màu thanh đếm ngược trên HUD
+  liquid: { grow2: POTION_COLOR, grow3: POTION_COLOR, grow4: POTION_COLOR, shrink: POTION_COLOR }, // màu nước thuốc, cũng là màu thanh đếm ngược trên HUD
   sizeEase: 3.5, // to ra / nhỏ lại mượt theo tốc độ này (càng lớn càng nhanh; 3.5 ≈ gần xong sau 0.8 giây), cả mình lẫn người khác
   // Hiệu ứng lúc uống / hết thuốc trên máy mình (fx/potionFx.js, ui/potionFlash.js); hết thuốc thì nhẹ bằng `endStrength` lần.
   fx: {
@@ -425,6 +428,10 @@ export const BIG_PUNCH = {
 
 // Bị đánh văng (player/knockback.js): đà tan dần theo hàm mũ với tốc độ này (1/giây); trên không tan chậm nên bay xa.
 export const KNOCKBACK = { groundFriction: 2.2, airFriction: 0.5, stopSpeed: 0.3 };
+
+// Khiên xanh xoay quanh người đang uống thuốc có `gunDamageMult` < 1 (khổng lồ giảm sát thương súng, fx/giantShield.js). Kích thước theo đơn vị thân người
+// bình thường (rig co giãn theo cỡ người nên khổng lồ ×3 tự to ra). `arc`: mỗi tấm chiếm ngần này vòng tròn; `pulse`: phình ra một nhịp khi bị súng bắn trúng.
+export const SHIELD_FX = { count: 4, arc: 0.16, radius: 0.85, height: 1.5, centerY: 0.95, spin: 1.8, bob: 0.04, pulse: 0.15, color: [0.25, 0.65, 1], alpha: 0.4 };
 
 // Vạch chia thanh máu (core/hpTicks.js): bậc đầu tiên mà (máu tối đa / small) <= maxSmall được dùng. 100 máu: vạch nhỏ mỗi 10, lớn mỗi 50;
 // 400 máu (hoá to): nhỏ mỗi 25, lớn mỗi 100. `smallHeight` = chiều cao vạch nhỏ so với thanh (vạch lớn cao hết cỡ).

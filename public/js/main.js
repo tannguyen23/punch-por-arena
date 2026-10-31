@@ -53,6 +53,7 @@ import { updateRockets } from './fx/rockets.js';
 import { updateGrenades } from './fx/grenades.js';
 import { updateWeather } from './fx/weather.js';
 import { updateLightning } from './fx/lightning.js';
+import { updateGiantShields } from './fx/giantShield.js';
 import { updateStunEffects } from './fx/stun.js';
 import { updateStunHud } from './ui/stunHud.js';
 import { updateIce } from './fx/icePatch.js';
@@ -148,6 +149,7 @@ scene.onBeforeRenderObservable.add(() => {
   measure(updateWeather, dt);
   measure(updateLightning, dt);
   measure(updateStunEffects, dt);
+  measure(updateGiantShields, dt);
   measure(updateStunHud);
   measure(updateIce);
   measure(updateNuke, dt);

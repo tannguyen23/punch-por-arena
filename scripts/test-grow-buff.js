@@ -7,17 +7,17 @@ const { startCharge, releaseCharge } = require('../server/game/bigPunch');
 
 test('Hoá to có 400 HP, giữ tỉ lệ máu; client nhận hồi chiêu 2,5 giây', () => {
   const { players: [a] } = setup();
-  drinkPotion(a, 'grow');
+  drinkPotion(a, 'grow4');
   assert.equal(a.maxHp, 400);
   assert.equal(a.hp, 400);
   clearPotion(a);
   a.hp = 50;
-  drinkPotion(a, 'grow');
+  drinkPotion(a, 'grow4');
   assert.equal(a.hp, 200);
   clearPotion(a);
   assert.equal(a.maxHp, 100);
   assert.equal(a.hp, 50);
-  assert.equal(potionInfo().grow.bigPunch.cooldownMs, 2500);
+  assert.equal(potionInfo().grow4.bigPunch.cooldownMs, 2500);
   assert.equal(potionInfo().shrink.hpMult, 0.5);
 });
 
@@ -40,7 +40,7 @@ test('Nhảy đấm: sóng nổ ở điểm rơi tới đúng bán kính, ngoài
   Object.assign(a, { x: 0, z: 0, y: 0, yaw: 0 });
   Object.assign(b, { x: BIG_PUNCH.radius - 0.1, z: LAND_Z, y: 0 });
   Object.assign(c, { x: BIG_PUNCH.radius + 0.1, z: LAND_Z, y: 0 });
-  drinkPotion(a, 'grow');
+  drinkPotion(a, 'grow4');
   startCharge(room, a);
   t.mock.timers.tick(BIG_PUNCH.chargeMs);
   releaseCharge(room, a, { yaw: 0, pitch: 0 });
@@ -67,7 +67,7 @@ test('Nhảy đấm gồng đầy gây 70 sát thương ở tâm và 49 ở nử
   Object.assign(a, { x: 0, z: 0, y: 0, yaw: 0 });
   Object.assign(b, { x: 0, z: LAND_Z, y: 0 });
   Object.assign(c, { x: BIG_PUNCH.radius / 2, z: LAND_Z, y: 0 });
-  drinkPotion(a, 'grow');
+  drinkPotion(a, 'grow4');
   startCharge(room, a);
   t.mock.timers.tick(BIG_PUNCH.chargeMs);
   releaseCharge(room, a, { yaw: 0, pitch: 0 });

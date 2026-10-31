@@ -6,6 +6,7 @@ import { prepareRain } from './rain.js';
 import { prepareJetFx } from './jetFx.js';
 import { prepareLightning } from './lightning.js';
 import { prepareStunFx } from './stun.js';
+import { prepareGiantShield } from './giantShield.js';
 
 const FAR_BELOW = -400; // dưới mặt đất rất xa: được vẽ (nên shader biên dịch ngay) nhưng bị đất che, không ai thấy
 
@@ -26,6 +27,7 @@ export function warmUpEffects() {
   muzzleFlash(0, FAR_BELOW, 0);
   prepareLightning(FAR_BELOW);
   prepareStunFx(FAR_BELOW);
+  prepareGiantShield(FAR_BELOW);
   prepareJetFx(FAR_BELOW);
   for (const mesh of scene.meshes) if (!known.has(mesh)) mesh.alwaysSelectAsActiveMesh = true; // ngoài khung nhìn vẫn được vẽ (và biên dịch)
 }

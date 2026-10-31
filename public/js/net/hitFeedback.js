@@ -5,6 +5,7 @@ import { slowMotion } from '../core/timeScale.js';
 import { flashDamage, flashCrosshairHit, showDamageNotice } from '../ui/hud.js';
 import { showHitDirection } from '../ui/hitDirection.js';
 import { hitRing } from '../audio/hitSfx.js';
+import { pulseShield } from '../fx/giantShield.js';
 import { positionOf, playAt } from './positional.js';
 
 const lerp = ([min, max], t) => min + (max - min) * t;
@@ -61,6 +62,7 @@ export function hitFeedback(m) {
   const victim = remotes.get(m.id);
   victim?.hitFlash?.trigger(power);
   victim?.hit?.(power);
+  if (victim && weaponKindOf(m.by) === 'gun') pulseShield(m.id); // khiên của khổng lồ phình ra khi bị súng bắn
 
   // Hit stop chỉ cho đòn cận chiến: súng bắn liên thanh sẽ làm mọi thứ đứng hình liên tục.
   if (weaponKindOf(m.by) === 'melee') {
