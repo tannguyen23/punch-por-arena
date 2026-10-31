@@ -1,5 +1,6 @@
 // Mưa: các giọt kéo thành vệt rơi trong một hình hộp đi theo camera (mưa ở đâu cũng thấy mà không phải phủ cả sân).
 import { scene } from '../core/scene.js';
+import { state } from '../state.js';
 import { WEATHER } from '../config.js';
 import { glowTexture } from './sprintEffects.js';
 
@@ -34,10 +35,17 @@ function createRain() {
   return rain;
 }
 
+// Dựng hệ hạt mưa (đang tạnh nên chưa rơi giọt nào) ngay lúc vào phòng để shader biên dịch trước, không giật lúc bão bắt đầu.
+export function prepareRain() {
+  system ??= createRain();
+}
+
 // `level` 0 (tạnh) → 1 (mưa to nhất). Gọi mỗi khung hình.
 export function updateRain(level) {
+  if (state.spectator) level = 0; // mưa bám theo camera: từ trên cao nó thành một mảng lơ lửng giữa trời, không phủ sân
   if (!system && level <= 0) return;
   system ??= createRain();
+  if (level <= 0 && system.emitRate === 0) return; // đang tạnh: không có gì để cập nhật
   const eye = scene.activeCamera.position;
   system.emitter.set(eye.x, eye.y + WEATHER.rain.height, eye.z);
   system.emitRate = WEATHER.rain.rate * level;

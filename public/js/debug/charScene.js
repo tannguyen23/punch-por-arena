@@ -1,6 +1,7 @@
 import { scene, solidMaterial } from '../core/scene.js';
 import { CHARACTER } from '../config.js';
-import { loadCharacter, createModelAvatar } from '../entities/character.js';
+import { loadCharacter, createModelAvatar, kindColor } from '../entities/character.js';
+import { loadJetpack } from '../entities/jetpack.js';
 import { equipLoadout, thirdPersonTilt } from '../entities/weapons/index.js';
 
 const { ArcRotateCamera, Color3, Color4, MeshBuilder, TransformNode, Vector3 } = BABYLON;
@@ -42,19 +43,23 @@ function buildGround() {
 // Tô màu model gốc giống nhân vật trong game (model chưa có màu trong file).
 function tintContainer(container) {
   const materials = new Map();
-  const materialFor = (hex) => {
-    if (!materials.has(hex)) {
-      const mat = solidMaterial(Color3.FromHexString(hex), scene);
+  const materialFor = (kind) => {
+    if (!materials.has(kind)) {
+      const mat = solidMaterial(kindColor(kind, LOOK), scene);
       mat.backFaceCulling = false;
-      materials.set(hex, mat);
+      const offset = CHARACTER.featureZOffset[kind];
+      if (offset) {
+        mat.zOffset = offset;
+        mat.zOffsetUnits = offset;
+      }
+      materials.set(kind, mat);
     }
-    return materials.get(hex);
+    return materials.get(kind);
   };
   for (const mesh of container.meshes) {
     if (!mesh.getTotalVertices()) continue;
     const kind = kindOf(mesh);
-    const hex = kind ? (LOOK[kind] ?? CHARACTER.fixedColors[kind]) : null;
-    if (hex) mesh.material = materialFor(hex);
+    if (kind && kindColor(kind, LOOK)) mesh.material = materialFor(kind);
   }
 }
 
@@ -86,7 +91,7 @@ export async function loadSceneView(canvas) {
   camera.upperRadiusLimit = 9;
   camera.wheelPrecision = 40;
 
-  await loadCharacter(scene);
+  await Promise.all([loadCharacter(scene), loadJetpack(scene)]); // động cơ phản lực sau lưng hiện cùng nhân vật (xem từ camera "back")
   const avatar = createModelAvatar(scene, 'debug', LOOK, {});
   equipLoadout(avatar.fists, 'fist');
 

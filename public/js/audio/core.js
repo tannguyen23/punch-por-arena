@@ -2,7 +2,7 @@
 // `audio.ctx` là null cho tới khi người chơi bấm vào trang (trình duyệt chỉ cho phát tiếng sau thao tác của người dùng).
 // Mọi tiếng đi qua `master` rồi bộ lọc `muffle` (bình thường để lọt hết; bị choáng thì nghẹt lại, xem muffle()).
 // `ears` là tiếng ù trong tai: không bị nghẹt nên nối thẳng ra loa, tắt tiếng cũng tắt theo.
-export const audio = { ctx: null, master: null, muffle: null, ears: null, noiseBuf: null, muted: false };
+export const audio = { ctx: null, master: null, muffle: null, ears: null, capture: null, noiseBuf: null, muted: false };
 
 const OPEN_FREQ = 20000; // bộ lọc `muffle` mở hết cỡ
 
@@ -23,6 +23,18 @@ export function init() {
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
   }
   if (audio.ctx.state === 'suspended') audio.ctx.resume();
+}
+
+// Đầu ra phụ cho chế độ ghi hình (?record=1): chép đúng tiếng đã qua `master` (bấm M tắt tiếng thì bản ghi cũng câm) ra một
+// MediaStream. Chỉ có sau khi âm thanh đã mở (một cú bấm vào trang), chưa có thì trả null và bản ghi không tiếng.
+export function captureAudioStream() {
+  if (!audio.ctx || !audio.master) return null;
+  if (!audio.capture) {
+    audio.capture = audio.ctx.createMediaStreamDestination();
+    audio.muffle.connect(audio.capture);
+    audio.ears.connect(audio.capture);
+  }
+  return audio.capture.stream;
 }
 
 export function toggleMute() {

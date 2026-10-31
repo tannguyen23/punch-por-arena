@@ -41,7 +41,7 @@ function handleFire(room, p, m) {
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất
   const pitch = clamp(m.pitch, -PITCH_LIMIT, PITCH_LIMIT);
   if (weapon.kind === 'nuke') {
-    if (startNuke(room, p, m.yaw, pitch)) useAmmo(p); // bom rơi chỗ đang ngắm; phòng đang có bom khác tới thì không trừ đạn
+    if (startNuke(room, p, m.yaw, pitch)) useAmmo(p); // đợt oanh kích quanh chỗ đang ngắm; phòng đang có đợt khác tới thì không trừ đạn
     return;
   }
   if (weapon.kind === 'rocket') launchRocket(room, p, weapon, aimDirection(m.yaw, pitch));

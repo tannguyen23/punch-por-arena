@@ -8,7 +8,8 @@ import { ICE } from '../config.js';
 const { Mesh, VertexData, StandardMaterial, DynamicTexture, Color3 } = BABYLON;
 const { patch: PATCH } = ICE;
 
-const live = new Map(); // id → { mesh, bornAt, endsAt }
+const FADE_STEPS = 20;
+const live = new Map(); // id → { mesh, bornAt, endsAt, grown, fade }
 
 // Mặt băng: nền xanh nhạt với các vết nứt trắng toả ra và vài điểm lấp lánh. Vẽ một lần, dùng chung mọi vũng.
 function createIceTexture() {
@@ -134,8 +135,15 @@ export function updateIce() {
       continue;
     }
     const grow = Math.min(1, (now - patch.bornAt) / 1000 / PATCH.growTime);
-    const size = 0.35 + 0.65 * (1 - (1 - grow) * (1 - grow));
-    patch.mesh.scaling.set(size, 1, size);
-    patch.mesh.visibility = Math.min(1, remaining / 1000 / PATCH.fadeTime);
+    if (grow < 1 || !patch.grown) { // loang xong thì không đụng tới cỡ nữa
+      const size = 0.35 + 0.65 * (1 - (1 - grow) * (1 - grow));
+      patch.mesh.scaling.set(size, 1, size);
+      patch.grown = grow >= 1;
+    }
+    const fade = Math.ceil(Math.min(1, remaining / 1000 / PATCH.fadeTime) * FADE_STEPS) / FADE_STEPS; // mờ theo bậc: đổi độ trong suốt mỗi khung hình là việc thừa
+    if (fade !== patch.fade) {
+      patch.mesh.visibility = fade;
+      patch.fade = fade;
+    }
   }
 }

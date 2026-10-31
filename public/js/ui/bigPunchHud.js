@@ -9,7 +9,7 @@ let drawnMode = null;
 let drawnSecond = null;
 
 // Thanh của cú "đấm trời giáng" (player/bigPunch.js), chỉ hiện khi đang uống thuốc có khả năng này: sẵn sàng (nhắc phím giữ),
-// đang tích lực (thanh đầy dần, thả khi đầy) hoặc đang hồi chiêu (thanh đầy dần tới lúc dùng lại được). Gọi mỗi khung hình.
+// đang gồng (thanh đầy dần, thả lúc nào cũng nhảy, đầy thì mạnh nhất) hoặc đang hồi chiêu (thanh đầy dần tới lúc dùng lại được). Gọi mỗi khung hình.
 export function updateBigPunchHud() {
   const config = state.potionTypes[state.potion?.id]?.bigPunch;
   const big = state.bigPunch;
@@ -26,9 +26,9 @@ export function updateBigPunchHud() {
     drawnSecond = second;
     el.dataset.mode = mode;
     label.textContent = {
-      ready: `GIỮ [${BIG_PUNCH.keyLabel}]: ĐẤM TRỜI GIÁNG`,
-      charging: 'ĐANG TÍCH LỰC...',
-      full: `THẢ [${BIG_PUNCH.keyLabel}] ĐỂ ĐẤM!`,
+      ready: `GIỮ [${BIG_PUNCH.keyLabel}]: NHẢY ĐẤM TRỜI GIÁNG`,
+      charging: `ĐANG GỒNG... THẢ [${BIG_PUNCH.keyLabel}] ĐỂ NHẢY`,
+      full: `ĐỦ LỰC! THẢ [${BIG_PUNCH.keyLabel}] ĐỂ NHẢY ĐẤM!`,
       cooldown: `HỒI CHIÊU ${second}s`,
     }[mode];
   }

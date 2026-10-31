@@ -8,15 +8,18 @@ import { clearStrikes } from '../fx/lightning.js';
 import { setStorm } from '../fx/weather.js';
 import { clearIce, spawnIce } from '../fx/icePatch.js';
 import { clearNuke, startNuke } from '../fx/nuke.js';
-import { setPauseVisible } from '../ui/hud.js';
+import { setGameHudVisible, setPauseVisible } from '../ui/hud.js';
 import { hideMenu, showMenuError } from '../ui/menu.js';
 import { copyRoomLink } from '../ui/lobbyHud.js';
 import { announce } from '../ui/matchHud.js';
 import { pickupHandlers, addPickup, clearPickups } from './pickupHandlers.js';
 import { combatHandlers } from './combatHandlers.js';
 import { bigPunchHandlers } from './bigPunchHandlers.js';
+import { dashHandlers } from './dashHandlers.js';
 import { poopHandlers, clearPoops } from './poopHandlers.js';
 import { grenadeHandlers } from './grenadeHandlers.js';
+import { skillHandlers } from './skillHandlers.js';
+import { clearWeaponThrows } from '../fx/skillThrow.js';
 import { weatherHandlers } from './weatherHandlers.js';
 import { nukeHandlers } from './nukeHandlers.js';
 import { eventHandlers, applyEvent } from './eventHandlers.js';
@@ -28,18 +31,22 @@ import { roomHandlers } from './roomHandlers.js';
 import { tableHandlers, applyTableGames } from './tableHandlers.js';
 import { applySnapshot } from './snapshot.js';
 import * as Sfx from '../audio/sfx.js';
+import { warmUpEffects } from '../fx/warmup.js';
+import { finishLoading, hideLoading } from '../ui/loadingScreen.js';
 
 // Đồng hồ của server gửi dạng "còn bao nhiêu ms"; đổi sang mốc của đồng hồ máy mình.
-function applyMatch({ phase, timeLeft, ranking }) {
+function applyMatch({ phase, timeLeft, ranking, eventWarn = null }) {
   state.match.phase = phase;
   state.match.endsAt = performance.now() + timeLeft;
   state.match.ranking = ranking;
+  state.eventWarn = eventWarn ? { kind: eventWarn.kind, at: performance.now() + eventWarn.in } : null;
 }
 
 // Bỏ những thứ đang bay / chờ nổ / còn tồn tại (server cũng bỏ khi đổi pha): tên lửa, lựu đạn, vũng băng, sét, bom hạt nhân.
 function clearProjectiles() {
   clearRockets();
   clearGrenades();
+  clearWeaponThrows();
   clearIce();
   clearStrikes();
   clearNuke();
@@ -56,8 +63,10 @@ const messageHandlers = {
   ...pickupHandlers,
   ...combatHandlers,
   ...bigPunchHandlers,
+  ...dashHandlers,
   ...poopHandlers,
   ...grenadeHandlers,
+  ...skillHandlers,
   ...weatherHandlers,
   ...nukeHandlers,
   ...eventHandlers,
@@ -73,6 +82,8 @@ const messageHandlers = {
     state.tableRules = m.tableRules;
     state.maxHp = m.maxHp;
     buildArena(m.map);
+    warmUpEffects(); // biên dịch sẵn shader hiệu ứng, khỏi giật giữa trận
+    finishLoading(); // ẩn màn loading khi scene sẵn sàng
     state.me.x = m.x;
     state.me.z = m.z;
     state.me.y = groundAt(m.x, m.z, Infinity);
@@ -97,7 +108,9 @@ const messageHandlers = {
 
   // Server từ chối cho vào phòng (sai mã, phòng đầy...): về lại menu để thử lại.
   error(m) {
+    hideLoading();
     state.joined = false;
+    setGameHudVisible(false);
     document.exitPointerLock();
     setPauseVisible(false);
     showMenuError(m.reason);
@@ -112,6 +125,7 @@ const messageHandlers = {
   // Về phòng chờ: sau khi hết giờ nghỉ, hoặc đếm ngược bị huỷ (có người bỏ sẵn sàng / vào thêm / thoát).
   lobby(m) {
     state.match.phase = 'lobby';
+    state.eventWarn = null;
     if (m.map) {
       buildArena(m.map);
       state.room.mapId = m.map.id;
@@ -134,6 +148,7 @@ const messageHandlers = {
     state.match.phase = 'playing';
     state.match.endsAt = performance.now() + m.duration;
     state.match.ranking = [];
+    state.eventWarn = null;
     Sfx.horn();
     announce('TRẬN MỚI BẮT ĐẦU!');
   },

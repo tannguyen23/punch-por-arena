@@ -18,6 +18,9 @@ const { Quaternion, Vector3 } = BABYLON;
 const BLEND_IN = 0.04; // giây: trộn từ tư thế hiện tại vào đầu hoạt ảnh (tránh giật khi đấm liên tiếp / đổi hoạt ảnh)
 const SLIDE_BLEND_IN = 0.1; // giây: cú chém bắt đầu với tay giơ cao nên cần trộn lâu hơn để không giật
 const RETURN = 0.14; // giây: trộn về tư thế đứng yên (cuối hoạt ảnh, hoặc với các nút hoạt ảnh hiện tại không điều khiển)
+const HIT_FADE_IN = 0.03; // giây: hoạt ảnh bị đánh ("beaten") vào nhanh cho giật mình có lực
+const HIT_SPEED = 2; // clip "beaten" chỉ là một cú ngả từ thế đứng tới tư thế giật (0,25s): chạy nhanh gấp đôi cho giật có lực
+const HIT_RECOVER = 0.18; // giây: giữ tư thế giật rồi hoà về lại thế đứng sau khi clip chạy xong
 const IDLE_FADE = 0.08; // giây: hoà khung cuối của idle về khung đầu để vòng lặp không bị giật
 const smooth = (t) => t * t * (3 - 2 * t);
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
@@ -127,6 +130,8 @@ export class CharacterAnimator {
     this.jumpSpeed = 1;
     this.running = false;
     this.runT = 0;
+    this.hitT = null; // thời gian trong hoạt ảnh bị đánh ("beaten") đang chồng lên; null = không chạy
+    this.hitWeight = 1;
     this.hold = null; // khác null: cú đấm đang chạy dừng lại ở thời điểm này cho tới khi thả (tích lực của đấm lớn)
     for (const [key, v] of this.base) this.apply(key, v);
   }
@@ -283,7 +288,42 @@ export class CharacterAnimator {
     for (const [key, base] of this.base) if (!clip.keys.has(key)) this.blendTo(key, base, blendOut);
   }
 
+  // Bị đánh: hoạt ảnh "beaten" (chỉ xoay thân trên và đầu) CHỒNG lên bất cứ hoạt ảnh nào đang chạy chứ không thay thế, nên đang đi / đấm / nhảy vẫn giật mình
+  // được. `power` 0–1: đòn nhẹ thì giật nhẹ. Bị hạ (ngã) thì bỏ qua.
+  hit(power = 1) {
+    if (!this.sets.H || this.stage === 'ko') return;
+    // Đang giật dở (trao đổi đòn liên tục) thì giữ nguyên tư thế, không đặt lại về 0 rồi ngả lại: chỉ kéo về đỉnh giật nếu đã đang hồi.
+    this.hitT = this.hitT === null ? 0 : Math.min(this.hitT, this.sets.H.duration / HIT_SPEED);
+    this.hitWeight = Math.max(this.hitT === 0 ? 0 : this.hitWeight, 0.55 + 0.45 * power);
+  }
+
+  applyHit(dt) {
+    if (this.hitT === null) return;
+    const clip = this.sets.H;
+    if (this.stage === 'ko') {
+      this.hitT = null;
+      return;
+    }
+    this.hitT += dt;
+    const time = Math.min(this.hitT * HIT_SPEED, clip.duration);
+    const done = clip.duration / HIT_SPEED; // lúc clip chạy tới tư thế giật cuối cùng
+    const fadeIn = smooth(clamp01(this.hitT / HIT_FADE_IN));
+    const fadeOut = 1 - smooth(clamp01((this.hitT - done) / HIT_RECOVER));
+    const weight = fadeIn * fadeOut * this.hitWeight;
+    for (const track of clip) {
+      const key = keyOf(track);
+      const value = sample(track, time, KINDS[track.path].create());
+      this.apply(key, KINDS[track.path].blend(this.current.get(key), value, weight, KINDS[track.path].create()));
+    }
+    if (this.hitT >= done + HIT_RECOVER) this.hitT = null;
+  }
+
   update(dt) {
+    this.step(dt);
+    this.applyHit(dt);
+  }
+
+  step(dt) {
     if (this.stage === 'idle') return this.updateIdle(dt);
     if (this.stage === 'ko') return this.updateKo(dt);
     if (this.airborne) this.airT += dt;
@@ -326,7 +366,7 @@ export class CharacterAnimator {
 
 // Vai trò của một animation theo tên, xét lần lượt từ trên xuống. Thứ tự quan trọng: "Right Slide" và "big_right_punch" cũng chứa "right",
 // nên phải được nhận trước khi tới "right" / "left" (nếu không sẽ ghi đè cú đấm thường).
-const ROLES = [[/knock|death|die/i, 'K'], [/idle/i, 'I'], [/run|sprint/i, 'Run'], [/jump/i, 'J'], [/slide/i, 'S'], [/big/i, 'B'], [/right/i, 'R'], [/left/i, 'L']];
+const ROLES = [[/beaten|hurt|flinch/i, 'H'], [/knock|death|die/i, 'K'], [/idle/i, 'I'], [/run|sprint/i, 'Run'], [/jump/i, 'J'], [/slide/i, 'S'], [/big/i, 'B'], [/right/i, 'R'], [/left/i, 'L']];
 const roleOf = (name) => ROLES.find(([pattern]) => pattern.test(name))?.[1] ?? null;
 
 // Dựng bộ điều khiển hoạt ảnh từ các animation group của một bản sao nhân vật (`body` là nút gốc của bản sao).

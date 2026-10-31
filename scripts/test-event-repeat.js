@@ -2,7 +2,7 @@ const { test } = require('node:test');
 const assert = require('node:assert/strict');
 const { setup } = require('./helpers/tableGame');
 const config = require('../server/config');
-const { planEvents, tickEvents, clearEvents } = require('../server/game/events');
+const { planEvents, tickEvents, clearEvents, eventWarnView } = require('../server/game/events');
 
 function start(t) {
   t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000000 });
@@ -34,7 +34,7 @@ test('Lịch không lặp cùng loại, kể cả qua trận mới; phòng khác
   other.endsAt = room.endsAt;
   planEvents(other, Date.now());
   assert.equal(other.eventPlan[0].kind, 'dog');
-  room.eventPlan = [{ kind: 'tnt', at: Date.now() }];
+  room.eventPlan = [{ kind: 'tnt', at: Date.now(), warned: true }];
   tickEvents(room, Date.now());
   assert.equal(room.lastEventKind, 'tnt');
   clearEvents(room);
@@ -46,17 +46,40 @@ test('Lịch không lặp cùng loại, kể cả qua trận mới; phòng khác
 test('Lịch bị bỏ một ô vẫn không lặp lần chạy thật; bắt đầu thất bại không ghi lịch sử', (t) => {
   const room = start(t);
   room.lastEventKind = 'dog';
-  room.eventPlan = [{ kind: 'dog', at: Date.now() }];
+  room.eventPlan = [{ kind: 'dog', at: Date.now(), warned: true }];
   tickEvents(room, Date.now());
   assert.equal(room.event.kind, 'duel');
   assert.equal(room.lastEventKind, 'duel');
   clearEvents(room);
   room.mapData = { ...room.mapData, ring: null };
-  room.eventPlan = [{ kind: 'duel', at: Date.now() }];
+  room.eventPlan = [{ kind: 'duel', at: Date.now(), warned: true }];
   room.lastEventKind = 'tnt';
   tickEvents(room, Date.now());
   assert.equal(room.event, null);
   assert.equal(room.lastEventKind, 'tnt');
+});
+
+test('Báo trước 5 giây đúng một lần; sự kiện không kịp thì bỏ luôn', (t) => {
+  const room = start(t);
+  const now = Date.now();
+  const warns = () => [...room.players.values()].flatMap((p) => p.messages).filter((m) => m.t === 'eventWarn');
+  room.eventPlan = [{ kind: 'dog', at: now + 10000 }];
+
+  tickEvents(room, now + 4000); // còn 6 giây: chưa báo
+  assert.equal(warns().length, 0);
+
+  tickEvents(room, now + 5000); // còn đúng 5 giây: báo
+  assert.equal(warns().length, room.players.size);
+  assert.equal(room.eventPlan[0].warned, true);
+  assert.deepEqual(eventWarnView(room, now + 5000), { kind: 'dog', in: 5000 });
+
+  tickEvents(room, now + 6000); // không báo lại
+  assert.equal(warns().length, room.players.size);
+
+  // Không kịp xong trước khi hết trận: bỏ mục, không báo một sự kiện sẽ không diễn ra.
+  room.eventPlan = [{ kind: 'dog', at: room.endsAt - 1000 }];
+  tickEvents(room, room.endsAt - 6000);
+  assert.equal(room.eventPlan.length, 0);
 });
 
 test('Test thứ tự cố định và chế độ ép một loại vẫn lặp được', (t) => {
@@ -66,13 +89,33 @@ test('Test thứ tự cố định và chế độ ép một loại vẫn lặp 
   room.lastEventKind = 'dog';
   planEvents(room, Date.now());
   assert.ok(room.eventPlan.every((ev) => ev.kind === 'dog'));
-  room.eventPlan[0].at = Date.now();
+  Object.assign(room.eventPlan[0], { at: Date.now(), warned: true });
   tickEvents(room, Date.now());
   assert.equal(room.event.kind, 'dog');
   clearEvents(room);
   config.TEST.enabled = false;
   config.EVENTS.only = 'dog';
-  room.eventPlan = [{ kind: 'dog', at: Date.now() }];
+  room.eventPlan = [{ kind: 'dog', at: Date.now(), warned: true }];
   tickEvents(room, Date.now());
   assert.equal(room.event.kind, 'dog');
+});
+
+test('Hẹn đã tới hoặc còn ít hơn 5 giây (sự kiện trước chạy lố, chế độ test nối sát) vẫn báo đủ 5 giây rồi mới bắt đầu', (t) => {
+  const room = start(t);
+  const now = Date.now();
+  const warns = () => [...room.players.values()].flatMap((p) => p.messages).filter((m) => m.t === 'eventWarn');
+  room.eventPlan = [{ kind: 'dog', at: now - 2000 }]; // quá hẹn từ lâu
+  tickEvents(room, now);
+  assert.equal(room.event, null, 'chưa được bắt đầu ngay');
+  assert.equal(warns().at(-1).in, config.EVENTS.warnMs);
+  tickEvents(room, now + config.EVENTS.warnMs - 1);
+  assert.equal(room.event, null);
+  tickEvents(room, now + config.EVENTS.warnMs);
+  assert.equal(room.event.kind, 'dog');
+
+  clearEvents(room);
+  room.eventPlan = [{ kind: 'tnt', at: now + 1500 }]; // chỉ còn 1,5 giây
+  tickEvents(room, now);
+  assert.equal(warns().at(-1).in, config.EVENTS.warnMs);
+  assert.equal(room.eventPlan[0].at, now + config.EVENTS.warnMs);
 });

@@ -2,6 +2,7 @@ import { scene } from '../core/scene.js';
 import { heightAt } from '../core/terrain.js';
 import { part, box, ball, cylinder, colorMaterial as mat } from '../core/meshes.js';
 import { createTableModel } from './tableModel.js';
+import { MESH_DETAIL } from '../config.js';
 
 const WOOD = '#8a5a33';
 const WOOD_DARK = '#6b4423';
@@ -16,12 +17,18 @@ const builders = {
   },
 
   bush(root) {
-    part(ball(1.2), root, 0, 0.45, 0, mat('#3f8f3f')).scaling.y = 0.75;
-    part(ball(0.8), root, 0.5, 0.3, 0.2, mat('#4c9f4c')).scaling.y = 0.75;
+    const [big, small] = MESH_DETAIL.bushSegments;
+    const main = part(ball(1.2, scene, big), root, 0, 0.45, 0, mat('#3f8f3f'));
+    const side = part(ball(0.8, scene, small), root, 0.5, 0.3, 0.2, mat('#4c9f4c'));
+    for (const lump of [main, side]) {
+      lump.convertToFlatShadedMesh(); // ít đoạn mà bóng mịn thì thấy múi lệch: để mỗi mặt một màu như đá cho ra khối low-poly
+      lump.scaling.y = 0.75;
+    }
   },
 
   rock(root) {
-    const rock = part(ball(1.4), root, 0, 0.4, 0, mat('#8d8d8d'));
+    const rock = part(ball(1.4, scene, MESH_DETAIL.rockSegments), root, 0, 0.4, 0, mat('#8d8d8d'));
+    rock.convertToFlatShadedMesh(); // mỗi mặt một màu: đá kiểu low-poly
     rock.scaling.set(1, 0.6, 0.85);
   },
 
@@ -65,8 +72,62 @@ const builders = {
   },
 };
 
+// Loại vật phẩm có hàng trăm bản giống nhau (cây, bụi, đá...) dùng thin instance: mỗi khối của mỗi (loại, màu) là MỘT mesh duy nhất, mọi bản trên sân
+// chỉ là một ma trận trong buffer của mesh đó. Cả nhóm vẽ bằng một draw call và Babylon không phải chọn / cắt từng bản theo khung nhìn mỗi khung hình
+// (190 cây = 3 draw call, 0 mesh riêng; với instance thường thì từng bản vẫn tốn CPU ở bước chọn mesh). Bàn (model .glb) và sàn võ đài (chỉ một) dựng riêng.
+const INSTANCED = new Set(['tree', 'bush', 'rock', 'cactus', 'crate', 'chair', 'post']);
+const templates = new Map(); // `loại:màu` → [{ mesh, local }]: khối đã đưa về gốc toạ độ và ma trận đặt khối đó trong vật phẩm
+
+// Dọn mẫu của map cũ (gọi đầu buildArena): buffer ma trận thuộc về mesh mẫu chứ không thuộc node `arena` nên không tự bị dọn theo.
+export function resetProps() {
+  for (const parts of templates.values()) for (const { mesh } of parts) mesh.dispose();
+  templates.clear();
+}
+
+function templateFor(prop) {
+  const key = `${prop.type}:${prop.color ?? ''}`;
+  if (!templates.has(key)) {
+    const node = new BABYLON.TransformNode(`${prop.type}Template`, scene);
+    builders[prop.type](node, prop);
+    const parts = node.getChildMeshes().map((mesh) => {
+      const local = mesh.computeWorldMatrix(true).clone(); // node đứng ở gốc nên đây chính là chỗ đặt của khối trong vật phẩm
+      mesh.parent = null;
+      mesh.position.setAll(0);
+      mesh.rotation.setAll(0);
+      mesh.scaling.setAll(1); // vị trí / góc / cỡ nằm trong ma trận của từng bản, mesh mẫu để nguyên ở gốc
+      mesh.isPickable = false;
+      return { mesh, local };
+    });
+    node.dispose();
+    templates.set(key, parts);
+  }
+  return templates.get(key);
+}
+
+function addInstances(prop) {
+  const { x, z, rot = 0 } = prop;
+  const root = BABYLON.Matrix.RotationY(rot);
+  root.setTranslation(new BABYLON.Vector3(x, heightAt(x, z), z));
+  for (const { mesh, local } of templateFor(prop)) mesh.thinInstanceAdd(local.multiply(root), false);
+}
+
+// Gọi sau khi đã thêm mọi vật phẩm của map: đẩy buffer lên GPU, tính khung bao ôm hết các bản rồi đóng băng.
+export function finishProps() {
+  for (const parts of templates.values()) {
+    for (const { mesh } of parts) {
+      mesh.thinInstanceBufferUpdated('matrix');
+      mesh.thinInstanceRefreshBoundingInfo(true);
+      mesh.freezeWorldMatrix();
+    }
+  }
+}
+
 export function createProp(prop, parent, id) {
   const { type, x, z, rot = 0 } = prop;
+  if (INSTANCED.has(type)) {
+    addInstances(prop);
+    return null;
+  }
   const root = new BABYLON.TransformNode(type, scene);
   root.parent = parent;
   root.position.set(x, heightAt(x, z), z);

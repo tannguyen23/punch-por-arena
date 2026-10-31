@@ -10,7 +10,7 @@ const { MAX_HP, PLAYER_RADIUS, POTION, BIG_PUNCH } = require('../config');
 // Client nhận bảng này trong 'welcome' (potionInfo) để dựng hình, HUD và va chạm, không có bản sao riêng.
 // Thêm thuốc mới: thêm một dòng vào đây, màu nước thuốc trong POTION ở public/js/config.js.
 const POTIONS = {
-  grow: { name: 'Thuốc hoá to', scale: 3, hpMult: 4, speedMult: 0.8, collision: 1.5, bigPunch: true, dropWeight: 50 },
+  grow: { name: 'Thuốc hoá to', scale: 3, hpMult: 4, speedMult: 1, collision: 1.5, bigPunch: true, dropWeight: 50 },
   shrink: { name: 'Thuốc hoá nhỏ', scale: 0.5, hpMult: 0.5, speedMult: 1.4, collision: 0.7, dropWeight: 50 }, // 2 × 0.7 × PLAYER_RADIUS phải > HARD_OVERLAP
 };
 
@@ -30,7 +30,7 @@ const potionInfo = () =>
       id,
       {
         name, scale, hpMult, speedMult, collision, durationMs: POTION.durationMs,
-        bigPunch: bigPunch ? { chargeMs: BIG_PUNCH.chargeMs, cooldownMs: BIG_PUNCH.cooldownMs } : null,
+        bigPunch: bigPunch ? { chargeMs: BIG_PUNCH.chargeMs, cooldownMs: BIG_PUNCH.cooldownMs, radius: BIG_PUNCH.radius, leap: BIG_PUNCH.leap } : null,
       },
     ]),
   );
@@ -56,6 +56,7 @@ function drinkPotion(p, id, now = Date.now()) {
 // Hết thuốc / chết / hồi sinh / hoá chó: về thân hình bình thường. Khả năng đi kèm (đấm trời giáng) mất theo, cả lần tích lực dở và hồi chiêu.
 function clearPotion(p) {
   p.bigChargeAt = 0;
+  p.leap = null;
   p.bigPunchReadyAt = 0;
   if (!p.potion) return;
   p.potion = null;

@@ -4,13 +4,13 @@ const {
 } = require('../config');
 const config = require('../config'); // MATCH_DURATION_MS và MIN_PLAYERS_TO_START đọc lúc dùng: /admin-test đổi được khi server đang chạy
 const { broadcast } = require('../net/messaging');
-const { AIRDROP_LEAD_MS, clearPickups, launchAirdrop } = require('./pickups');
+const { AIRDROP_LEAD_MS, clearPickups, launchAirdropWave } = require('./pickups');
 const { clearRockets } = require('./rockets');
 const { clearGrenades } = require('./grenades');
 const { startWeather, stopWeather, tickWeather, weatherView } = require('./weather');
 const { clearNuke } = require('./nuke');
 const { clearIce } = require('./ice');
-const { planEvents, tickEvents, clearEvents, eventView, isPaused } = require('./events');
+const { planEvents, tickEvents, clearEvents, eventView, eventWarnView, isPaused } = require('./events');
 const { regenerate } = require('./regen');
 const { runPotionDrops } = require('./potionDrops');
 const { tickPotions } = require('./potions');
@@ -125,8 +125,9 @@ function setReady(room, p, ready) {
   p.ready = Boolean(ready);
 }
 
-// Máy bay tiếp tế: phòng đông thì đợt tới dày hơn và mỗi đợt nhiều hòm hơn (mỗi hòm một máy bay riêng, công thức ở AIRDROP trong config.js)
-// để ai cũng có cơ hội tranh vũ khí. Chỉ hòm đầu của đợt báo động (`quiet` cho các hòm sau) để tiếng còi không kêu dồn.
+// Máy bay tiếp tế: phòng đông thì đợt tới dày hơn và mỗi chuyến thả nhiều hòm hơn (công thức ở AIRDROP trong config.js).
+// Mỗi đợt chỉ MỘT máy bay, thả cả loạt hòm cùng lúc để không phải render nhiều máy bay. Chỉ hòm đầu của đợt báo động
+// (`quiet` cho các hòm sau) để tiếng còi không kêu dồn.
 // Hòm không kịp chạm đất trước khi hết trận thì thôi không thả.
 function runAirdrops(room, now) {
   if (now < room.nextAirdropAt) return;
@@ -139,7 +140,7 @@ function runAirdrops(room, now) {
   room.nextAirdropAt += Math.max(minIntervalMs, baseIntervalMs - perPlayerMs * (n - 1));
   if (now + AIRDROP_LEAD_MS >= room.endsAt) return;
   const crates = Math.min(maxCrates, Math.max(1, Math.ceil(n / playersPerCrate)));
-  for (let i = 0; i < crates; i++) launchAirdrop(room, { quiet: i > 0 });
+  launchAirdropWave(room, crates);
 }
 
 function tickRoom(room) {
@@ -164,8 +165,10 @@ function tickRoom(room) {
         runPotionDrops(room, now, isPaused(room, 'potion'));
         tickPotions(room, now);
         regenerate(room, now);
-        tickWeather(room, now);
+        // Sự kiện chạy trước thời tiết để sự kiện solo có hiệu lực ngay trong nhịp nó bắt đầu: tickWeather thấy
+        // 'lightning' bị ngưng và huỷ luôn các tia đã báo trước, không để tia nào đánh xuống võ đài.
         tickEvents(room, now, applyDamage);
+        tickWeather(room, now);
       }
       break;
     case 'ended':
@@ -177,7 +180,7 @@ function tickRoom(room) {
 // Trạng thái phòng cho người vừa vào: pha nào, còn bao lâu, bảng xếp hạng nếu đang nghỉ, đang bão không
 // (hòm tiếp tế nằm trong 'pickups').
 function matchInfo(room) {
-  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, weather: weatherView(room), event: eventView(room) };
+  return { phase: room.phase, timeLeft: timeLeft(room), ranking: room.ranking, weather: weatherView(room), event: eventView(room), eventWarn: eventWarnView(room) };
 }
 
 function startMatchLoop() {

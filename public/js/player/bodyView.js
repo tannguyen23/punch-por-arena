@@ -23,7 +23,7 @@ export function setBodyViewLook(value) {
 // Dựng khi model đã nạp xong (chưa thì thử lại khung sau).
 function ensureAvatar() {
   if (avatar || !BODY_VIEW.enabled || !look) return;
-  const created = createModelAvatar(scene, 'meBody', look);
+  const created = createModelAvatar(scene, 'meBody', look, { jetpack: false });
   if (!created) return;
   for (const mesh of created.root.getChildMeshes(false)) {
     // isVisible chứ không setEnabled: tắt một khối là tắt luôn mọi khối con, mà `__root__` của file .glb chứa cả nhân vật.
@@ -46,7 +46,7 @@ function feetOffset() {
 export function updateBodyView(dt) {
   ensureAvatar();
   if (!avatar) return;
-  const show = state.alive && !state.dog; // chó có hình riêng, người chết thì không còn chân
+  const show = state.alive && !state.dog && !state.spectator; // chó có hình riêng, người chết thì không còn chân; camera khán giả bay tự do
   avatar.root.setEnabled(show);
   if (!show) {
     last = null;

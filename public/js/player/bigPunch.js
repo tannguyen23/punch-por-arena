@@ -6,14 +6,15 @@ import { bigPunchHand } from './viewmodel.js';
 import * as Sfx from '../audio/sfx.js';
 import { BIG_PUNCH } from '../config.js';
 
-// "Đấm trời giáng" của người hoá to: giữ BIG_PUNCH.key để tích lực, thả ra thì tung đòn (server quyết định mọi thứ, xem server/game/bigPunch.js).
-// Thả sớm thì huỷ, không tốn hồi chiêu. Chỉ dùng được khi tay không và đang uống thuốc có `bigPunch` (state.potionTypes).
-// Hoạt ảnh của tay mình chạy ngay trên máy mình, người khác thấy qua các tin 'bigcharge' / 'bigcancel' / 'bigpunch'.
+// "Đấm trời giáng" của người hoá to: giữ BIG_PUNCH.key để gồng (fx/leapPreview.js vẽ đường nhảy), thả ra lúc nào cũng nhảy đấm, gồng càng lâu
+// càng mạnh (server quyết định mọi thứ, xem server/game/bigPunch.js). Dùng được cả khi đang cầm vũ khí, miễn là đang uống thuốc có `bigPunch`
+// (state.potionTypes) — lúc gồng, súng ở góc nhìn thứ nhất được thay bằng nắm đấm để chạy hoạt ảnh (player/viewmodel.js).
+// Tay mình chạy hoạt ảnh lấy đà ngay lúc bấm; cú nhảy và nhát đấm xuống bắt đầu khi server trả 'bigpunch' (net/bigPunchHandlers.js).
 
 const settings = () => state.potionTypes[state.potion?.id]?.bigPunch ?? null; // { chargeMs, cooldownMs } hoặc null
 
-const canUse = () => state.alive && !actionBlocked() && state.match.phase === 'playing' && state.weapon === 'fist' && settings() !== null
-  && !(state.event?.kind === 'tnt' && state.event.targetId === state.myId);
+const canUse = () => state.alive && !actionBlocked() && state.match.phase === 'playing' && settings() !== null
+  && !(state.event?.kind === 'tnt' && state.event.targetId === state.myId); // cầm vũ khí gì cũng dùng được
 
 function startCharge(now) {
   const big = state.bigPunch;
@@ -27,14 +28,13 @@ function stopCharge(now, fire) {
   const big = state.bigPunch;
   big.charging = false;
   big.charge = 0;
-  send({ t: 'bigrelease' });
+  send({ t: 'bigrelease', yaw: state.yaw, pitch: state.pitch }); // server tự dò chỗ rơi theo hướng ngắm này
   if (!fire) {
     bigPunchHand('cancel');
     return;
   }
   big.readyAt = now + settings().cooldownMs;
   state.cooldown = Math.max(state.cooldown, BIG_PUNCH.lockoutSeconds); // trong lúc tung đòn không đấm thường chen vào
-  bigPunchHand('release');
   Sfx.at('whoosh', 0, 0, 0, 0, 0);
 }
 
@@ -47,7 +47,7 @@ export function updateBigPunch() {
     const config = settings();
     const held = now - big.startedAt;
     big.charge = config ? Math.min(1, held / config.chargeMs) : 0;
-    if (!down || !canUse()) stopCharge(now, canUse() && held >= config.chargeMs);
+    if (!down || !canUse()) stopCharge(now, canUse());
   } else if (down && !big.wasDown && now >= big.readyAt && canUse()) {
     startCharge(now); // phải nhấn mới (không phải đang giữ sẵn từ trước) để hết hồi chiêu không tự tích lực
   }

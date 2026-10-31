@@ -6,7 +6,7 @@ import { createWater } from './water.js';
 import { createBridge } from './bridges.js';
 import { createFloatingBridges } from './floatingBridges.js';
 import { createFloatingIslands } from './floatingIslands.js';
-import { createProp } from './props.js';
+import { createProp, resetProps, finishProps } from './props.js';
 import { createWall } from './walls.js';
 
 const { Color3, MeshBuilder, TransformNode } = BABYLON;
@@ -42,6 +42,7 @@ export function buildArena(map) {
   ground?.material?.dispose(false, true);
   boundaryMaterial?.dispose(false, true);
   arenaRoot?.dispose(false, false);
+  resetProps();
   arenaRoot = new TransformNode('arena', scene);
   state.arena = map.size;
   state.colliders = map.props.filter((p) => p.r > 0);
@@ -59,4 +60,5 @@ export function buildArena(map) {
   map.terrain.bridges.filter((bridge) => !bridge.floating).forEach((bridge) => createBridge(bridge, arenaRoot));
   map.walls.forEach((wall) => createWall(wall, arenaRoot));
   map.props.forEach((prop, id) => createProp(prop, arenaRoot, id));
+  finishProps();
 }

@@ -1,5 +1,5 @@
 import { state, pickups, infos } from '../state.js';
-import { createPickup, disposePickup } from '../entities/pickup.js';
+import { createPickup, disposePickup, clearPlanes } from '../entities/pickup.js';
 import { announce } from '../ui/matchHud.js';
 import { playAt } from './positional.js';
 import * as Fx from '../fx/effects.js';
@@ -9,13 +9,13 @@ const HUM_REFERENCE = 30; // tiếng máy bay còn nửa âm lượng ở khoả
 
 const hums = new Map(); // id hòm → tiếng máy bay đang chở nó
 
-// Hòm chạm đất: tiếng đập (nghe theo vị trí), tia lửa và ngôi sao.
+// Hòm chạm đất: tiếng đập (nghe theo vị trí), tia lửa và ngôi sao. Cả chuyến chỉ báo chữ một lần ở hòm đầu.
 function onLand(pickup) {
   const { x, y, z } = pickup.root.position;
   playAt('thud', pickup.root.position);
   Fx.burst(x, y + 0.6, z, 16);
   Fx.flash(x, y + 1.2, z);
-  announce('HÒM TIẾP TẾ ĐÃ RƠI!');
+  if (pickup.firstDrop) announce('HÒM TIẾP TẾ ĐÃ RƠI!');
   refreshLanding();
 }
 
@@ -47,6 +47,7 @@ export function addPickup(m) {
 }
 
 export function clearPickups() {
+  clearPlanes();
   for (const pickup of pickups.values()) disposePickup(pickup);
   pickups.clear();
   refreshLanding();

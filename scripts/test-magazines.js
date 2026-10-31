@@ -23,7 +23,7 @@ function fixture(t) {
   return { room, p: players[0], other: players[1] };
 }
 
-test('Mỗi súng có đúng 3 băng: bắn hết băng bị chặn, thay đúng hạn, không tạo thêm đạn', (t) => {
+test('Mỗi súng có đúng 3 băng; viên cuối làm vũ khí hỏng, biến mất', (t) => {
   const { room, p } = fixture(t);
   for (const [id, capacity, total] of [['pistol', 12, 36], ['ak47', 30, 90]]) {
     stripInventory(p);
@@ -37,17 +37,21 @@ test('Mỗi súng có đúng 3 băng: bắn hết băng bị chặn, thay đúng
         handleFire(room, p, { yaw: 0, pitch: 0 });
         fired++;
       }
+      if (magazine === 2) {
+        // Viên cuối: vũ khí hỏng, ô trống và về tay không.
+        assert.equal(p.weapon, 'fist');
+        assert.equal(p.activeSlot, FIST_SLOT);
+        assert.equal(p.slots[0], null);
+        assert.deepEqual([p.ammo, p.magazine], [null, null]);
+        t.mock.timers.tick(weapon.cooldown);
+        handleFire(room, p, { yaw: 0, pitch: 0 });
+        break;
+      }
       assert.equal(p.magazine, 0);
       assert.equal(p.ammo, total - fired);
       t.mock.timers.tick(weapon.cooldown);
       handleFire(room, p, { yaw: 0, pitch: 0 });
       assert.equal(p.ammo, total - fired);
-      handleReload(room, p);
-      if (magazine === 2) {
-        assert.equal(p.reload, null);
-        assert.equal(p.messages.at(-1).reason, 'empty');
-        continue;
-      }
       handleReload(room, p);
       const deadline = p.reload.endsAt;
       t.mock.timers.tick(weapon.reloadMs - 1);
@@ -119,6 +123,20 @@ test('Vứt / nhặt giữ băng chưa đầy; nhặt cùng súng chỉ cộng t
   t.mock.timers.tick(WEAPONS.pistol.reloadMs);
   updateReload(room, other);
   assert.deepEqual([other.ammo, other.magazine], [2, 2]);
+});
+
+test('Nhặt vũ khí: tay không thì cầm món mới; đang cầm vũ khí khác thì giữ nguyên', (t) => {
+  const { p } = fixture(t);
+  stripInventory(p);
+  addToInventory(p, 'pistol', 24);
+  assert.equal(p.weapon, 'pistol'); // tay không: cầm món mới
+  addToInventory(p, 'sword', null);
+  assert.equal(p.weapon, 'pistol'); // đang cầm súng: không đổi món
+  assert.ok(p.slots.some((slot) => slot?.weapon === 'sword'));
+  selectSlot(p, FIST_SLOT);
+  addToInventory(p, 'axe', null);
+  assert.equal(p.weapon, 'axe'); // tay không: cầm món mới
+  assert.equal(p.activeSlot, p.slots.findIndex((slot) => slot?.weapon === 'axe'));
 });
 
 test('Tên lửa 4 quả, 270 sát thương tâm, bán kính 12m và vẫn giảm theo khoảng cách / chặn tường', (t) => {

@@ -1,6 +1,7 @@
 // Trạng thái dùng chung giữa các module. Gói vào object để module khác ghi được (import không gán lại được).
 export const state = {
   joined: false,
+  spectator: false, // ?mode=spectator: camera bay tự do, bấm R để quay (player/spectatorCamera.js, ui/recording.js)
   room: null, // { code, max, minPlayers, readyRatio, hostId, created } khi đã vào phòng (hostId = chủ phòng, được kick người khác)
   kicked: false, // vừa bị chủ phòng kick: đang về menu, đừng báo "mất kết nối"
   roster: [], // người trong snapshot gần nhất: { id, kills, score, dead, ... } (danh sách người chơi bấm Tab)
@@ -49,6 +50,7 @@ export const state = {
   potionTypes: {}, // id → { name, scale, hpMult, speedMult, collision, durationMs } do server gửi (server/game/potions.js)
   dog: false, // mình đang hoá chó (từ snapshot): chạy nhanh, không đánh / cầm vũ khí được
   event: null, // sự kiện đang chạy: { kind, targetId, targetName, bounty, duel?, introEndsAt, endsAt } (mốc performance.now()), xem net/eventHandlers.js; `duel` của sự kiện solo xem core/duel.js
+  eventWarn: null, // cảnh báo trước sự kiện: { kind, at } (mốc performance.now()), xem net/eventHandlers.js + ui/matchHud.js
   weapon: 'fist', // vũ khí mình đang cầm (id theo server)
   ammo: null, // số đạn còn lại (dao: số lần chém), null = dùng mãi
   magazine: null,
@@ -63,11 +65,17 @@ export const state = {
 
   knock: { x: 0, z: 0 }, // vận tốc bị đánh văng (m/giây), tan dần, xem player/knockback.js
   bigPunch: { charging: false, charge: 0, startedAt: 0, readyAt: 0, wasDown: false }, // đấm trời giáng của người hoá to: charge 0–1, readyAt = mốc performance.now() dùng lại được (player/bigPunch.js)
+  glide: { startAt: 0, until: 0, fall: 0, easeMs: 1 }, // liệng sau dash: rơi tối đa `fall` m/giây từ `startAt`, nới dần về rơi bình thường trong `easeMs`; động cơ chạy tới `until` (mốc performance.now(), player/glide.js)
+  dash: { readyAt: 0, cooldownMs: 0, pendingUntil: 0, wasDown: false }, // dash động cơ phản lực: readyAt / pendingUntil = mốc performance.now() dùng lại được / hết chờ server trả lời (player/dash.js)
   stinkStartedAt: 0, // dậm phải shit của chó: mốc performance.now() bắt đầu / hết bị chậm + che tầm nhìn (player/stink.js, ui/stinkOverlay.js)
   stinkUntil: 0,
   poopCharges: 0, // (khi mình là chó) số cục shit còn thả được, và mốc performance.now() hồi thêm một cục (0 = đã đầy); từ snapshot
   poopNextAt: 0,
   poopWasDown: false,
+  skillWasDown: false,
+  leap: null, // cú nhảy đấm trời giáng / dash của mình đang bay { flight, to, startedAt, back? } (player/leapFlight.js); `back` chỉ có ở dash (hướng ngược lại, cho vệt khí); null = không bay
+  grenadeAim: null, // đang giữ chuột ngắm ném lựu đạn { soft } (player/grenadeAim.js); fx/grenadePreview.js vẽ đường xem trước
+  skillAim: false, // đang giữ phím ngắm skill ném vũ khí (player/skillThrow.js); fx/skillPreview.js vẽ đường xem trước
   attacking: false, // đang giữ chuột đánh
   cooldown: 0,
   sprintFov: 0,
@@ -75,6 +83,8 @@ export const state = {
   recoil: 0, // độ giật của súng, giảm dần về 0 (súng lùi lại và hếch lên)
   muzzle: null, // { x, y, z } đầu nòng súng của mình trong thế giới (player/gunView.js), null khi không cầm súng
   shake: 0,
+  camKick: { pitch: 0, yaw: 0, roll: 0 }, // camera giật theo hướng đòn trúng mình, tan dần (player/localPlayer.js, net/combatHandlers.js)
+  handStopUntil: 0, // hit stop: tới mốc performance.now() này tay góc nhìn thứ nhất đứng hình (player/viewmodel.js)
 };
 
 export const remotes = new Map(); // id → người chơi khác đang hiển thị trong sân

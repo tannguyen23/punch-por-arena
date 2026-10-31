@@ -10,6 +10,7 @@
   <canvas id="c"></canvas>
   <div id="crosshair"></div>
   <div id="flash"></div>
+  <div id="hit-dir"></div>
   <div id="potion-vignette"></div>
   <div id="blind"></div>
   <div id="stink" hidden></div>
@@ -24,11 +25,13 @@
   <div id="nuke-flash"></div>
   <div id="dead">Bạn bị hạ gục!</div>
   <div id="hud">
-    <div id="hpbar"><div id="hpfill"></div></div>
+    <div id="hpbar"><div id="hpfill"></div><div id="hpticks"></div></div>
     <div id="stamina" role="progressbar" aria-label="Thể lực" aria-valuemin="0" aria-valuemax="100" aria-valuenow="100" hidden><div id="stamina-fill"></div></div>
+    <div id="dash" hidden><span class="dash-key"></span><div class="dash-bar"><div class="dash-fill"></div></div></div>
     <div id="weapon-panel"></div>
   </div>
   <div id="board"></div>
+  <pre id="perf" hidden></pre>
   <div id="hotbar"></div>
   <div id="ammo"></div>
   <div id="streak" hidden></div>
@@ -40,6 +43,7 @@
   <div id="dog-tracker" hidden></div>
   <div id="event-status"></div>
   <div id="event-result"></div>
+  <div id="loading" hidden></div>
   <div id="event-intro"></div>
   <div id="duel" hidden><div class="duel-score"></div><div class="duel-info"></div><div class="duel-bet"></div></div>
   <div id="duel-banner"></div>
@@ -105,6 +109,14 @@
   <div id="room-badge"></div>
   <div id="lobby"></div>
   <div id="countdown"></div>
+  <div id="event-countdown"></div>
+  <div id="spectator" hidden>
+    <div class="spec-title">CHẾ ĐỘ KHÁN GIẢ</div>
+    <div class="spec-hint">WASD bay · Space lên · Shift xuống · Chuột nhìn · Esc thả chuột</div>
+    <div class="spec-note">Vô hình với người chơi và bot · không bị đánh · không chiếm chỗ</div>
+    <div id="spectator-status" class="spec-status">Chưa quay</div>
+    <button id="spectator-record" type="button">Bắt đầu quay (R)</button>
+  </div>
 
   <div id="menu" class="screen">
     <h1>Đấm Nhau FPP</h1>
@@ -115,26 +127,19 @@
       <input id="name" maxlength="16" placeholder="Tên của bạn" autocomplete="off">
       <p id="name-error" class="menu-error"></p>
       <p id="menu-invite"></p>
-      <button id="start" class="menu-main">Bắt đầu</button>
-      <button class="settings-open menu-settings">Cài đặt</button>
-      <button id="guide-open" class="menu-settings" type="button">Hướng dẫn chơi</button>
-    </div>
-
-    <div class="panel" id="menu-play" hidden>
-      <h2>Vào chơi</h2>
+      <button id="start" class="menu-main" hidden>Vào phòng</button>
       <div class="room-list-head"><strong>Phòng đang mở</strong><button id="room-refresh" type="button">Làm mới</button></div>
       <div id="room-list" class="room-list">Đang tải danh sách phòng…</div>
-      <div class="map-picker">
-        <div class="map-picker-head"><strong>Map xoay vòng</strong><span>Đổi lần lượt sau mỗi round</span></div>
-        <div id="map-options" class="map-options">Đang tải danh sách map…</div>
-      </div>
       <button id="create" class="menu-main">Tạo phòng mới</button>
       <div class="join-row">
         <input id="room-code" inputmode="numeric" maxlength="3" placeholder="Mã phòng" autocomplete="off">
         <button id="join">Vào phòng</button>
       </div>
       <p id="menu-error" class="menu-error"></p>
-      <button id="play-back" class="menu-settings">Quay lại</button>
+      <div class="menu-links">
+        <button class="settings-open menu-settings">Cài đặt</button>
+        <button id="guide-open" class="menu-settings" type="button">Hướng dẫn chơi</button>
+      </div>
     </div>
     </div>
 
@@ -163,6 +168,63 @@
     </div>
   </div>
 
+  <section id="create-room" class="screen" role="dialog" aria-modal="true" aria-labelledby="create-title" hidden>
+    <div class="create-card">
+      <h1 id="create-title">TẠO PHÒNG MỚI</h1>
+      <p class="create-sub">Chọn map xoay vòng và bot cho trận mới</p>
+
+      <section class="create-block">
+        <h2>Map xoay vòng</h2>
+        <p class="create-hint">Đổi lần lượt sau mỗi round</p>
+        <div id="map-options" class="map-options">Đang tải danh sách map…</div>
+      </section>
+
+      <section class="create-block">
+        <h2>Bot</h2>
+        <div class="bot-row">
+          <label class="create-toggle"><input id="bot-enabled" type="checkbox"> Thêm bot</label>
+          <div class="bot-count">
+            <button id="bot-minus" type="button" aria-label="Bớt bot">−</button>
+            <output id="bot-count">0</output>
+            <button id="bot-plus" type="button" aria-label="Thêm bot">+</button>
+          </div>
+        </div>
+        <div class="bot-levels" role="group" aria-label="Mức bot">
+          <button class="bot-level" data-level="1" type="button">1 · Dễ</button>
+          <button class="bot-level" data-level="2" type="button">2 · Thường</button>
+          <button class="bot-level" data-level="3" type="button">3 · Khó</button>
+        </div>
+        <p class="create-hint" id="bot-hint">Chưa thêm bot.</p>
+      </section>
+
+      <details class="create-block create-details" id="weapon-rates">
+        <summary>
+          <span>Tỷ lệ vũ khí</span>
+          <span id="weapon-rates-state" class="create-details-state">mặc định</span>
+        </summary>
+        <p class="create-hint">Trọng số tương đối của vũ khí chính trong hòm tiếp tế · 0 = không rơi.</p>
+        <div id="weapon-options" class="weapon-options">Đang tải danh sách vũ khí…</div>
+        <button id="weapon-reset" class="create-details-reset" type="button">Về mặc định</button>
+      </details>
+
+      <details class="create-block create-details" id="event-picks">
+        <summary>
+          <span>Sự kiện</span>
+          <span id="event-picks-state" class="create-details-state">tất cả</span>
+        </summary>
+        <p class="create-hint">Chỉ các sự kiện được chọn mới có thể xuất hiện. Bỏ chọn hết = trận không có sự kiện.</p>
+        <div id="event-options" class="event-options">Đang tải danh sách sự kiện…</div>
+        <button id="event-reset" class="create-details-reset" type="button">Chọn tất cả</button>
+      </details>
+
+      <p class="create-error" id="create-error" role="alert"></p>
+      <div class="create-actions">
+        <button id="create-cancel" class="create-back" type="button">Quay lại</button>
+        <button id="create-confirm" class="create-go" type="button" disabled>TẠO PHÒNG</button>
+      </div>
+    </div>
+  </section>
+
   <dialog id="guide" aria-labelledby="guide-title" aria-describedby="guide-subtitle">
     <header class="guide-header">
       <div>
@@ -178,7 +240,11 @@
   <div id="pause" class="screen">
     <h1 id="pause-title">Đã tạm dừng</h1>
     <p id="pause-text">Click để tiếp tục</p>
-    <button class="settings-open pause-settings">Cài đặt</button>
+    <div class="pause-actions">
+      <button id="pause-resume" class="pause-settings pause-resume" type="button">Tiếp tục</button>
+      <button class="settings-open pause-settings">Cài đặt</button>
+      <button id="pause-leave" class="pause-settings pause-leave" type="button">Thoát về menu</button>
+    </div>
   </div>
 
   <div id="settings" class="screen">

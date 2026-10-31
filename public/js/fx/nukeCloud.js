@@ -1,4 +1,4 @@
-// Khối mây hình nấm của vụ nổ hạt nhân: quả cầu lửa phình ra rồi tắt dần, cột khói bốc lên, tán nấm nở ra trên đỉnh,
+// Khối mây hình nấm của từng vụ nổ hạt nhân: quả cầu lửa phình ra rồi tắt dần, cột khói bốc lên, tán nấm nở ra trên đỉnh,
 // sóng xung kích lan trên mặt đất và một vòm sóng nổ loang ra. Mọi thứ chạy theo tuổi của vụ nổ, hết `life` thì tự dọn.
 import { scene } from '../core/scene.js';
 import { NUKE } from '../config.js';
@@ -6,7 +6,7 @@ import { NUKE } from '../config.js';
 const { MeshBuilder, StandardMaterial, TransformNode, Color3 } = BABYLON;
 const C = NUKE.cloud;
 
-let cloud = null;
+let clouds = [];
 
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 const easeOut = (k) => 1 - (1 - k) * (1 - k);
@@ -48,9 +48,8 @@ function buildCap(material) {
   return { root, puffs };
 }
 
-// Dựng khối mây tại `[x, y, z]` (y là mặt đất).
+// Dựng khối mây tại `[x, y, z]` (y là mặt đất). Mỗi quả bom trong đợt có một khối riêng.
 export function spawnCloud([x, y, z]) {
-  clearCloud();
   const fireMat = glow('nukeFire', new Color3(1, 0.85, 0.4), 0.95);
   const smokeMat = smoke('nukeSmoke');
   const shockMat = glow('nukeShock', new Color3(1, 0.9, 0.7), 0.6);
@@ -66,29 +65,39 @@ export function spawnCloud([x, y, z]) {
   dome.material = domeMat;
   const cap = buildCap(smokeMat);
 
-  cloud = { x, y, z, age: 0, fireball, stem, shock, dome, cap, materials: [fireMat, smokeMat, shockMat, domeMat] };
+  clouds.push({ x, y, z, age: 0, fireball, stem, shock, dome, cap, materials: [fireMat, smokeMat, shockMat, domeMat] });
 }
 
-export function clearCloud() {
-  if (!cloud) return;
+function disposeCloud(cloud) {
   const { fireball, stem, shock, dome, cap, materials } = cloud;
   for (const mesh of [fireball, stem, shock, dome]) mesh.dispose();
   cap.puffs.forEach((puff) => puff.mesh.dispose());
   cap.root.dispose();
   materials.forEach((mat) => mat.dispose());
-  cloud = null;
 }
 
-export const cloudActive = () => cloud !== null;
+export function clearCloud() {
+  clouds.forEach(disposeCloud);
+  clouds = [];
+}
+
+export const cloudActive = () => clouds.length > 0;
 
 export function updateCloud(dt) {
-  if (!cloud) return;
-  cloud.age += dt;
-  const { age, x, y, z, fireball, stem, shock, dome, cap, materials } = cloud;
-  if (age > C.life) {
-    clearCloud();
-    return;
+  for (let i = clouds.length - 1; i >= 0; i--) {
+    const cloud = clouds[i];
+    cloud.age += dt;
+    if (cloud.age > C.life) {
+      disposeCloud(cloud);
+      clouds.splice(i, 1);
+      continue;
+    }
+    updateOne(cloud, dt);
   }
+}
+
+function updateOne(cloud, dt) {
+  const { age, x, y, z, fireball, stem, shock, dome, cap, materials } = cloud;
   const [fireMat, smokeMat, shockMat, domeMat] = materials;
   const fade = 1 - clamp01((age - C.fadeFrom) / (C.life - C.fadeFrom));
 

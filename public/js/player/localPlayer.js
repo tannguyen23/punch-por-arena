@@ -4,6 +4,7 @@ import { settings } from '../settings.js';
 import { resolveCollisions } from './collision.js';
 import { eyeHeight } from './aim.js';
 import { camera } from './camera.js';
+import { updateSpectatorCamera } from './spectatorCamera.js';
 import { updateViewmodel } from './viewmodel.js';
 import { updateSprint } from './sprint.js';
 import { slideVelocity, settleSlide, resetSlide } from './iceSlide.js';
@@ -12,16 +13,19 @@ import { isImmobile, isStunned } from '../core/freeze.js';
 import { tntSpeedMult } from '../core/tnt.js';
 import { sizeOf, speedOf } from '../core/bodySize.js';
 import { updateBodyView } from './bodyView.js';
+import { isLeaping, cancelLeap, updateLeap } from './leapFlight.js';
+import { glideFall, endGlide } from './glide.js';
 import { applyKnockback, resetKnockback } from './knockback.js';
 import { stinkSpeedMult } from './stink.js';
 import * as Sfx from '../audio/sfx.js';
 import {
-  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT, DOG, POTION,
+  MOVE_SPEED, SPRINT_MULT, SPRINT_CAMERA, CROUCH_MULT, JUMP_SPEED, GRAVITY, WATER_SPEED_MULT, GROUND_STICK, PITCH_LIMIT, DOG, POTION, SPECTATOR, HIT_FX,
 } from '../config.js';
 
 export function look(movementX, movementY, sensitivity) {
+  const limit = state.spectator ? SPECTATOR.pitchLimit : PITCH_LIMIT; // khán giả nhìn được gần thẳng xuống
   state.yaw += movementX * sensitivity;
-  state.pitch = Math.max(-PITCH_LIMIT, Math.min(PITCH_LIMIT, state.pitch + movementY * sensitivity));
+  state.pitch = Math.max(-limit, Math.min(limit, state.pitch + movementY * sensitivity));
 }
 
 function applyMovement(dt) {
@@ -61,14 +65,18 @@ function applyVertical(dt) {
   if (me.y <= ground + GROUND_STICK && state.vy <= 0) {
     me.y = ground;
     state.vy = 0;
+    endGlide(); // chạm đất thì hết liệng
     if (keys.has('Space') && !state.crouching && !isImmobile()) state.vy = JUMP_SPEED;
   }
   state.vy -= GRAVITY * dt;
+  const fall = glideFall();
+  if (fall > 0) state.vy = Math.max(state.vy, -fall); // đang liệng sau dash: rơi chậm, động cơ vẫn chạy
   me.y += state.vy * dt;
   const floor = groundAt(me.x, me.z, me.y);
   if (me.y < floor) {
     me.y = floor;
     state.vy = 0;
+    endGlide();
   }
 }
 
@@ -82,22 +90,39 @@ function updateCamera(dt) {
   // Rung camera khi trúng đòn; giãn góc nhìn khi chạy nhanh và khi vung tay
   state.shake *= Math.exp(-14 * dt);
   state.fovKick *= Math.exp(-10 * dt);
+  const kick = state.camKick;
+  const kickKeep = Math.exp(-HIT_FX.kickDecay * dt);
+  kick.pitch *= kickKeep;
+  kick.yaw *= kickKeep;
+  kick.roll *= kickKeep;
   const sprintTarget = state.sprinting ? SPRINT_CAMERA.fovBoost : 0;
   const sprintEase = state.sprinting ? SPRINT_CAMERA.easeIn : SPRINT_CAMERA.easeOut;
   state.sprintFov += (sprintTarget - state.sprintFov) * (1 - Math.exp(-sprintEase * dt));
   camera.fov = settings.fov + state.sprintFov + state.fovKick + state.potionFov;
   const jitter = () => (Math.random() - 0.5) * 2 * state.shake;
   camera.position.set(me.x + jitter() * 0.5, me.y + eye + jitter() * 0.5, me.z + jitter() * 0.5);
-  camera.rotation.set(state.pitch + jitter(), state.yaw + jitter(), jitter() * 0.5);
+  camera.rotation.set(state.pitch + kick.pitch + jitter(), state.yaw + kick.yaw + jitter(), kick.roll + jitter() * 0.5);
 }
 
 export function updateLocalPlayer(dt) {
+  if (state.spectator) {
+    // Khán giả: camera bay tự do, người chơi đứng yên ở chỗ spawn (server vẫn coi là người chơi bình thường).
+    updateSpectatorCamera(dt);
+    updateBodyView(dt); // hai hàm này tự ẩn tay / chân / súng khi state.spectator
+    updateViewmodel(dt);
+    return;
+  }
   state.cooldown = Math.max(0, state.cooldown - dt);
 
   if (state.alive && state.myId !== null) {
     const { x, z } = state.me;
-    if (!isImmobile()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật; võ sĩ solo ngoài hiệp cũng đứng yên
-    if (isStunned()) {
+    if (isLeaping() && (isStunned() || state.tableGame)) cancelLeap(); // bị giật điện giữa chừng: rơi xuống
+    if (isLeaping()) updateLeap(); // đang nhảy đấm trời giáng: bay theo kế hoạch của server, bỏ qua đi lại / trọng lực / va chạm
+    else if (!isImmobile()) applyMovement(dt); // đứng hình (mở đầu sự kiện): đứng yên đọc luật; võ sĩ solo ngoài hiệp cũng đứng yên
+    if (isLeaping()) {
+      resetSlide(); // vị trí đã do cú nhảy quyết định ở trên
+    } else if (isStunned()) {
+      endGlide();
       resetSlide();
       resetKnockback();
       state.vy = 0;
@@ -110,6 +135,8 @@ export function updateLocalPlayer(dt) {
       settleSlide(x, z, dt);
     }
   } else if (!state.alive) {
+    cancelLeap();
+    endGlide();
     state.crouching = false;
     resetSlide();
     resetKnockback();

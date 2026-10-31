@@ -1,4 +1,6 @@
-const { PUNCH_RANGE, PUNCH_COOLDOWN, WEAPON_RARITIES } = require('../config');
+const {
+  PUNCH_RANGE, PUNCH_COOLDOWN, WEAPON_RARITIES, WEAPON_THROW, GRENADE, EYE_HEIGHT, CROUCH_EYE_HEIGHT, WALL_HEIGHT, TERRAIN_RAY_STEP,
+} = require('../config');
 
 // Vũ khí và chỉ số của nó:
 //   kind     - 'melee' (đánh gần, tin nhắn 'punch'), 'gun' (đạn bay tức thì, 'fire'), 'rocket' (tên lửa bay, nổ lan, 'fire')
@@ -14,24 +16,27 @@ const { PUNCH_RANGE, PUNCH_COOLDOWN, WEAPON_RARITIES } = require('../config');
 //              'ice' (đóng băng mặt đất chỗ quả nằm, không sát thương, xem ice.js), số quả tối đa trong một ô.
 //              Lựu đạn chỉ có từ hòm tiếp tế, ném hết thì ô tự trống.
 //   duration - thời gian vũng băng tồn tại (mili giây), chỉ lựu đạn băng
-//   dropWeight - độ hiếm khi rơi trong hòm tiếp tế; càng lớn càng hay rơi, 0 = không bao giờ rơi
+//   dropWeight - độ hiếm mặc định khi rơi trong hòm tiếp tế; càng lớn càng hay rơi, 0 = không bao giờ rơi
+//                (phòng có thể gửi trọng số riêng từ màn tạo phòng, xem randomDropWeapon / sanitizeWeaponWeights)
 //   rarity   - cấp hiếm để hiển thị; tỉ lệ vẫn do dropWeight quyết định (tổng hiện tại = 100)
+//   throwSkill - { damage }: có thì giữ Q ngắm rồi thả để ném vũ khí đi (mất luôn), xem skillThrow.js; không có = chưa có skill
 // Thêm vũ khí mới: thêm vào bảng này, rồi thêm model trong public/js/entities/weapons/.
 // Giao diện (thanh chỉ số) tự đọc các chỉ số này từ 'welcome', không cần sửa client.
 const base = { kind: 'melee', range: PUNCH_RANGE, cooldown: PUNCH_COOLDOWN, dropWeight: 0 };
 const throwable = { kind: 'throwable', range: 25, cooldown: 900, speed: 18, ammo: [1, 2], stack: 3, rarity: 'rare' };
 const WEAPONS = {
   fist: { ...base, name: 'Tay không', damage: 10 },
-  sword: { ...base, name: 'Kiếm', damage: 25, dropWeight: 22, rarity: 'common' },
-  dagger: { ...base, name: 'Dao găm', damage: 10, range: 1.8, cooldown: 200, dropWeight: 28, rarity: 'common' },
-  axe: { ...base, name: 'Rìu', damage: 40, range: 2.6, cooldown: 800, dropWeight: 8, rarity: 'rare' },
-  spear: { ...base, name: 'Giáo', damage: 22, range: 3.6, cooldown: 600, dropWeight: 7, rarity: 'rare' },
-  thunder: { ...base, name: 'Găng sấm sét', damage: 5, range: 2.0, cooldown: 100, dropWeight: 6, rarity: 'epic' },
-  gauntlet: { ...base, name: 'Găng tay vô cực', damage: 45, range: 2.0, cooldown: 900, dropWeight: 4, rarity: 'epic' },
+  // Mọi vũ khí cận chiến có tầm > PUNCH_RANGE (2.2 m của tay không).
+  sword: { ...base, name: 'Kiếm', damage: 35, range: 2.8, dropWeight: 22, rarity: 'common', throwSkill: { damage: 55 } },
+  dagger: { ...base, name: 'Dao găm', damage: 16, range: 2.5, cooldown: 200, dropWeight: 28, rarity: 'common', throwSkill: { damage: 35 } },
+  axe: { ...base, name: 'Rìu', damage: 60, range: 3.0, cooldown: 800, dropWeight: 8, rarity: 'rare', throwSkill: { damage: 85 } },
+  spear: { ...base, name: 'Giáo', damage: 40, range: 4.0, cooldown: 600, dropWeight: 7, rarity: 'rare', throwSkill: { damage: 65 } },
+  thunder: { ...base, name: 'Găng sấm sét', damage: 12, range: 2.4, cooldown: 100, dropWeight: 6, rarity: 'epic' },
+  gauntlet: { ...base, name: 'Găng tay vô cực', damage: 90, range: 2.4, cooldown: 900, dropWeight: 4, rarity: 'epic' },
 
   // Súng hiếm nhất; lựu đạn vẫn chỉ đi kèm hòm (AIRDROP.bonus), không chiếm lượt vũ khí chính.
   pistol: { kind: 'gun', name: 'Súng lục', damage: 25, range: 60, cooldown: 300, spread: 0.012, ammo: [36, 36], magazineSize: 12, reloadMs: 1400, dropWeight: 9, rarity: 'legendary' },
-  knife: { ...base, name: 'Dao chiến đấu', damage: 25, range: 2.0, cooldown: 300, ammo: [10, 20], dropWeight: 10, rarity: 'rare' },
+  knife: { ...base, name: 'Dao chiến đấu', damage: 35, range: 2.4, cooldown: 300, ammo: [10, 20], dropWeight: 10, rarity: 'rare', throwSkill: { damage: 50 } },
   ak47: { kind: 'gun', name: 'AK-47', damage: 16, range: 80, cooldown: 110, spread: 0.03, ammo: [90, 90], magazineSize: 30, reloadMs: 2200, dropWeight: 5, rarity: 'legendary' },
   frag: {
     ...throwable, name: 'Lựu đạn nổ', effect: 'blast', damage: 85, splash: 5, fuse: 2500, dropWeight: 0,
@@ -53,17 +58,34 @@ const WEAPONS = {
 
 const DEFAULT_WEAPON = 'fist';
 
-// Chọn ngẫu nhiên một vũ khí theo dropWeight. Null nếu không có vũ khí nào rơi được.
-function randomDropWeapon() {
-  const droppable = Object.entries(WEAPONS).filter(([, w]) => w.dropWeight > 0);
+// Chọn ngẫu nhiên một vũ khí theo dropWeight. `weights` (tùy chọn) là trọng số riêng của phòng, do màn tạo phòng gửi lên
+// (sanitizeWeaponWeights): chỉ những vũ khí có trọng số > 0 mới rơi; không có mục nào hợp lệ thì quay về mặc định.
+// Null nếu không có vũ khí nào rơi được.
+function randomDropWeapon(weights = null) {
+  const custom = weights && Object.entries(weights).some(([id, weight]) => WEAPONS[id]?.dropWeight > 0 && weight > 0);
+  const droppable = Object.entries(WEAPONS)
+    .map(([id, w]) => [id, custom ? weights[id] ?? 0 : w.dropWeight])
+    .filter(([, weight]) => weight > 0);
   if (droppable.length === 0) return null;
-  let roll = Math.random() * droppable.reduce((sum, [, w]) => sum + w.dropWeight, 0);
-  for (const [id, w] of droppable) {
-    roll -= w.dropWeight;
+  let roll = Math.random() * droppable.reduce((sum, [, weight]) => sum + weight, 0);
+  for (const [id, weight] of droppable) {
+    roll -= weight;
     if (roll < 0) return id;
   }
   return droppable.at(-1)[0];
 }
+
+// Danh sách vũ khí có thể rơi từ hòm (màn tạo phòng dùng để chỉnh tỷ lệ): id, tên, loại, cấp hiếm và trọng số mặc định.
+const weaponDropInfo = () =>
+  Object.entries(WEAPONS)
+    .filter(([, w]) => w.dropWeight > 0)
+    .map(([id, w]) => ({
+      id,
+      name: w.name,
+      kind: w.kind,
+      weight: w.dropWeight,
+      rarity: w.rarity ? { id: w.rarity, ...WEAPON_RARITIES[w.rarity] } : null,
+    }));
 
 // Số đạn ngẫu nhiên trong khoảng `ammo` của vũ khí; null = vũ khí dùng mãi không hết.
 function rollAmmo(id) {
@@ -73,13 +95,35 @@ function rollAmmo(id) {
   return min + Math.floor(Math.random() * (max - min + 1));
 }
 
+// Thông số bay của skill ném (null = vũ khí không có skill): số liệu chung WEAPON_THROW + sát thương riêng + độ cao mắt / tường / bước dò đất
+// để client dự đoán đường bay y như server (xem core/throwPath.js).
+const throwRules = (weapon) => weapon.throwSkill && {
+  ...WEAPON_THROW, ...weapon.throwSkill,
+  eyeHeight: EYE_HEIGHT, crouchEyeHeight: CROUCH_EYE_HEIGHT, wallHeight: WALL_HEIGHT, terrainRayStep: TERRAIN_RAY_STEP,
+};
+
+// Thông số ném của lựu đạn (false = không phải lựu đạn): client dự đoán đường bay tới chỗ chạm đất đầu tiên để vẽ đường xem trước (core/throwPath.js).
+// Hướng ném chếch lên `liftAngle` so với hướng ngắm; ném nhẹ (chuột phải) có tốc độ nhân `softMult`. Khớp handleThrow ở grenades.js.
+const grenadeRules = (weapon) => weapon.kind === 'throwable' && {
+  speed: weapon.speed, softMult: GRENADE.softMult, liftAngle: GRENADE.lift, gravity: GRENADE.gravity, ...GRENADE.aim,
+  eyeHeight: EYE_HEIGHT, crouchEyeHeight: CROUCH_EYE_HEIGHT, wallHeight: WALL_HEIGHT, terrainRayStep: TERRAIN_RAY_STEP,
+};
+
 // Phần client cần biết để hiển thị và tính thời gian hồi (không có trọng số rơi, độ lệch); gửi trong 'welcome'.
 const weaponInfo = () =>
   Object.fromEntries(
-    Object.entries(WEAPONS).map(([id, { kind, name, damage, range, cooldown, splash, effect, rarity, magazineSize, reloadMs }]) => [
-      id,
-      { kind, name, damage, range, cooldown, splash, effect, magazineSize, reloadMs, rarity: rarity ? { id: rarity, ...WEAPON_RARITIES[rarity] } : null },
-    ]),
+    Object.entries(WEAPONS).map(([id, w]) => {
+      const { kind, name, damage, range, cooldown, splash, effect, rarity, magazineSize, reloadMs } = w;
+      return [
+        id,
+        {
+          kind, name, damage, range, cooldown, splash, effect, magazineSize, reloadMs,
+          rarity: rarity ? { id: rarity, ...WEAPON_RARITIES[rarity] } : null,
+          throwSkill: throwRules(w) ?? null,
+          grenade: grenadeRules(w) || null,
+        },
+      ];
+    }),
   );
 
-module.exports = { WEAPONS, DEFAULT_WEAPON, randomDropWeapon, rollAmmo, weaponInfo };
+module.exports = { WEAPONS, DEFAULT_WEAPON, randomDropWeapon, rollAmmo, weaponInfo, weaponDropInfo, throwRules };

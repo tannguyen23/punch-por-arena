@@ -7,6 +7,7 @@ import { createNameTag } from './nameTag.js';
 import { releaseWeapon } from './weapons/index.js';
 import { updateDogForm } from './dogForm.js';
 import { sizeOf } from '../core/bodySize.js';
+import { tickMaterial } from './hpTicks.js';
 
 const { Color3, MeshBuilder, TransformNode } = BABYLON;
 
@@ -18,24 +19,30 @@ function createOverheadBar(upper, name) {
   bar.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
   const back = MeshBuilder.CreatePlane('barBack', { width: 1.1, height: 0.14 }, scene);
   back.parent = bar;
-  back.material = solidMaterial(Color3.Black());
+  back.material = solidMaterial(new Color3(0.12, 0.12, 0.12)); // xám đậm (không đen hẳn) để vạch chia vẫn thấy ở phần máu đã mất
   back.material.disableLighting = true;
   const fill = MeshBuilder.CreatePlane('barFill', { width: 1, height: 0.1 }, scene);
   fill.parent = bar;
   fill.position.z = -0.01;
   fill.material = solidMaterial(new Color3(0.2, 0.9, 0.2));
   fill.material.emissiveColor = new Color3(0.2, 0.9, 0.2);
+  const ticks = MeshBuilder.CreatePlane('barTicks', { width: 1.1, height: 0.14 }, scene); // vạch chia, material gắn theo máu tối đa (updateRemote)
+  ticks.parent = bar;
+  ticks.position.z = -0.02;
+  ticks.isPickable = false;
   createNameTag(name, bar);
-  return fill;
+  return { fill, ticks };
 }
 
 export function createRemote(id, { name, look }) {
   const avatar = createPlayerAvatar(scene, id, look);
-  const fill = createOverheadBar(avatar.upper, name);
+  const { fill, ticks } = createOverheadBar(avatar.upper, name);
 
   return {
     ...avatar,
     fill,
+    ticks,
+    tickMax: 0,
     phase: 0, crouch: 0, tx: 0, ty: 0, tz: 0, tc: 0, tyaw: 0,
     hp: 100, maxHp: 100, potion: 0, size: 1, dead: false, initialised: false, weapon: 'fist', sprinting: false,
   };
@@ -44,6 +51,7 @@ export function createRemote(id, { name, look }) {
 export function disposeRemote(r) {
   releaseWeapon(r.fists.L);
   releaseWeapon(r.fists.R); // vũ khí dùng chung material nên không để dispose(…, true) của root đụng tới
+  r.ticks.material = null; // material vạch chia dùng chung giữa mọi người (entities/hpTicks.js)
   r.root.dispose(false, true); // xoá luôn material và texture riêng của người này
 }
 
@@ -74,10 +82,15 @@ export function updateRemote(r, dt) {
   // Cao hơn mặt đất (hoặc mặt cầu) dưới chân thì đang nhảy / rơi → hoạt ảnh nhảy.
   r.setAirborne(!r.dead && r.ty > groundAt(r.tx, r.tz, r.ty) + AIRBORNE_HEIGHT, JUMP_AIR_TIME);
   r.setRunning(!r.dead && !r.tc && r.sprinting);
-  r.update(dt);
+  r.update(performance.now() < (r.stopUntil ?? 0) ? 0 : dt); // hit stop: hoạt ảnh đứng hình một nhịp lúc có đòn trúng (net/combatHandlers.js)
+  r.hitFlash?.update(dt);
   r.pose(r.crouch, r.dead ? 0 : Math.sin(r.phase) * 0.7 * Math.min(speed / 3, 1) * (1 - 0.7 * r.crouch));
   updateDogForm(r, speed, dt);
   updateSize(r, dt);
+  if (r.tickMax !== r.maxHp) {
+    r.tickMax = r.maxHp; // đổi máu tối đa (uống thuốc): vạch chia đổi theo
+    r.ticks.material = tickMaterial(r.maxHp);
+  }
   const pct = Math.max(0, r.hp) / r.maxHp;
   r.fill.scaling.x = Math.max(pct, 0.001);
   r.fill.position.x = -0.5 * (1 - pct);

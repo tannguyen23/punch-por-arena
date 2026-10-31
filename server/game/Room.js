@@ -14,8 +14,10 @@ class Room {
     this.mapIndex = 0;
     this.setMap(initialMap);
     this.players = new Map(); // id → người chơi đã vào phòng
+    this.observers = new Map(); // id → khán giả (?mode=spectator): chỉ nhận tin (messaging.js), không tính vào luật chơi
     this.tableGames = new Map();
     this.pickups = new Map(); // id → hòm tiếp tế (đang rơi hoặc đã nằm trên sân)
+    this.weaponWeights = null; // trọng số rơi vũ khí riêng của phòng (màn tạo phòng gửi); null = dùng WEAPONS.dropWeight
     this.poops = new Map(); // id → cục shit của con chó trong sự kiện hoá chó: { id, x, y, z } (poop.js)
     this.nextPoopId = 1;
     this.nextPickupId = 1;
@@ -34,6 +36,7 @@ class Room {
     this.nextNukeId = 1;
     this.event = null; // sự kiện đang chạy: { kind, targetId, bounty, introEndsAt, endsAt } (events.js)
     this.eventPlan = []; // các sự kiện sẽ xảy ra trong trận: { kind, at } (events.js)
+    this.allowedEvents = null; // loại sự kiện phòng cho phép (màn tạo phòng gửi); null = tất cả, [] = không có sự kiện (events.js)
     this.lastEventKind = null; // giữ qua trận mới, chỉ cập nhật khi sự kiện thật sự bắt đầu
     this.frozenUntil = 0; // mốc Date.now() hết đứng hình (restrictions.js)
     this.phase = 'lobby';

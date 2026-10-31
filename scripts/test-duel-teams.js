@@ -9,6 +9,7 @@ const { clearEvents, tickEvents } = require('../server/game/events');
 const { sameDuelTeam } = require('../server/game/restrictions');
 const { leaderIndex } = require('../server/game/duelTeams');
 const { tryPickup } = require('../server/game/pickups');
+const { FIST_SLOT } = require('../server/game/inventory');
 
 test('2–8 người chia cân hai đội; số lẻ dư một người cược, số chẵn bỏ cược; vị trí không chồng nhau', () => {
   for (let count = 2; count <= 8; count++) {
@@ -96,6 +97,57 @@ test('Huỷ khi một võ sĩ rời phòng, kể cả màn kết quả: không t
   next.winnerTeam = 0;
   clearEvents(room);
   assert.ok([...room.players.values()].every((p) => p.score === 0));
+});
+
+test('Vào võ đài cất túi tạm; kết thúc hay huỷ đều trả đúng vũ khí, đạn, băng đạn và ô đang cầm; người xem giữ nguyên', (t) => {
+  t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000000 });
+  for (const ending of ['finish', 'cancel']) {
+    const { room, players } = setupDuel(3);
+    const snapshots = new Map(players.map((p, i) => {
+      p.slots = [
+        { weapon: 'pistol', ammo: 20 + i, magazine: 5 + i },
+        null,
+        { weapon: 'sword', ammo: null },
+      ];
+      p.activeSlot = i % 2 ? 2 : 0;
+      p.reload = { slot: p.slots[p.activeSlot], endsAt: Date.now() + 1000 };
+      return [p.id, { slots: p.slots.map((slot) => slot && { ...slot }), activeSlot: p.activeSlot }];
+    }));
+
+    const ev = beginDuel(room);
+    const spectator = players.find((p) => !ev.fighters.includes(p.id));
+    assert.deepEqual(spectator.slots, snapshots.get(spectator.id).slots);
+    assert.equal(spectator.activeSlot, snapshots.get(spectator.id).activeSlot);
+    for (const id of ev.fighters) {
+      const p = room.players.get(id);
+      assert.ok(p.slots.every((slot) => slot === null));
+      assert.equal(p.activeSlot, FIST_SLOT);
+      assert.equal(p.reload, null);
+    }
+
+    if (ending === 'finish') {
+      ev.winnerTeam = 0;
+      ev.stage = 'finish';
+      ev.stageEndsAt = 0;
+      tickEvents(room, Date.now(), applyDamage);
+    } else {
+      clearEvents(room);
+    }
+
+    for (const id of ev.fighters) {
+      const p = room.players.get(id);
+      const before = snapshots.get(id);
+      assert.deepEqual(p.slots, before.slots);
+      assert.equal(p.activeSlot, before.activeSlot);
+      const held = before.slots[before.activeSlot];
+      assert.equal(p.weapon, held.weapon);
+      assert.equal(p.ammo, held.ammo);
+      assert.equal(p.magazine, held.magazine ?? null);
+      assert.equal(p.reload, null);
+    }
+    assert.deepEqual(spectator.slots, snapshots.get(spectator.id).slots);
+    assert.equal(spectator.activeSlot, snapshots.get(spectator.id).activeSlot);
+  }
 });
 
 test('Chống treo ưu tiên số người sống, rồi tổng máu; võ sĩ đang chờ hồi sinh không bị timer kéo khỏi võ đài', (t) => {

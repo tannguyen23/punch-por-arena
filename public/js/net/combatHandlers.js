@@ -1,11 +1,10 @@
 import { state, remotes } from '../state.js';
 import { WEAPON_MODELS } from '../entities/weapons/index.js';
-import { spawnHitEffects } from '../fx/hitEffects.js';
+import { hitFeedback } from './hitFeedback.js';
 import { tracer, muzzleFlash, bulletImpact, explosion } from '../fx/gunEffects.js';
 import { launchRocket, removeRocket } from '../fx/rockets.js';
 import { muzzlePosition } from '../player/aim.js';
-import { flashDamage, flashCrosshairHit, showDamageNotice } from '../ui/hud.js';
-import { positionOf, playAt } from './positional.js';
+import { playAt } from './positional.js';
 
 const REMOTE_MUZZLE = 0.7; // đạn của người khác bắt đầu cách mắt họ ngần này (mét) theo hướng bắn, cho khỏi như bắn ra từ mặt
 const BOOM_SHAKE = 0.3; // rung camera khi đứng sát vụ nổ, nhỏ dần theo khoảng cách
@@ -30,23 +29,8 @@ export const combatHandlers = {
     playAt(WEAPON_MODELS[r.weapon]?.swingSound ?? 'whoosh', r.root.position);
   },
 
-  // Bị trúng đòn / đạn / sức nổ. `by` là null nếu người bắn đã thoát.
-  hit(m) {
-    playAt('impact', positionOf(m.id));
-    if (m.id === state.myId) {
-      state.shake = Math.max(state.shake, 0.12);
-      flashDamage();
-      showDamageNotice(m.dmg, m.source);
-      return;
-    }
-    const target = remotes.get(m.id);
-    const attacker = positionOf(m.by);
-    if (target && attacker) spawnHitEffects(target, attacker, m.dmg);
-    if (m.by === state.myId) {
-      state.shake = Math.max(state.shake, 0.04);
-      flashCrosshairHit();
-    }
-  },
+  // Bị trúng đòn / đạn / sức nổ. `by` là null nếu người bắn đã thoát. Toàn bộ phản hồi nằm ở net/hitFeedback.js.
+  hit: hitFeedback,
 
   // Một phát súng: vệt đạn từ đầu nòng tới chỗ dừng. Lửa đầu nòng và tiếng súng của mình đã có lúc bóp cò (player/attack.js).
   shot(m) {

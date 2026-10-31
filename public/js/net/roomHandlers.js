@@ -1,6 +1,6 @@
 import { state } from '../state.js';
 import { announce } from '../ui/matchHud.js';
-import { KICKED_NOTICE_KEY } from '../config.js';
+import { KICKED_NOTICE_KEY, ROOM_CLOSED_NOTICE_KEY } from '../config.js';
 
 export const roomHandlers = {
   // Chủ phòng thoát: quyền chủ phòng chuyển cho người khác (server/game/leave.js).
@@ -15,6 +15,16 @@ export const roomHandlers = {
     try {
       sessionStorage.setItem(KICKED_NOTICE_KEY, '1'); // menu báo lý do sau khi tải lại trang (ui/menu.js đọc và xoá)
     } catch { /* trình duyệt chặn lưu: vẫn về menu, chỉ không có dòng báo */ }
+    document.exitPointerLock();
+    location.replace(location.pathname);
+  },
+
+  // Khán giả ở lại phòng đã hết người chơi: server đóng kết nối (server/game/leave.js). Về menu và báo lý do.
+  roomclosed() {
+    state.kicked = true; // ws.onclose (net/socket.js) không hiện "Mất kết nối" đè lên
+    try {
+      sessionStorage.setItem(ROOM_CLOSED_NOTICE_KEY, '1');
+    } catch { /* trình duyệt chặn lưu: vẫn về menu */ }
     document.exitPointerLock();
     location.replace(location.pathname);
   },

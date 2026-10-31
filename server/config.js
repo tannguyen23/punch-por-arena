@@ -25,6 +25,8 @@ module.exports = {
   PUNCH_COS: Math.cos((35 * Math.PI) / 180),
   PUNCH_COOLDOWN: 350,
   PUNCH_VERTICAL: 2.2, // chênh lệch độ cao tối đa để đòn đánh còn trúng (đứng trên cầu không đấm được người dưới sông)
+  MELEE_KNOCK: { base: 1.4, perDamage: 0.03, max: 3.2 }, // đòn cận chiến đẩy nạn nhân lùi nhẹ (m/s đầu; client trượt tắt dần theo KNOCKBACK): base + perDamage × sát thương, tối đa max
+  MELEE_KNOCK: { base: 1.4, perDamage: 0.03, max: 3.2 }, // đòn cận chiến đẩy nạn nhân lùi nhẹ (m/s lúc đầu, client trượt tắt dần theo KNOCKBACK): base + perDamage × sát thương, tối đa max
   RESPAWN_MS: 2000,
   REGEN_DELAY_MS: 10000, // không bị trúng đòn ngần này thì bắt đầu hồi máu
   REGEN_PER_SEC: 3, // máu hồi mỗi giây (tới đầy)
@@ -46,16 +48,16 @@ module.exports = {
   // Vũ khí trên sân
   PICKUP_RADIUS: 1.2, // đi vào trong bán kính này là nhặt
   PICKUP_MIN_GAP: 4, // khoảng cách tối thiểu giữa hai vũ khí
-  INVENTORY_SLOTS: 3, // số ô vũ khí trong túi (chưa kể ô tay không cố định), khớp HOTBAR_SLOTS ở public/js/config.js
+  INVENTORY_SLOTS: 4, // số ô vũ khí trong túi (chưa kể ô tay không cố định), khớp HOTBAR_SLOTS ở public/js/config.js
   WEAPON_RARITIES: {
     common: { name: 'Thường', color: '#d5dce5' },
     rare: { name: 'Hiếm', color: '#63baff' },
     epic: { name: 'Sử thi', color: '#d18aff' },
     legendary: { name: 'Huyền thoại', color: '#ffc857' },
   },
-  // Vũ khí rơi ra sân (server/game/loot.js): bấm G thì vũ khí văng ra trước mặt ngần này (mét) cho nhìn thấy;
+  // Vũ khí rơi ra sân (server/game/loot.js): bấm G thì vũ khí văng ra trước mặt ngần này (mét), đủ xa để không nhặt lại ngay;
   // chết thì cả túi văng ra quanh xác trong vòng `deathSpread` mét. Nằm trên sân tới hết trận.
-  LOOT: { tossDistance: 1.6, deathSpread: 1.8 },
+  LOOT: { tossDistance: 6, deathSpread: 1.8 },
 
   // Phòng và phòng chờ
   ROOM_MAX_PLAYERS: 8, // số người tối đa trong một phòng
@@ -83,16 +85,20 @@ module.exports = {
 
   // Hòm tiếp tế (thả dù từ máy bay, kiểu PUBG). Máy bay bay thẳng qua điểm thả, thả hòm khi ở ngay trên đó,
   // hòm rơi dù xuống chạm đất mới nhặt được. Đợt cuối chỉ thả nếu hòm kịp chạm đất trước khi hết trận.
-  // Phòng đông thì máy bay tới dày hơn và mỗi đợt nhiều hòm hơn (match.js `runAirdrops`):
+  // Phòng đông thì máy bay tới dày hơn và mỗi chuyến thả nhiều hòm hơn (match.js `runAirdrops`):
   //   khoảng cách = max(minIntervalMs, baseIntervalMs − perPlayerMs × (số người − 1)), số hòm = ceil(số người / playersPerCrate) (tối đa maxCrates).
-  // Mỗi hòm có một vũ khí chính (85% cận chiến / 15% súng theo `dropWeight`) và `bonusChance` cơ hội kèm một lựu đạn trong `bonus`.
+  // Mỗi đợt chỉ MỘT máy bay bay theo đường gấp khúc, thả hòm lần lượt ở các điểm rải xa nhau (mục tiêu `crateGap` mét)
+  // (đỡ render nhiều máy bay; điểm thả luôn có đất, kể cả map đảo bay). Mỗi hòm có một vũ khí chính riêng
+  // (mặc định 85% cận chiến / 15% súng theo `dropWeight`, màn tạo phòng có thể gửi trọng số riêng)
+  // và `bonusChance` cơ hội kèm một lựu đạn trong `bonus`.
   AIRDROP: {
     firstMs: 10000,
     baseIntervalMs: 28000,
     perPlayerMs: 3000,
     minIntervalMs: 12000,
-    playersPerCrate: 3,
-    maxCrates: 3,
+    playersPerCrate: 2,
+    maxCrates: 4,
+    crateGap: 30, // mét: khoảng cách tối thiểu giữa hai điểm thả trong cùng chuyến
     bonusChance: 0.35,
     bonus: ['frag', 'flashbang', 'icegrenade'],
   },
@@ -126,6 +132,7 @@ module.exports = {
     restSpeed: 0.8, // nảy yếu hơn ngần này (m/giây) thì nằm xuống lăn
     rollDrag: 2.5, // đang lăn trên đất thì chậm dần theo ngần này mỗi giây
     waterDrag: 4, // dưới nước bị cản mạnh, chìm từ từ
+    aim: { stepMs: 20, maxFlightMs: 3000 }, // đường xem trước lúc giữ chuột ngắm (client dự đoán tới chỗ chạm đất đầu tiên, không tính nảy / lăn)
   },
 
   // Sự kiện ngẫu nhiên trong trận (server/game/events.js): cứ mỗi `perMatchMs` thời gian trận thì có một sự kiện, kẹp trong [1, max].
@@ -136,6 +143,7 @@ module.exports = {
     firstMs: (Number(arg('event-first-seconds') ?? process.env.EVENT_FIRST_SECONDS) || 25) * 1000, // sự kiện đầu tiên không sớm hơn mốc này từ đầu trận
     tailMs: 20000, // sự kiện phải xong trước lúc hết trận ngần này
     introMs: (Number(arg('event-intro-seconds') ?? process.env.EVENT_INTRO_SECONDS) || 6) * 1000,
+    warnMs: 5000, // báo trước sắp có sự kiện ngần này (client đếm ngược trên banner)
     retryMs: 3000, // tới hẹn mà chưa bắt đầu được (đang có bom, thiếu người sống...) thì thử lại sau ngần này
     only: arg('event-kind') ?? process.env.EVENT_KIND ?? null, // chỉ chạy loại sự kiện này ('dog' | 'duel' | 'tnt') để thử
     // Danh sách loại sự kiện được phép, theo thứ tự khi chạy chế độ test: --events=dog,duel. Rỗng = tất cả.
@@ -189,6 +197,16 @@ module.exports = {
     landingInset: 0.6, maxYaw: 1000000,
   },
 
+  // Skill ném vũ khí (server/game/skillThrow.js): giữ Q để ngắm, thả ra thì ném. Chỉ vũ khí có `throwSkill` trong bảng WEAPONS (sát thương
+  // nằm ở đó). Bay thẳng theo hướng ngắm cộng `lift` (m/giây hất lên), rơi theo `gravity`, dừng ở người / tường / đất đầu tiên.
+  // Ném xong là mất vũ khí. Gửi cho client qua weaponInfo (welcome) để đường xem trước tính cùng số liệu.
+  WEAPON_THROW: {
+    speed: 40, lift: 2.5, gravity: 18, stepMs: 20, maxFlightMs: 1500, cooldownMs: 600,
+    // Điểm xuất phát so với mắt, theo hệ của hướng nhìn ngang (mét): quả ném bay ra từ bàn tay phải (tay cầm vũ khí) đang giơ lên, không từ giữa không trung.
+    // Khớp tư thế tay SKILL_THROW.pose ở public/js/config.js (tay giơ lên thì nằm gần ngang mắt).
+    hand: { right: 0.28, up: -0.12, forward: 0.45 },
+  },
+
   // Thuốc (server/game/potions.js, potionDrops.js): nằm sẵn trên sân (không máy bay, không hòm), nhặt là uống ngay.
   // Chỉ số từng loại (kích thước, máu, tốc độ) nằm trong bảng POTIONS của potions.js. Thử nhanh: --potion-first-seconds=3.
   POTION: {
@@ -198,24 +216,68 @@ module.exports = {
     durationMs: 30000, // thời gian hiệu lực
   },
 
-  // Đấm trời giáng của người hoá to (server/game/bigPunch.js): giữ phím `chargeMs` rồi thả, `impactMs` sau (khớp khung hình tay duỗi hết cỡ của clip
-  // big_right_punch trừ đi khung lấy đà `CHARACTER.bigWindup` ở client: 0.75s − 0.25s) sóng xung kích nổ ra cách người đấm `reach` mét theo hướng nhìn.
-  // Mọi người trong `radius` mét quanh tâm sóng (không bị tường chặn, chênh độ cao không quá `vertical`) mất máu và bị đánh văng ra xa tâm;
-  // ở mép chỉ còn `edgeDamageMult` / `edgeKnockMult` lần sát thương / lực ở tâm. `lift` là vận tốc hất lên (m/giây).
+  // Đấm trời giáng của người hoá to (server/game/bigPunch.js, bigLeap.js): giữ phím để gồng (đầy sau `chargeMs`, hiện đường nhảy xem trước), thả
+  // lúc nào cũng được: nhảy vọt lên không tới chỗ đang ngắm (xa nhất `leap.maxRange` mét) rồi đấm xuống. Gồng chưa đủ thì sát thương / lực hất
+  // chỉ còn `minPower` lần lúc đầy (tăng tuyến tính theo thời gian gồng). Chạm đất thì sóng xung kích nổ ra ở đó: mọi người trong `radius` mét
+  // (không bị tường chặn, chênh độ cao không quá `vertical`) mất máu và bị đánh văng ra xa tâm; ở mép chỉ còn `edgeDamageMult` / `edgeKnockMult`
+  // lần sát thương / lực ở tâm. `lift` là vận tốc hất lên (m/giây). `impactMs` = độ dài phần "thả" của clip big_right_punch (khung 0.75s − 0.25s
+  // lấy đà), hoạt ảnh bắt đầu `flightMs − impactMs` sau khi nhảy để tay duỗi hết cỡ đúng lúc chạm đất.
   BIG_PUNCH: {
     chargeMs: 800,
-    slackMs: 150, // thả sớm hơn `chargeMs` ngần này vẫn tính là đủ (mạng giật)
+    minPower: 0.35,
     cooldownMs: 2500,
     impactMs: 500,
-    reach: 3,
-    radius: 15,
+    radius: 10,
     vertical: 4,
     damage: 70,
     edgeDamageMult: 0.4,
     knockSpeed: 22,
     edgeKnockMult: 0.5,
     lift: 7,
+    // Đường nhảy: bay thẳng tới điểm rơi, nhô lên một cung parabol. Điểm rơi = chỗ tia ngắm chạm đất (nhìn ngang / lên trời thì xa tối đa),
+    // kẹp trong [minRange, maxRange]; chỗ rơi không có đất đỡ (hư không giữa các đảo) thì lùi dần về phía người nhảy.
+    leap: {
+      minRange: 4, maxRange: 30, baseMs: 550, perMeterMs: 22, // thời gian bay = baseMs + perMeterMs × quãng đường
+      minApex: 3, apexPerMeter: 0.3, maxApex: 10, // độ nhô cao so với đường thẳng từ chỗ nhảy tới chỗ rơi (mét)
+      rayStep: 0.5, backoffStep: 1, graceMs: 400, // bước dò tia ngắm; bước lùi khi chỗ rơi không có đất; dư thời gian cho mạng giật
+    },
   },
+
+  // Dash động cơ phản lực (server/game/dash.js): bấm phím lao thẳng `distance` mét theo hướng nhìn (có cả góc ngẩng / cúi), mất `distance / speed` giây,
+  // không sát thương. Dừng sớm trước tường chặn đòn và đồi (cách `margin` mét); ngắn hơn `minDistance` thì không dash (không tốn hồi chiêu).
+  // `chestHeight` = độ cao điểm bắt đầu dò (nhân kích thước), `graceMs` dư thời gian cho mạng giật (xem leapBounds trong bigLeap.js).
+  // Dash xong giữa không trung thì liệng xuống chậm (`glide`): client rơi với vận tốc tối đa `fallSpeed` (m/giây) rồi nới dần về rơi bình thường trong `easeMs`, động cơ chạy tới khi chạm đất.
+  // Server nới giới hạn độ cao chân trong khoảng thời gian liệng ước tính (độ cao / fallSpeed + slackMs, tối đa maxMs).
+  DASH: {
+    distance: 15, speed: 20, cooldownMs: 18000,
+    minDistance: 0.8, margin: 0.5, chestHeight: 1, graceMs: 400,
+    glide: { fallSpeed: 2.6, easeMs: 1500, maxMs: 8000, slackMs: 600, landTolerance: 0.3 },
+  },
+
+  // Bot thử nghiệm (server/game/botRoster.js, botBrain.js, botLoop.js): màn tạo phòng ở menu gửi số bot + mức trong tin `join` thì phòng có thêm bot (tối đa lấp đầy phòng).
+  // Bot là người chơi thật trong `room.players` (cờ `bot`), chỉ khác là server tự lái: đuổi người gần nhất, nhặt vũ khí, đánh / bắn / ném.
+  BOT: {
+    tickMs: 50, // chu kỳ suy nghĩ; client nhận vị trí qua snapshot như mọi người
+    speed: 6, // m/giây (bằng tốc độ đi của người chơi, bot không chạy nước rút)
+    pickupRange: 35, // thấy hòm / vũ khí rơi trong ngần này (mét) thì đi nhặt
+    pickupBias: 10, // đi nhặt khi vật nhặt gần hơn người chơi gần nhất không quá ngần này mét
+    keepAway: 12, // vũ khí tầm xa (súng, lựu đạn, tên lửa): đứng cách mục tiêu ngần này
+    meleeSlack: 0.3, // đánh cận chiến khi mục tiêu trong tầm đánh cộng ngần này (mét)
+    gunRange: 45, rocketRange: [10, 60], grenadeRange: [6, 22], grenadePitch: 0.2, // tầm dùng từng loại vũ khí (mét)
+    aimHeight: 0.9, // bắn vào ngực: độ cao mục tiêu so với chân (mét, nhân kích thước)
+    sidestepAngles: [0.6, 1.2, 1.8, 2.4], // bị vật cản chặn thì thử rẽ sang hai bên lần lượt các góc này (radian)
+  },
+
+  // Mức bot (màn tạo phòng gửi, chỉ đọc lúc tạo phòng): 1 = dễ nhất, 2 = trung bình (mặc định), 3 = khó (gần như bot cũ).
+  // `thinkMs`: chu kỳ phản ứng; `speedMult`: hệ số tốc độ đi; `pickupRange` / `pickupBias` / `potionRange` (mét): độ ham nhặt đồ;
+  // `attackDelayMs`: nghỉ giữa hai lần ra đòn; `aimError` / `turnError` (radian): bắn và xoay người lệch; `missChance`: bỏ đòn;
+  // `damageMult`: sát thương gây ra (damage.js nhân vào mọi nguồn sát thương của bot).
+  BOT_LEVELS: {
+    1: { thinkMs: 250, speedMult: 0.65, pickupRange: 7, pickupBias: 1, potionRange: 4, attackDelayMs: 900, aimError: 0.05, turnError: 0.3, missChance: 0.35, damageMult: 0.6 },
+    2: { thinkMs: 100, speedMult: 0.85, pickupRange: 18, pickupBias: 4, potionRange: 12, attackDelayMs: 400, aimError: 0.02, turnError: 0.12, missChance: 0.12, damageMult: 0.8 },
+    3: { thinkMs: 50, speedMult: 1, pickupRange: 35, pickupBias: 10, potionRange: 35, attackDelayMs: 0, aimError: 0.005, turnError: 0.04, missChance: 0, damageMult: 1 },
+  },
+  DEFAULT_BOT_LEVEL: 2, // client không gửi mức thì dùng mức 2 (bot cũ quá mạnh nên không còn là mặc định)
 
   // Bão (server/game/weather.js): chỉ có khi đang 'playing', mưa là hình ảnh, sét gây sát thương (server/game/lightning.js).
   STORM: {
@@ -227,9 +289,9 @@ module.exports = {
     fadeMs: 4000, // mưa nặng hạt / tạnh dần trong ngần này (client)
   },
   // Sét theo đợt; đứng tụm lại hoặc giữa sông / trên đồi dễ bị nhắm hơn.
-  // Luôn báo trước warnMs (vòng sáng dưới đất) để chạy kịp; trúng tâm cũng không chết người đang đầy máu.
+  // Luôn báo trước warnMs (chỉ còn tiếng lách tách, không vẽ vòng cảnh báo) để chạy kịp; trúng tâm cũng không chết người đang đầy máu.
   LIGHTNING: {
-    waveCount: 10,
+    waveCount: 5, // số tia mỗi đợt: nhiều tia cùng lúc kéo theo loé sáng, tiếng sấm, điện giật... trên máy mọi người (xem docs/perf.md)
     waveMs: 5000,
     waveGapMs: 8000, // nghỉ tính từ tia cuối đánh xuống
     pointGap: 6,
@@ -258,9 +320,10 @@ module.exports = {
   NUKE_PLANE_APPROACH: 250, // máy bay xuất hiện cách điểm thả ngần này (mét) rồi bay thẳng qua
   NUKE_PLANE_ALTITUDE: 70, // độ cao bay so với mặt đất ở điểm thả
   NUKE_FALL_MS: 3000, // bom rơi từ máy bay xuống đất (khớp độ dài falling bomb.mp3 ≈ 3s), hết thì nổ
-  // Vùng nổ: bom rơi xuống chỗ người gọi đang ngắm (xa nhất `maxRange` mét). Trong `killRadius` mét chết ngay, từ đó tới `radius`
-  // sát thương giảm dần về 0. Người gọi không được miễn. Trận đấu vẫn tiếp tục.
-  NUKE_AREA: { radius: 25, killRadius: 15, maxRange: 120 },
+  // Vùng nổ: một đợt oanh kích gồm `bombs` quả rải trên vùng ĐẤT của map (bỏ sông / hư không, nên đảo bay chỉ tính đảo + cầu).
+  // Server tự tăng bán kính tới khi các vùng nổ phủ ≥ `coverage` diện tích đất, rồi dùng `killRatio` để suy ra vành chết.
+  // Người gọi không được miễn. Trận đấu vẫn tiếp tục.
+  NUKE_AREA: { bombs: 5, coverage: 0.7, minRadius: 20, maxRadius: 60, killRatio: 0.55, maxRange: 120 },
   // Radio gọi bom: số lần hạ gục liên tiếp (không chết) để gọi máy bay thả hòm chứa radio, và hòm rơi cách người gọi chừng này (mét).
   RADIO_STREAK_KILLS: 5, // khớp RADIO_STREAK_KILLS ở public/js/config.js
   RADIO_DROP_DISTANCE: 8,

@@ -58,7 +58,7 @@ function tossLoot(room, p, item) {
   return dropLoot(room, item, offset(p, p.yaw, config.LOOT.tossDistance), p, { by: p.id, ignore: p.id });
 }
 
-// Chết: cả túi (kể cả món đã hết đạn) văng ra quanh xác, chia đều các hướng để không chồng lên nhau.
+// Chết: cả túi văng ra quanh xác, chia đều các hướng để không chồng lên nhau.
 function spillInventory(room, p) {
   const items = p.slots.filter(Boolean);
   items.forEach((item, i) => {

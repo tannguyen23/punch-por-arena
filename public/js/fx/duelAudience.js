@@ -1,5 +1,6 @@
 import { scene } from '../core/scene.js';
 import { duelOf } from '../core/duel.js';
+import { positionAt } from '../core/throwPath.js';
 import { createWeaponModel } from '../entities/weapons/index.js';
 import { DUEL_AUDIENCE_FX } from '../config.js';
 
@@ -71,10 +72,8 @@ export function updateAudienceEffects() {
     const entry = live.get(flight.id) ?? createFlight(flight);
     if (!entry.root) continue;
     const t = Math.max(0, elapsed) / 1000;
-    const { from, velocity, gravity } = flight;
-    entry.root.position.copyFrom(new Vector3(
-      from.x + velocity.x * t, from.y + velocity.y * t - gravity * t * t / 2, from.z + velocity.z * t,
-    ));
+    const { x, y, z } = positionAt(flight, t);
+    entry.root.position.copyFrom(new Vector3(x, y, z));
     entry.root.rotation.x = t * DUEL_AUDIENCE_FX.spin;
   }
   for (let i = splashes.length - 1; i >= 0; i--) {

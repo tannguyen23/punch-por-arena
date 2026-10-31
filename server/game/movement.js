@@ -8,6 +8,8 @@ const { isFrozen, isHeld } = require('./restrictions');
 const { checkPoopContact } = require('./poop');
 const { confinedSpot } = require('./duelRing');
 const { randomFreePosition } = require('./spawn');
+const { leapBounds } = require('./bigLeap');
+const { endGlideOnLanding } = require('./dash');
 
 // TNT chặn sát thương rơi: đưa lại sân thay vì để người chơi kẹt mãi dưới đảo.
 function recoverTntFall(room, p) {
@@ -42,7 +44,12 @@ function applyClientState(room, p, m) {
   // Có chỗ đứng hay không xét theo cả độ cao chân (không chỉ mặt sân 2D): rơi dưới gầm cầu nổi / dưới đảo vẫn là đang rơi,
   // nếu không đồng hồ rơi bị đặt lại mãi và người đó rơi không bao giờ chết để hồi sinh.
   const ground = room.terrain.groundAt(p.x, p.z, Number.isFinite(m.y) ? m.y : p.y);
-  if (Number.isFinite(ground)) {
+  endGlideOnLanding(p, ground, m.y);
+  const air = leapBounds(p); // đang nhảy đấm trời giáng: bay cao hơn mức nhảy thường và có thể vắt qua hư không
+  if (air) {
+    p.fallStartedAt = 0;
+    p.y = Number.isFinite(m.y) ? clamp(m.y, air.min, air.max) : p.y;
+  } else if (Number.isFinite(ground)) {
     p.fallStartedAt = 0;
     p.y = Number.isFinite(m.y) ? clamp(m.y, ground - 0.5, ground + 4) : ground;
   } else {

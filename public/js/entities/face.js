@@ -7,14 +7,14 @@ const FRONT_NORMAL_Z = 0.1; // chỉ lấy các mặt của đầu quay ra phía
 
 const overlaps = (values, min, span) => Math.max(...values) >= min && Math.min(...values) <= min + span;
 
-// Đầu là elip nhiều mặt phẳng nên ảnh không dán lên tấm phẳng (sẽ lơ lửng) mà lên lớp phủ sao chép các mặt hướng trước của đầu, UV chiếu phẳng theo (x, y).
+// Ảnh dán lên lớp phủ sao chép các mặt hướng trước của đầu (đầu hình hộp thì chỉ là một mặt phẳng; vẫn giữ cách này để đổi lại đầu cong cũng chạy), UV chiếu phẳng theo (x, y).
 // Texture có viền trong suốt một texel quanh ảnh để phần UV nằm ngoài khung (bị kẹp về mép) không hiện gì.
 function buildShell(head) {
-  const { width, height, centerY, lift } = CHARACTER.face;
+  const { width, height, centerX, centerY, lift } = CHARACTER.face;
   const positions = head.getVerticesData(VertexBuffer.PositionKind);
   const normals = head.getVerticesData(VertexBuffer.NormalKind);
   const indices = head.getIndices();
-  const left = -width / 2 - width / FACE_IMAGE.width;
+  const left = centerX - width / 2 - width / FACE_IMAGE.width;
   const bottom = centerY - height / 2 - height / FACE_IMAGE.height;
   const spanU = width * (1 + 2 / FACE_IMAGE.width);
   const spanV = height * (1 + 2 / FACE_IMAGE.height);

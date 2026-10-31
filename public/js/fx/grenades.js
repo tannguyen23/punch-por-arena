@@ -2,6 +2,7 @@
 // bằng trọng lực rồi kéo dần về vị trí server cho khỏi giật. Hình quả lựu đạn là chính model của vũ khí đó.
 import { createWeaponModel } from '../entities/weapons/index.js';
 import { groundAt } from '../core/terrain.js';
+import { positionAt } from '../core/throwPath.js';
 import { GRENADE_FX } from '../config.js';
 
 const { Vector3 } = BABYLON;
@@ -10,8 +11,8 @@ const live = new Map(); // id → { root, shown, base, vel, since, age }
 
 // Vị trí đoán theo trọng lực sau `t` giây kể từ lần server báo gần nhất, không chui xuống đất.
 function predict(g, t) {
-  const p = g.base.add(g.vel.scale(t));
-  p.y -= 0.5 * GRENADE_FX.gravity * t * t;
+  const { x, y, z } = positionAt({ from: g.base, velocity: g.vel, gravity: GRENADE_FX.gravity }, t); // đường bay chung (core/throwPath.js)
+  const p = new Vector3(x, y, z);
   p.y = Math.max(p.y, groundAt(p.x, p.z, g.base.y) + GRENADE_FX.radius);
   return p;
 }

@@ -1,6 +1,7 @@
 const { test } = require('node:test');
 const assert = require('node:assert/strict');
-const { WEAPONS, randomDropWeapon, rollAmmo, weaponInfo } = require('../server/game/weapons');
+const { WEAPONS, randomDropWeapon, rollAmmo, weaponInfo, weaponDropInfo } = require('../server/game/weapons');
+const { sanitizeWeaponWeights } = require('../server/game/sanitize');
 const { WEAPON_RARITIES, AIRDROP } = require('../server/config');
 const { setupDuel } = require('./helpers/duel');
 const { launchAirdrop, tryPickup } = require('../server/game/pickups');
@@ -28,6 +29,40 @@ test('Đúng tỉ lệ từng vũ khí: 85% cận chiến, 15% súng; cấp hi�
   assert.equal(melee, 85);
   assert.deepEqual(rarityTotals, { common: 50, rare: 25, epic: 10, legendary: 15 });
   for (const id of ['fist', 'frag', 'flashbang', 'icegrenade', 'nuke']) assert.equal(WEAPONS[id].dropWeight, 0);
+});
+
+test('Tỷ lệ rơi riêng của phòng: chỉ nhận vũ khí rơi được, trọng số 0–100, toàn 0 thì dùng mặc định', () => {
+  assert.deepEqual(sanitizeWeaponWeights({ sword: 10, pistol: 20 }), { sword: 10, pistol: 20 });
+  assert.deepEqual(sanitizeWeaponWeights({ sword: -5, pistol: 250, nuke: 50, bogus: 3, axe: 2.6 }), { sword: 0, pistol: 100, axe: 3 });
+  assert.equal(sanitizeWeaponWeights({}), null);
+  assert.equal(sanitizeWeaponWeights({ nuke: 50, frag: 5 }), null);
+  assert.equal(sanitizeWeaponWeights(null), null);
+  assert.equal(sanitizeWeaponWeights([]), null);
+});
+
+test('randomDropWeapon dùng trọng số riêng; hòm chọn vũ khí theo tỷ lệ của phòng', (t) => {
+  assert.equal(randomDropWeapon({ sword: 0, pistol: 1 }), 'pistol');
+  const fixed = t.mock.method(Math, 'random', () => 0);
+  assert.equal(randomDropWeapon({ sword: 0, pistol: 0 }), randomDropWeapon(), 'toàn 0 quay về mặc định');
+  fixed.mock.restore();
+
+  const { room } = setupDuel(2);
+  room.weaponWeights = { sword: 0, pistol: 1 };
+  const random = t.mock.method(Math, 'random', () => 0.99);
+  launchAirdrop(room, { pos: { x: 0, z: 0 } });
+  const pickup = [...room.pickups.values()][0];
+  assert.equal(pickup.weapon, 'pistol');
+  random.mock.restore();
+});
+
+test('weaponDropInfo trả vũ khí rơi được với trọng số mặc định và cấp hiếm', () => {
+  const drops = weaponDropInfo();
+  assert.equal(drops.length, Object.keys(expected).length);
+  assert.deepEqual(drops.find((w) => w.id === 'sword'), {
+    id: 'sword', name: 'Kiếm', kind: 'melee', weight: 22,
+    rarity: { id: 'common', ...WEAPON_RARITIES.common },
+  });
+  assert.ok(drops.every((w) => w.weight > 0));
 });
 
 test('Welcome gửi nhãn / màu từ server; không đổi chỉ số, số đạn và thưởng lựu đạn', (t) => {

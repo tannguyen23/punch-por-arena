@@ -25,7 +25,9 @@ function createPlayer(ws) {
     poopNextAt: 0, // mốc Date.now() hồi thêm một cục; 0 = đã đầy
     lastPoopAt: 0,
     bigChargeAt: 0, // mốc Date.now() bắt đầu giữ phím đấm trời giáng; 0 = không tích lực (bigPunch.js)
+    leap: null, // cú nhảy đấm trời giáng đang bay { from, to, apex, endsAt } (bigLeap.js)
     bigPunchReadyAt: 0, // mốc Date.now() dùng lại được đấm trời giáng
+    dashReadyAt: 0, // mốc Date.now() dùng lại được dash động cơ (dash.js)
     lastHurtAt: 0, // mốc Date.now() lần bị trúng đòn gần nhất (tính hồi máu, xem regen.js)
     lastCactusDamageAt: 0,
     fallStartedAt: 0,
@@ -44,6 +46,8 @@ function createPlayer(ws) {
     magazine: null,
     reload: null,
     joined: false,
+    bot: false, // bot thử nghiệm do server tự lái (botRoster.js)
+    spectator: false, // khán giả (?mode=spectator): chỉ nhận tin, không nằm trong room.players (connection.js)
     name: '',
     look: null,
   };

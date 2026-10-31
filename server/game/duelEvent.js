@@ -1,6 +1,6 @@
 const { DUEL } = require('../config');
 const { broadcast } = require('../net/messaging');
-const { stripInventory, clearInventory } = require('./inventory');
+const { stripInventory, clearInventory, stashInventory, restoreInventory } = require('./inventory');
 const { clearPotion } = require('./potions');
 const { placeFighters, placeSpectators } = require('./duelRing');
 const { settleBets } = require('./duelBets');
@@ -19,8 +19,10 @@ function setStage(room, ev, stage, ms, now) {
 function begin(room) {
   const teams = room.mapData.ring ? pickTeams(room) : null;
   if (!teams) return null;
+  const stash = new Map(); // id → túi lúc vào võ đài, trả lại nguyên trạng khi sự kiện kết thúc
   for (const p of teams.flat()) {
     clearPotion(p);
+    stash.set(p.id, stashInventory(p));
     stripInventory(p);
   }
   const ids = teams.map((players) => players.map((p) => p.id));
@@ -29,7 +31,7 @@ function begin(room) {
   return {
     teams: ids, fighters: ids.flat(), bets: new Map(), stage: 'intro', stageEndsAt: 0,
     fighting: false, round: 0, wins: [0, 0], roundWinner: null, winnerTeam: null,
-    audience: createAudience(),
+    audience: createAudience(), stash,
   };
 }
 
@@ -101,8 +103,11 @@ function finish(room, ev, reason) {
     if (!p) continue;
     p.dead = false;
     p.hp = p.maxHp;
-    clearInventory(p);
+    const stash = ev.stash?.get(p.id);
+    if (stash) restoreInventory(p, stash);
+    else clearInventory(p); // sự kiện cũ / dữ liệu thiếu: về túi khởi đầu như trước
   }
+  ev.stash?.clear();
   if (reason !== 'duel' || ev.winnerTeam === null) return;
   for (const id of ev.teams[ev.winnerTeam]) {
     const p = room.players.get(id);
@@ -125,5 +130,5 @@ module.exports = {
   get durationMs() { return durationMs(); },
   begin, tick, onDown, finish, absorbLethal, handleBet, debug,
   view: (room, ev, now) => ({ duel: duelView(room, ev, now) }),
-  pauses: ['airdrop', 'potion'],
+  pauses: ['airdrop', 'potion', 'lightning'],
 };

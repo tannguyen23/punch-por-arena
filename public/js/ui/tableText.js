@@ -26,7 +26,7 @@ export const TABLE_TEXT = {
   turnLimit: (seconds) => `Mỗi lượt ${seconds}s · Hết giờ xử thua`,
   symbol: (mark) => `Bạn cầm ${mark}`,
   cell: (index, mark) => `Ô ${index + 1}: ${mark || 'trống'}`,
-  hint: (count) => count >= 2 ? 'Bàn đang có người chơi' : count === 1 ? 'E · Vào đấu cờ 3×3' : 'E · Chơi cờ 3×3 tại bàn',
+  hint: (count) => count >= 2 ? 'Bàn đang có người chơi' : count === 1 ? 'F · Vào đấu cờ 3×3' : 'F · Chơi cờ 3×3 tại bàn',
 };
 
 export const TABLE_ERRORS = {

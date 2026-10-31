@@ -1,4 +1,5 @@
 import { scene, solidMaterial } from './scene.js';
+import { MESH_DETAIL } from '../config.js';
 
 const { MeshBuilder } = BABYLON;
 
@@ -11,7 +12,8 @@ export function part(mesh, parent, x, y, z, material) {
 
 export const box = (w, h, d, targetScene = scene) =>
   MeshBuilder.CreateBox('box', { width: w, height: h, depth: d }, targetScene);
-export const ball = (d, targetScene = scene) => MeshBuilder.CreateSphere('ball', { diameter: d }, targetScene);
+export const ball = (d, targetScene = scene, segments = MESH_DETAIL.ballSegments) =>
+  MeshBuilder.CreateSphere('ball', { diameter: d, segments }, targetScene);
 // diameterTop = 0 cho hình nón.
 export const cylinder = (diameterTop, diameterBottom, height, targetScene = scene) =>
   MeshBuilder.CreateCylinder('cyl', { diameterTop, diameterBottom, height, tessellation: 10 }, targetScene);
