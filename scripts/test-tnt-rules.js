@@ -14,7 +14,7 @@ function start(t) {
   const { room } = fixture;
   room.phase = 'playing';
   room.endsAt = Date.now() + 300000;
-  room.eventPlan = [{ kind: 'tnt', at: Date.now() }];
+  room.eventPlan = [{ kind: 'tnt', at: Date.now(), warned: true }];
   tickEvents(room, Date.now(), applyDamage);
   t.mock.timers.tick(EVENTS.introMs);
   return fixture;

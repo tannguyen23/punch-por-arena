@@ -108,7 +108,7 @@ test('Rời phòng/kick, chuyển pha và sự kiện đều đóng bàn; không
   room.phase = 'playing';
   join(b);
   room.endsAt = Date.now() + 300000;
-  room.eventPlan = [{ kind: 'dog', at: 0 }];
+  room.eventPlan = [{ kind: 'dog', at: 0, warned: true }];
   tickEvents(room, Date.now());
   assert.ok(room.event);
   assert.equal(b.tableId, null);

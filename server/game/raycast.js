@@ -97,4 +97,16 @@ function distanceToBody(o, point) {
   return Math.hypot(side, vertical);
 }
 
-module.exports = { eyeOf, pointAt, aimDirection, bodyDistance, obstacleDistance, firstBodyHit, wallBetween, distanceToBody };
+// Khoảng cách NGANG từ `origin` tới chỗ tia chạm địa hình (tường không chặn), dò mỗi `step` mét dọc tia; Infinity nếu tia đi lên hoặc chưa chạm
+// trong `maxHorizontal` mét. Client có bản y hệt ở public/js/core/throwPath.js (aimGroundDistance).
+function groundDistance(room, origin, dir, maxHorizontal, step) {
+  const horizontal = Math.hypot(dir.x, dir.z);
+  if (dir.y >= 0 || horizontal < 1e-6) return Infinity;
+  for (let t = step; t * horizontal <= maxHorizontal; t += step) {
+    const at = pointAt(origin, dir, t);
+    if (at.y <= room.terrain.heightAt(at.x, at.z)) return t * horizontal;
+  }
+  return Infinity;
+}
+
+module.exports = { eyeOf, pointAt, aimDirection, groundDistance, bodyDistance, wallDistance, obstacleDistance, firstBodyHit, wallBetween, distanceToBody };

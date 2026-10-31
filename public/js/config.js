@@ -1,18 +1,28 @@
 export const PUNCH_TIME = 0.25;
+// Skill ném vũ khí (player/skillThrow.js): giữ chuột phải để ngắm, chuột trái để ném. Số liệu bay nằm ở WEAPON_THROW của server (gửi qua weaponInfo).
+// `pose`: lúc giữ chuột phải ngắm, tay (góc nhìn thứ nhất) giơ lên `up`, thu về phía mình `back` và lệch `side` (mét, hệ camera), `ease` = độ nhanh vào / ra tư thế (1/giây).
+// Nếu chỉnh `up` thì chỉnh luôn WEAPON_THROW.hand.up ở server/config.js để đường ném vẫn bắt đầu đúng chỗ bàn tay.
+export const SKILL_THROW = { spin: 22, lockoutSeconds: 0.5, pose: { up: 0.18, back: 0.12, side: 0.04, ease: 14 } };
 export const DUEL_THROW_PREVIEW = {
-  samples: 64, diameter: 1, thickness: 0.05, lift: 0.08,
+  samples: 64, diameter: 1, thickness: 0.05, lift: 0.08, radius: 0.04, // radius: độ dày đường bay (mét)
   valid: '#69ff91', invalid: '#ff5964', wait: '#ffc857',
+  // Đường bay xuất phát ngay trước mắt nên nhìn từ camera chỉ thấy một đường thẳng. Đoạn đầu được vẽ lệch sang phải và xuống dưới (mét, theo hệ camera)
+  // rồi khép dần về đường thật trong `fade` (tỉ lệ chiều dài) đầu của đường, để thấy cung cong; điểm rơi vẫn đúng chỗ.
+  startOffset: { right: 0.6, down: 1.3, fade: 0.65 },
 };
 export const DUEL_TEAM_FX = {
   colors: ['#63baff', '#ffad63'],
   diameter: 1.1, thickness: 0.055, lift: 0.06, headHeight: 2.5, markerSize: 0.22,
 };
+// Màu thanh máu trên đầu trong võ đài: địch đỏ; đồng đội / người xem nhìn thấy màu hai đội ở `DUEL_TEAM_FX.colors`;
+// người không thuộc trận (hoặc ngoài sự kiện) giữ xanh mặc định.
+export const DUEL_TEAM_BAR = { enemy: '#ff3b3b', neutral: '#33e633' };
 export const TNT_MODEL = {
   url: '/models/tnt.glb',
   length: 0.45,
   colors: { explosive: '#ce3029', strap: '#40352f', fuse: '#d8b576' },
 };
-export const TABLE_GAME = { key: 'KeyE', tagHeight: 3.2, tagMargin: 110, inviteRange: 45 };
+export const TABLE_GAME = { key: 'KeyF', keyLabel: 'F', tagHeight: 3.2, tagMargin: 110, inviteRange: 45 };
 export const TABLE_MODEL = {
   url: '/models/table.glb', height: 0.79, flipClip: 'flip',
   colors: { table_top: '#8a5a33', table_leg: '#6b4423' },
@@ -59,6 +69,9 @@ export const POOP = {
 
 // Thuốc hoá to / nhỏ (entities/potionModel.js, ui/potionHud.js). Chỉ số từng loại (kích thước, máu, tốc độ, va chạm) do server gửi trong `welcome`;
 // ở đây chỉ là phần hình. Model potion.glb không có màu nên tô theo tên khối (`kinds`), nước thuốc đổi màu theo loại thuốc.
+// Mọi loại thuốc (to ×2/×3/×4, nhỏ) CÙNG MỘT MÀU để người chơi không đoán được trước khi uống. Muốn tách màu từng loại thì sửa `liquid` bên dưới.
+const POTION_COLOR = '#b04bff';
+
 export const POTION = {
   url: '/models/potion.glb',
   height: 0.55, // lọ thuốc nằm trên sân cao ngần này (mét)
@@ -66,7 +79,7 @@ export const POTION = {
   beam: { height: 30, diameter: 1 }, // cột sáng vàng trên lọ thuốc cho dễ thấy từ xa (lọ không có hòm / khói nên chỉ có cột này để tìm)
   kinds: { beveled_cuboid: 'liquid', tube: 'glass', cylinder: 'cork' },
   colors: { glass: '#d3edf5', cork: '#8a5a2b' },
-  liquid: { grow: '#e8453c', shrink: '#3fa7ff' }, // màu nước thuốc, cũng là màu thanh đếm ngược trên HUD
+  liquid: { grow2: POTION_COLOR, grow3: POTION_COLOR, grow4: POTION_COLOR, shrink: POTION_COLOR }, // màu nước thuốc, cũng là màu thanh đếm ngược trên HUD
   sizeEase: 3.5, // to ra / nhỏ lại mượt theo tốc độ này (càng lớn càng nhanh; 3.5 ≈ gần xong sau 0.8 giây), cả mình lẫn người khác
   // Hiệu ứng lúc uống / hết thuốc trên máy mình (fx/potionFx.js, ui/potionFlash.js); hết thuốc thì nhẹ bằng `endStrength` lần.
   fx: {
@@ -114,6 +127,7 @@ export const DUEL_ZONE = {
   shrinkFrom: 1.6,
 };
 export const KICKED_NOTICE_KEY = 'kickedFromRoom'; // khoá sessionStorage: vừa bị chủ phòng kick, menu báo lý do một lần
+export const ROOM_CLOSED_NOTICE_KEY = 'roomClosed'; // khoá sessionStorage: khán giả ở lại phòng đã hết người chơi, menu báo lý do một lần
 export const REMOTE_SNAP_DIST = 12; // người khác nhảy xa hơn ngần này giữa hai snapshot (bị dịch chuyển, vd. đưa vào võ đài) thì đặt thẳng tới chỗ mới thay vì trượt qua
 export const SPRINT = { duration: 5, recovery: 4, delay: 1, restart: 0.2 };
 export const SPRINT_CAMERA = { fovBoost: 0.2, easeIn: 10, easeOut: 5 };
@@ -157,8 +171,14 @@ export const MIN_DIST = 1.0; // khoảng cách tối thiểu giữa hai người
 export const PLAYER_RADIUS = 0.5;
 export const WATER_SPEED_MULT = 0.55; // lội nước chậm hơn đi cạn
 export const GROUND_STICK = 0.25; // đi xuống dốc, cách đất dưới ngần này thì vẫn bám đất (không rơi)
-export const HOTBAR_SLOTS = 3; // số ô vũ khí trong túi, khớp INVENTORY_SLOTS ở server/config.js
-export const FIST_SLOT = HOTBAR_SLOTS; // ô tay không cố định nằm sau các ô vũ khí (phím 4), khớp FIST_SLOT ở server
+// Độ mịn hình cầu (số đoạn của CreateSphere; mặc định của Babylon là 32 = 4.600 tam giác mỗi quả, quá nặng vì sân có hàng trăm bụi cây / đá).
+// 10 = 576 tam giác, 8 = 400, 12 = 784, 16 = 1.296: nhìn vẫn tròn ở cỡ vật nhỏ; đá dùng 8 + bóng phẳng cho ra kiểu low-poly.
+// Vật trang trí dùng thin instance không bị cắt theo khung nhìn nên mọi quả cầu trên sân đều được vẽ mỗi khung hình: giữ số này thấp.
+// bushSegments: [quả to, quả nhỏ] của bụi cây (80 bụi ở map default = phần lớn tam giác của sân, xem docs/perf.md); bụi và đá đều bóng phẳng kiểu low-poly.
+export const MESH_DETAIL = { ballSegments: 10, rockSegments: 7, bushSegments: [6, 5] };
+export const ROOM_MAX_PLAYERS = 8; // số người tối đa mỗi phòng, khớp ROOM_MAX_PLAYERS ở server/config.js (giới hạn số bot trong màn tạo phòng)
+export const HOTBAR_SLOTS = 4; // số ô vũ khí trong túi, khớp INVENTORY_SLOTS ở server/config.js
+export const FIST_SLOT = HOTBAR_SLOTS; // giá trị activeSlot khi không cầm gì (tay không, không hiện trên thanh đồ; phím X), khớp FIST_SLOT ở server
 export const PICKUP_RADIUS = 1.2; // khớp PICKUP_RADIUS ở server/config.js (chỉ dùng để nhắc "túi đầy")
 export const RADIO_STREAK_KILLS = 5; // hạ gục liên tiếp (không chết) để gọi máy bay thả radio gọi bom, khớp server/config.js
 export const ISLAND_FALL_MARGIN = 2; // đảo trời: chân thấp hơn mặt đảo quá ngần này là đã rơi, không kéo lên lại; khớp server/config.js
@@ -171,6 +191,26 @@ export const SENSITIVITY_MIN = 0.0005; // radian/pixel, giới hạn thanh chỉ
 export const SENSITIVITY_MAX = 0.006;
 export const STATE_SEND_MS = 50;
 export const PITCH_LIMIT = 1.4; // góc ngẩng/cúi tối đa (radian), khớp PITCH_LIMIT ở server/config.js
+
+// Chế độ khán giả (?mode=spectator): camera bay tự do để quay phim trận đấu (player/spectatorCamera.js, ui/recording.js).
+// HUD là DOM nên không lọt vào video; tay / chân / súng trong scene thì bị ẩn.
+export const SPECTATOR = {
+  fov: BASE_FOV, // góc nhìn dọc cố định (radian), không theo thanh chỉnh FOV của người chơi
+  overviewMargin: 1.15, // lúc mới vào phòng: cao bằng ngần này lần "vừa đủ thấy nửa cạnh sân" để mép sân không sát khung hình
+  pitchLimit: 1.55, // ngẩng / cúi tối đa khi bay (radian); gần thẳng xuống để nhìn toàn sân
+  speed: 22, // tốc độ bay (m/giây), Space lên / Shift xuống
+  accel: 9, // bay nhanh dần / dừng lại mượt (1/giây)
+  minHeight: 1.5, // không bay xuống dưới mặt sân
+  maxHeight: 400,
+  margin: 1.3, // bay ra ngoài mép sân tối đa ngần này lần nửa cạnh
+  key: 'KeyR', // bắt đầu / dừng quay
+  record: {
+    fps: 30, // số khung hình ghi mỗi giây
+    videoBitsPerSecond: 6_000_000, // 6 Mbps: đủ nét cho 1080p
+    audioBitsPerSecond: 128_000,
+    minMs: 3000, // bấm nhầm rồi dừng ngay (ngắn hơn ngần này) thì bỏ, không tải về
+  },
+};
 
 // Súng: số đạn hiện trên màn hình trừ ngay khi bắn; snapshot của server chỉ ghi đè khi đã ngừng bắn ngần này mili giây
 // (nếu không con số sẽ nhảy lên xuống vì snapshot tới chậm hơn phát bắn).
@@ -249,7 +289,7 @@ export const NUKE = {
     stemTop: 8,
     capRadius: 24, // bán kính tán nấm khi nở hết
     capGrow: 7, // giây tán nấm nở ra
-    puffs: 30, // số cụm mây tạo thành tán nấm
+    puffs: 18, // số cụm mây tạo thành tán nấm (một đợt oanh kích có nhiều mây nên giảm từ 30 cho đỡ draw call)
     fadeFrom: 12, // giây bắt đầu mờ dần
     shockRadius: 70, // sóng xung kích lan trên mặt đất (rộng hơn vùng nổ cho đẹp, không gây sát thương)
     shockTime: 3,
@@ -266,20 +306,24 @@ export const AIRDROP = {
   dropBeam: { height: 4, diameter: 0.7 }, // cột sáng vàng của vũ khí vứt ra (hòm tiếp tế không có cột sáng, đã có khói đỏ)
   bonusOffset: { x: 0.55, y: -0.35, scale: 0.8 }, // lựu đạn thưởng trong hòm: lệch sang cạnh vũ khí chính, nhỏ hơn chút
   sway: 0.18, // hòm đung đưa dưới dù (radian)
-  smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì cột khói dựng sẵn cả cột
-  // Cột khói ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt, cao chừng speed × life × 0.65 mét.
+  smokeLateMs: 1000, // vào trận sau lúc thả hòm quá ngần này thì dựng sẵn khói thay vì để nó mọc dần từ đất
+  // Cột khói ở chỗ hòm rơi (entities/smoke.js): bốc từ lúc hòm rời máy bay tới khi có người nhặt. Đang rơi thì cao chừng
+  // speed × life × 0.65 mét; chạm đất rồi dùng bộ `ground*` (ít cụm, bốc thấp) để khói chỉ quẩn quanh hòm.
   // Khói đỏ là mặc định (hòm tiếp tế định kỳ); `smokeColors` là các màu khác theo `smokeKind` server gửi (vd: hòm radio gọi bom = vàng).
   smokeColors: { yellow: [0.98, 0.85, 0.1] },
   smoke: {
     color: [0.92, 0.12, 0.1],
-    rate: 24, // cụm khói mỗi giây. Giảm từ 40 cho đỡ nặng: mỗi cụm là một mảnh mờ rất to, nhiều cụm chồng nhau thì GPU phải vẽ đè (overdraw) rất nhiều lần
-    capacity: 320, // ≥ rate × life
-    speed: 8, // tốc độ bốc lên lúc đầu (m/giây), chậm dần còn 35%
-    life: 13, // giây mỗi cụm khói tồn tại
-    startSize: 1.6, // cụm khói nở từ cỡ này (mét)...
-    endSize: 9, // ...tới cỡ này khi lên tới đỉnh (diện tích mỗi cụm tỉ lệ bình phương nên giảm từ 12 xuống 9 là bớt gần nửa)
-    wind: [0.35, 0, 0.15], // gió đẩy khói lệch sang một bên (m/giây²)
-    prewarmCycles: 90,
+    rate: 10, // cụm khói mỗi giây. Mỗi cụm là một mảnh mờ rất to, nhiều cụm chồng nhau thì GPU phải vẽ đè (overdraw) rất nhiều lần
+    capacity: 120, // ≥ rate × life
+    speed: 2, // tốc độ bốc lên lúc đầu (m/giây), chậm dần còn 35%
+    life: 6, // giây mỗi cụm khói tồn tại
+    startSize: 1.2, // cụm khói nở từ cỡ này (mét)...
+    endSize: 5, // ...tới cỡ này khi lên tới đỉnh
+    wind: [0.25, 0, 0.12], // gió đẩy khói lệch sang một bên (m/giây²)
+    prewarmCycles: 40,
+    groundRate: 5, // hòm đã chạm đất: ít khói hơn...
+    groundSpeed: 1, // ...và bay thấp hơn...
+    groundLife: 4, // ...mỗi cụm cũng tan nhanh hơn
   },
 };
 
@@ -301,26 +345,33 @@ export const CHARACTER = {
     head: 'skin', neck: 'skin', left_elbow: 'skin', right_elbow: 'skin', left_foream: 'skin', right_foream: 'skin',
     cylinder: 'pants',
     beveled_cuboid: 'shoe', left_eye: 'eye', right_eye: 'eye', left_pupil: 'pupil', right_pupil: 'pupil',
-    mouth: 'mouth',
+    mouth: 'mouth', nose: 'nose',
   },
-  // Khối không có tên riêng (vd: 23 khối `cube` của tóc) được nhận theo tên nhóm cha.
+  // Khối không có tên riêng (vd: 4 khối `cube` của tóc) được nhận theo tên nhóm cha.
   groupKinds: { hair: 'hair' },
   fixedColors: { shoe: '#1b1b22', eye: '#ffffff', pupil: '#14141a', mouth: '#8c2626' },
-  // Ảnh mặt dán lên khối `mesh` (đầu hình elip), thành khung `width` × `height` (đơn vị model) quanh tâm (0, centerY) của khối, nhìn từ phía trước.
+  // Bộ phận không có màu cố định mà lấy màu của bộ phận khác nhân `mult` (mũi = da sẫm hơn một chút cho có chiều sâu).
+  shadedColors: { nose: { of: 'skin', mult: 0.86 } },
+  // Mắt, mũi, miệng là hộp mỏng mặt trước gần như trùng mặt phẳng với mặt trước của đầu (mắt chỉ nhô 0.0006, mũi nhô 0) nên bị nhấp nháy
+  // (z-fighting) với da; các bộ phận này được vẽ đè lên đầu bằng zOffset. Con ngươi cũng chỉ nhô khỏi mắt ~0.001 nên phải âm hơn mắt.
+  featureZOffset: { eye: -1, nose: -1, mouth: -1, pupil: -2 },
+  // Ảnh mặt dán lên mặt trước của khối `mesh` (đầu hình hộp), thành khung `width` × `height` (đơn vị model) quanh tâm (centerX, centerY)
+  // của khối, nhìn từ phía trước. Gốc toạ độ của khối đầu không nằm giữa hộp (hộp trải từ -0.1875 tới 0.3125 ở cả ba trục) nên tâm phải khai báo.
   // `lift` phóng lớp ảnh to hơn đầu một chút để không chìm vào da; `replaces` là các khối mặt mặc định bị ảnh thay thế (ẩn đi).
   face: {
     mesh: 'head',
-    width: 0.3,
-    height: 0.225,
-    centerY: 0,
+    width: 0.44,
+    height: 0.33,
+    centerX: 0.0625,
+    centerY: 0.025, // trung tâm của vùng mắt → miệng (mặt trước đầu cao 0.5, từ y -0.1875 tới 0.3125)
     lift: 1.01,
-    replaces: ['left_eye', 'right_eye', 'left_pupil', 'right_pupil', 'mouth'],
+    replaces: ['left_eye', 'right_eye', 'left_pupil', 'right_pupil', 'mouth', 'nose'],
   },
 };
 
 // Tay của mình ở góc nhìn thứ nhất: dùng chính nhân vật model (cùng hoạt ảnh đấm, thế thủ, cùng cách cầm vũ khí) nhưng chỉ hiện
 // cẳng tay + bàn tay, gắn vào camera và vẽ đè lên mọi thứ (không xuyên tường). Model vẽ cho người nhìn từ ngoài: ở thế thủ hai bàn tay
-// cách mắt ±0.7m và thấp 0.85m (ngoài tầm nhìn) nên phải co nhỏ rồi đẩy lên trước mặt. Đặt `enabled: false` để quay về hai nắm đấm hình cầu.
+// cách mắt ±0.7m và thấp 0.85m (ngoài tầm nhìn) nên phải co nhỏ rồi đẩy lên trước mặt. Đặt `enabled: false` để không hiện tay góc nhìn thứ nhất.
 export const VIEWMODEL = {
   enabled: true,
   scale: 0.65, // co tay lại cho vừa tầm nhìn
@@ -333,10 +384,41 @@ export const VIEWMODEL = {
   sizeExponent: 0.5, // tay co giãn theo kích thước^số này. Không thể là 1: co giãn đều cả tay lẫn vị trí quanh camera thì trên màn hình không đổi gì
 };
 
+// Dash của động cơ phản lực sau lưng (player/dash.js, net/dashHandlers.js, ui/dashHud.js). Quãng đường, tốc độ và hồi chiêu do server quyết định
+// (DASH ở server/config.js; hồi chiêu đến qua tin 'dash'), client chỉ có phím và độ mạnh của hiệu ứng trên máy mình.
+export const DASH = {
+  key: 'KeyE',
+  keyLabel: 'E',
+  pendingMs: 300, // vừa gửi tin 'dash' thì chờ server trả lời ngần này ms mới cho bấm lại (server từ chối thì không tốn hồi chiêu)
+  fovKick: 0.16, // góc nhìn giãn ra lúc lao đi (radian), tan dần
+  shake: 0.14, // rung camera lúc lao đi
+};
+
+// Động cơ phản lực jet_engine.glb đeo sau lưng nhân vật model (entities/jetpack.js) và lửa / khí phun ra khi dash (fx/jetFx.js).
+// Model là hộp Blockbench không có màu: tô theo tên khối (`kinds`) hoặc tên nhóm cha (`groups`), màu trong `colors`, `glow` là màu tự phát sáng.
+export const JETPACK = {
+  url: '/models/jet_engine.glb',
+  mount: 'body', // khối của char.glb mà động cơ gắn vào (thân áo)
+  width: 0.78, // bề rộng động cơ khi đeo (mét); cao và dày co theo cùng tỉ lệ
+  yaw: 0, // xoay quanh trục đứng (radian) nếu mặt trước của model không hướng ra sau lưng
+  roll: 0, // xoay quanh trục trước-sau (radian)
+  pitch: 0, // chúi về trước / ngửa ra sau (radian) quanh trục ngang; π lật ngược động cơ nếu cửa phun đang hướng lên
+  up: 0.04, // dời lên so với tâm thân (mét)
+  gap: 0.02, // khe hở giữa lưng và động cơ (mét)
+  kinds: { right_fan: 'fan', left_fan: 'fan', right_sub_fan: 'fan', left_sub_fan: 'fan', shield: 'shield', core: 'core' },
+  groups: { right_engine: 'engine', left_engine: 'engine', right_sub_engine: 'engine', left_sub_engine: 'engine', connector: 'frame' },
+  colors: { engine: '#4b505e', frame: '#2d313c', fan: '#c4ccd8', shield: '#d8a31c', core: '#2fe3ff' },
+  glow: { core: '#2fe3ff' },
+  spin: { speed: 2.4, ease: 9 }, // tốc độ clip `run` lúc dash (1 = đúng như file) và độ nhanh lên vòng / chậm dần
+  fanMeshes: /fan$/, // khối cánh quạt: nơi lửa và khí phun ra
+  flame: { length: 1.1, width: 0.2, flicker: 0.3, outer: '#ff7a1a', inner: '#fff2a8', tail: 0.2, glide: 0.45 }, // tail: giây ngọn lửa còn cháy sau khi hạ cánh; glide: cỡ ngọn lửa lúc liệng sau dash (1 = như lúc dash)
+  puff: { pool: 30, interval: 0.03, life: 0.5, size: 0.26, speed: 3.2, color: '#cfe7ff' }, // khí: các quả cầu nhỏ trôi ra sau rồi co lại
+};
+
 // Đấm trời giáng của người hoá to (player/bigPunch.js, fx/shockwave.js, ui/bigPunchHud.js). Thời gian tích lực, hồi chiêu, tầm và sức đánh văng
 // do server quyết định (BIG_PUNCH ở server/config.js), client chỉ nhận thời gian tích lực và hồi chiêu qua `welcome.potions`.
 export const BIG_PUNCH = {
-  key: 'KeyQ', // giữ để tích lực, thả để đấm
+  key: 'KeyQ', // giữ để gồng (hiện đường nhảy), thả để nhảy đấm
   keyLabel: 'Q',
   lockoutSeconds: 1, // sau khi tung đòn, ngần này giây không đấm thường chen vào cho khỏi cắt hoạt ảnh
   shake: 0.5, // rung camera khi sóng xung kích nổ ngay cạnh, nhỏ dần theo khoảng cách
@@ -346,6 +428,49 @@ export const BIG_PUNCH = {
 
 // Bị đánh văng (player/knockback.js): đà tan dần theo hàm mũ với tốc độ này (1/giây); trên không tan chậm nên bay xa.
 export const KNOCKBACK = { groundFriction: 2.2, airFriction: 0.5, stopSpeed: 0.3 };
+
+// Khiên xanh xoay quanh người đang uống thuốc có `gunDamageMult` < 1 (khổng lồ giảm sát thương súng, fx/giantShield.js). Kích thước theo đơn vị thân người
+// bình thường (rig co giãn theo cỡ người nên khổng lồ ×3 tự to ra). `arc`: mỗi tấm chiếm ngần này vòng tròn; `pulse`: phình ra một nhịp khi bị súng bắn trúng.
+export const SHIELD_FX = { count: 4, arc: 0.16, radius: 0.85, height: 1.5, centerY: 0.95, spin: 1.8, bob: 0.04, pulse: 0.15, color: [0.25, 0.65, 1], alpha: 0.4 };
+
+// Vạch chia thanh máu (core/hpTicks.js): bậc đầu tiên mà (máu tối đa / small) <= maxSmall được dùng. 100 máu: vạch nhỏ mỗi 10, lớn mỗi 50;
+// 400 máu (hoá to): nhỏ mỗi 25, lớn mỗi 100. `smallHeight` = chiều cao vạch nhỏ so với thanh (vạch lớn cao hết cỡ).
+export const HP_TICKS = {
+  steps: [{ small: 10, big: 50 }, { small: 25, big: 100 }],
+  maxSmall: 24,
+  smallHeight: 0.6,
+  smallPx: 2, // bề rộng vạch trên texture thanh máu 3D (rộng 512 điểm) và trên thanh HUD (px)
+  bigPx: 4,
+  color: 'rgba(0, 0, 0, 0.8)',
+};
+
+// Cảm giác lúc trúng đòn (net/combatHandlers.js, fx/hitEffects.js, ui/hitDirection.js). `power` = sát thương / `fullDamage` (tối đa 1): đòn nặng thì
+// mọi thứ mạnh hơn. Hiệu ứng nổ ra mỗi lần trúng nên nhớ quy tắc 16, 18: vài chục lần mỗi giây khi cả phòng cầm AK.
+export const HIT_FX = {
+  fullDamage: 60,
+  stopMs: [35, 90], // hit stop: hoạt ảnh tay người đánh và người bị đánh đứng hình ngần này ms (nhỏ nhất, lớn nhất)
+  shakeGiven: [0.02, 0.09], // rung camera của người đánh
+  shakeTaken: [0.07, 0.28], // rung camera của người bị đánh
+  fovPunch: -0.05, // người đánh: góc nhìn khép lại một nhịp (radian, nhân power), tan dần như state.fovKick
+  nodGiven: 0.02, // người đánh: camera gật xuống (radian × power)
+  kickTaken: { pitch: 0.06, yaw: 0.05, roll: 0.07 }, // người bị đánh: camera giật theo hướng đòn (radian × power), tan dần
+  kickDecay: 11, // 1/giây
+  flashMs: 110, // model người bị đánh chớp sáng
+  flashColor: [0.7, 0.7, 0.7], // cộng vào emissive ở đỉnh chớp (nhân power)
+  tiers: [ // màu / cỡ số sát thương theo mức sát thương (lấy dòng cuối có min <= dmg)
+    { min: 0, color: '#e53935', scale: 1 },
+    { min: 25, color: '#ff9800', scale: 1.25 },
+    { min: 50, color: '#ffd600', scale: 1.55 },
+  ],
+  koTier: { color: '#ff1744', scale: 1.9 },
+  sparks: [6, 14], // số tia lửa (nhỏ nhất, lớn nhất)
+  dust: [0, 5], // số cục bụi (đòn nhẹ không có)
+  dustMinPower: 0.3,
+  ring: { size: [0.55, 1.5], life: 0.22 }, // vòng sóng va chạm (mét)
+  ko: { shake: 0.45, shakeRange: 22, slowScale: 0.3, slowMs: 260, fov: -0.09, extraSparks: 14, extraDust: 6 },
+  indicator: { ms: 750, minPower: 0.15 }, // chỉ báo hướng đòn trên viền màn hình
+  tinnitus: { minPower: 0.55, strength: 0.7 }, // đòn nặng vào mình thì tai ù một nhịp (audio/hitSfx.js)
+};
 
 export const EQUIP_RAISE_TIME = 0.3; // giây để vũ khí mới đưa từ dưới màn hình lên
 
@@ -403,8 +528,8 @@ export const WEATHER = {
   lightMult: 0.55, // ánh sáng còn ngần này lần khi bão
   fogDensity: 0.012, // sương mù khi mưa to
   rain: {
-    capacity: 4000,
-    rate: 2600, // giọt mỗi giây khi mưa to nhất
+    capacity: 1600, // hạt CPU: chi phí JS và fill-rate tỉ lệ với số hạt đang rơi (≈ rate × life), nên rate/capacity đã giảm hơn một nửa (docs/perf.md)
+    rate: 1300, // giọt mỗi giây khi mưa to nhất
     area: 30, // mưa rơi trong hình vuông cạnh ngần này (mét) quanh camera
     height: 14, // giọt bắt đầu rơi cao hơn camera ngần này
     speed: 28, // m/giây
@@ -419,6 +544,7 @@ export const LIGHTNING_FX = {
   boltLife: 0.25, // giây tia sét còn hiện
   boltHeight: 60, // tia sét bắt đầu từ độ cao này trên mặt đất
   boltSegments: 14, // số khúc gấp của tia sét
+  boltVariants: 4, // số hình tia dựng sẵn, mỗi tia là instance của một hình rồi xoay ngẫu nhiên (không dựng ống mới mỗi tia)
   boltJitter: 2.2, // mỗi khúc lệch ngang tối đa ngần này (mét)
   boltRadius: 0.12,
   skyFlash: 1.6, // ánh sáng tăng thêm ngần này lúc sét đánh rồi tắt dần
@@ -429,7 +555,7 @@ export const LIGHTNING_FX = {
 };
 export const STUN_FX = {
   color: [1, 0.85, 0.12],
-  arcs: 8, segments: 6, refreshSeconds: 0.08,
+  arcs: 8, segments: 6, refreshSeconds: 0.12, // đổi hình hồ quang mỗi chừng này giây (ghi lại buffer toạ độ của từng người choáng)
   radius: 0.65, height: 1.9, dogHeight: 0.85, jitter: 0.16,
   shake: 0.08,
 };

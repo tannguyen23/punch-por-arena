@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const { setup } = require('./helpers/tableGame');
 const { LIGHTNING, MATCH_TICK_MS } = require('../server/config');
 const { runLightning, clearLightning } = require('../server/game/lightning');
+const { tickWeather } = require('../server/game/weather');
 const { isStunned, isHeld, cantAct } = require('../server/game/restrictions');
 const { applyClientState } = require('../server/game/movement');
 const { selectSlot } = require('../server/game/inventory');
@@ -27,7 +28,7 @@ function hit(room, p) {
   runLightning(room, Date.now());
 }
 
-test('Mỗi đợt đủ 10 tia trong 5 giây; báo trước, rải nhiều vùng và nghỉ 8 giây sau tia cuối', (t) => {
+test('Mỗi đợt đủ waveCount tia trong 5 giây; báo trước, rải nhiều vùng và nghỉ 8 giây sau tia cuối', (t) => {
   const { room, players: [a] } = start(t);
   let seed = 42;
   t.mock.method(Math, 'random', () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296));
@@ -40,13 +41,14 @@ test('Mỗi đợt đủ 10 tia trong 5 giây; báo trước, rải nhiều vùn
     t.mock.timers.tick(MATCH_TICK_MS);
   }
   const messages = a.messages.filter((m) => m.t === 'lightning');
+  const last = LIGHTNING.waveCount - 1; // tia cuối của đợt đầu; tia kế tiếp (chỉ số waveCount) mở đợt mới
   assert.equal(times[0], 0);
-  assert.equal(times[9], LIGHTNING.waveMs);
-  assert.ok(times[10] - times[9] - LIGHTNING.warnMs >= LIGHTNING.waveGapMs);
-  assert.ok(times[10] - times[9] - LIGHTNING.warnMs < LIGHTNING.waveGapMs + MATCH_TICK_MS);
-  assert.ok(times.slice(1, 10).every((time, i) => time > times[i]));
+  assert.equal(times[last], LIGHTNING.waveMs);
+  assert.ok(times[last + 1] - times[last] - LIGHTNING.warnMs >= LIGHTNING.waveGapMs);
+  assert.ok(times[last + 1] - times[last] - LIGHTNING.warnMs < LIGHTNING.waveGapMs + MATCH_TICK_MS);
+  assert.ok(times.slice(1, last + 1).every((time, i) => time > times[i]));
   assert.ok(messages.every((m) => m.in === LIGHTNING.warnMs && m.at.every(Number.isFinite)));
-  const points = messages.slice(0, 10).map((m) => m.at);
+  const points = messages.slice(0, LIGHTNING.waveCount).map((m) => m.at);
   assert.ok(points.every((p, i) => points.slice(0, i).every((q) => Math.hypot(p[0] - q[0], p[2] - q[2]) > LIGHTNING.pointGap - 0.02)));
 });
 
@@ -131,6 +133,46 @@ test('Ngoài bán kính không mất máu hay choáng; tia đánh chết không 
   assert.ok(a.dead);
   assert.equal(a.stunnedUntil, 0);
   assert.equal(a.messages.filter((m) => m.t === 'stun' && m.id === a.id).length, 0);
+});
+
+test('Sự kiện solo ngưng sét: bỏ tia đã báo, không báo tia mới hay mở bão; xong sự kiện sét chạy lại', (t) => {
+  const { room, players: [a, b] } = start(t);
+  const now = Date.now();
+  room.weather = { storm: true, endsAt: now + 60000, nextAt: now };
+  runLightning(room, now);
+  assert.equal(room.strikes.length, 1);
+  const sent = a.messages.filter((m) => m.t === 'lightning').length;
+  assert.equal(sent, 1);
+
+  room.event = { kind: 'duel', fighters: [a.id, b.id], teams: [[a.id], [b.id]], fighting: true, introEndsAt: now, endsAt: now + 60000 };
+  tickWeather(room, now);
+  assert.equal(room.strikes.length, 0);
+  assert.equal(room.lightningWave, null);
+  assert.equal(room.nextStrikeAt, 0);
+
+  const hp = a.hp;
+  t.mock.timers.tick(LIGHTNING.warnMs + MATCH_TICK_MS); // quá giờ tia đã báo trước khi sự kiện bắt đầu
+  for (let i = 0; i < 40; i++) {
+    tickWeather(room, Date.now());
+    assert.equal(room.strikes.length, 0);
+    t.mock.timers.tick(MATCH_TICK_MS);
+  }
+  assert.equal(a.messages.filter((m) => m.t === 'lightning').length, sent);
+  assert.equal(a.hp, hp);
+
+  // Hết solo mà bão vẫn còn: sét chạy lại bình thường.
+  room.event = null;
+  tickWeather(room, Date.now());
+  assert.ok(room.strikes.length > 0);
+  assert.ok(a.messages.filter((m) => m.t === 'lightning').length > sent);
+
+  // Chưa bão mà đang solo: không mở cơn bão mới.
+  room.weather = { storm: false, endsAt: 0, nextAt: Date.now() };
+  room.event = { kind: 'duel', fighters: [a.id, b.id], teams: [[a.id], [b.id]], fighting: true };
+  t.mock.method(Math, 'random', () => 0); // nếu không ngưng thì xác suất này luôn mở bão
+  tickWeather(room, Date.now());
+  assert.equal(room.weather.storm, false);
+  assert.ok(room.weather.nextAt > Date.now());
 });
 
 test('Trúng lại làm mới thời gian choáng; chết, hồi sinh và hết trận đều gỡ choáng', (t) => {

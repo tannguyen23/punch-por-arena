@@ -17,40 +17,59 @@ function glowMaterial(name, color, alpha = 1) {
 const tracerMat = glowMaterial('tracer', new Color3(1, 0.9, 0.55), 0.85);
 const muzzleMat = glowMaterial('muzzle', new Color3(1, 0.75, 0.3), 0.9);
 
-// Vệt đạn: thanh mảnh nối hai điểm, co lại rất nhanh.
+// Vệt đạn: thanh mảnh nối hai điểm, co lại rất nhanh. AK bắn ~9 phát/giây mỗi người nên hình là instance của một hộp 1×1×1 dùng chung (quy tắc 16),
+// vector tạm cấp một lần cho cả module.
+const tracerFrom = new Vector3();
+const tracerTo = new Vector3();
+const tracerBox = () => {
+  const box = MeshBuilder.CreateBox('tracer', { size: 1 }, scene);
+  box.material = tracerMat;
+  return box;
+};
+
 export function tracer(from, to) {
-  const a = new Vector3(...from);
-  const b = new Vector3(...to);
-  const length = Vector3.Distance(a, b);
+  tracerFrom.set(from[0], from[1], from[2]);
+  tracerTo.set(to[0], to[1], to[2]);
+  const length = Vector3.Distance(tracerFrom, tracerTo);
   if (length < 0.1) return;
-  const mesh = MeshBuilder.CreateBox('tracer', { width: GUN_FX.tracerWidth, height: GUN_FX.tracerWidth, depth: length }, scene);
-  mesh.material = tracerMat;
-  mesh.position = Vector3.Center(a, b);
-  mesh.lookAt(b);
+  const width = GUN_FX.tracerWidth;
+  const mesh = Fx.instanceOf('tracer', tracerBox);
+  mesh.position.set((from[0] + to[0]) / 2, (from[1] + to[1]) / 2, (from[2] + to[2]) / 2);
+  mesh.lookAt(tracerTo);
+  mesh.scaling.set(width, width, length);
   Fx.track({
     mesh,
     life: GUN_FX.tracerLife,
     max: GUN_FX.tracerLife,
     step(dt, k) {
-      mesh.scaling.x = mesh.scaling.y = Math.max(1 - k, 0.001);
+      mesh.scaling.x = mesh.scaling.y = Math.max(1 - k, 0.001) * width;
     },
   });
 }
 
-// Lửa đầu nòng: hai tấm sáng chéo nhau loé lên rồi tắt. `overlay`: vẽ đè như tay góc nhìn thứ nhất (không bị tường che).
+// Lửa đầu nòng: tấm sáng quay về camera loé lên rồi tắt. `overlay`: vẽ đè như tay góc nhìn thứ nhất (không bị tường che).
+// Nhóm vẽ nằm ở mesh NGUỒN (Babylon vẽ instance theo nguồn) nên bản vẽ đè có mesh nguồn riêng.
+const muzzlePlane = (overlay) => () => {
+  const plane = MeshBuilder.CreatePlane('muzzle', { size: 1 }, scene);
+  plane.material = muzzleMat;
+  plane.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
+  if (overlay) plane.renderingGroupId = VIEWMODEL.renderingGroup;
+  return plane;
+};
+
 export function muzzleFlash(x, y, z, size = 0.35, overlay = false) {
-  const mesh = MeshBuilder.CreatePlane('muzzle', { size }, scene);
-  mesh.material = muzzleMat;
+  const mesh = Fx.instanceOf(overlay ? 'muzzle:overlay' : 'muzzle', muzzlePlane(overlay));
   mesh.position.set(x, y, z);
   mesh.billboardMode = BABYLON.Mesh.BILLBOARDMODE_ALL;
   mesh.rotation.z = Math.random() * Math.PI;
+  mesh.scaling.setAll(size);
   if (overlay) mesh.renderingGroupId = VIEWMODEL.renderingGroup;
   Fx.track({
     mesh,
     life: GUN_FX.muzzleLife,
     max: GUN_FX.muzzleLife,
     step(dt, k) {
-      mesh.scaling.setAll(Math.max(1 - k * k, 0.001));
+      mesh.scaling.setAll(Math.max(1 - k * k, 0.001) * size);
     },
   });
 }

@@ -11,7 +11,7 @@ export const weatherHandlers = {
     else clearStrikes();
   },
 
-  // Sét sắp đánh: vòng sáng cảnh báo dưới đất; sát thương do server tính (đi qua 'hit').
+  // Sét sắp đánh: chỉ phát tiếng lách tách, không vẽ vòng cảnh báo; sát thương do server tính (đi qua 'hit').
   lightning(m) {
     warnStrike(m);
   },

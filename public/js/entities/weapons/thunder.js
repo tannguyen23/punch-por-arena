@@ -42,7 +42,7 @@ function addCrackle(root) {
 export const thunder = {
   icon: '⚡',
   dual: true,
-  autoFire: true, // giữ chuột là tự đấm luân phiên trái/phải theo tốc độ của vũ khí
+  autoFire: true, // giữ chuột là tự đấm liên tục bằng tay phải theo tốc độ của vũ khí
   swingSound: 'zap',
   firstPersonTilt: 1.2,
   // Nắm đấm xanh đậm bọc điện, gốc ở giữa nắm đấm, các đốt ngón hướng +Y, mu bàn tay quay về -Z.

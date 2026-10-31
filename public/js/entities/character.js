@@ -3,6 +3,8 @@ import { CHARACTER, VIEWMODEL } from '../config.js';
 import { shirtMaterial } from './shirtPattern.js';
 import { createCharacterAnimator } from './characterAnimator.js';
 import { applyFace } from './face.js';
+import { attachJetpack } from './jetpack.js';
+import { createHitFlash } from './hitFlash.js';
 
 const { TransformNode, Color3, Vector3, Quaternion, Matrix } = BABYLON;
 
@@ -69,17 +71,31 @@ export function loadCharacter(scene) {
   return loading.get(scene);
 }
 
+// Màu của một bộ phận theo ngoại hình `look`: màu người chơi chọn, màu cố định, hoặc màu của bộ phận khác sẫm đi (CHARACTER.shadedColors). Null nếu không có.
+export function kindColor(kind, look) {
+  const hex = look[kind] ?? CHARACTER.fixedColors[kind];
+  if (hex) return Color3.FromHexString(hex);
+  const shaded = CHARACTER.shadedColors[kind];
+  const base = shaded && kindColor(shaded.of, look);
+  return base ? base.scale(shaded.mult) : null;
+}
+
 // Mỗi người chơi có material riêng nên dispose(false, true) nhân vật là an toàn.
 function tint(scene, id, body, look) {
   const materials = new Map();
   const shirt = shirtMaterial(scene, id, look);
   shirt.backFaceCulling = false;
   const materialFor = (kind) => {
-    const hex = look[kind] ?? CHARACTER.fixedColors[kind];
-    if (!hex) return null;
+    const color = kindColor(kind, look);
+    if (!color) return null;
     if (!materials.has(kind)) {
-      const mat = solidMaterial(Color3.FromHexString(hex), scene);
+      const mat = solidMaterial(color, scene);
       mat.backFaceCulling = false;
+      const offset = CHARACTER.featureZOffset[kind];
+      if (offset) {
+        mat.zOffset = offset; // mắt / mũi / miệng / con ngươi gần trùng mặt phẳng với khối nằm dưới, thiếu hai dòng này thì nhấp nháy
+        mat.zOffsetUnits = offset;
+      }
       materials.set(kind, mat);
     }
     return materials.get(kind);
@@ -89,6 +105,7 @@ function tint(scene, id, body, look) {
     if (CHARACTER.patternMeshes.includes(mesh.name)) mesh.material = shirt;
     else if (kind) mesh.material = materialFor(kind) ?? mesh.material;
   }
+  return [shirt, ...materials.values()]; // material riêng của người này (chớp sáng khi trúng đòn, entities/hitFlash.js)
 }
 
 // Neo cầm vũ khí gắn thẳng vào khối bàn tay nên vũ khí đi theo tay khi vung. Ở tư thế đứng yên, vũ khí nằm giữa bàn tay,
@@ -167,7 +184,7 @@ export function createModelAvatar(scene, id, look, options = {}) {
   body.rotation.y = CHARACTER.facing;
   const { rootNodes, animationGroups } = template.container.instantiateModelsToScene((name) => name, false);
   rootNodes.forEach((node) => (node.parent = body));
-  tint(scene, id, body, look);
+  const ownMaterials = tint(scene, id, body, look);
   if (look.face && !options.viewmodel) applyFace(scene, id, body, look.face); // tay góc nhìn thứ nhất không có đầu
   const legs = ['left_L', 'right_L'].map((name) => body.getChildTransformNodes(false, (n) => n.name === name)[0]);
   // Tư thế đứng yên lấy từ khung đầu của idle (model cũ không có idle thì dùng thế thủ của cú đấm).
@@ -181,6 +198,9 @@ export function createModelAvatar(scene, id, look, options = {}) {
     m.computeWorldMatrix(true);
     return sum.add(m.getBoundingInfo().boundingBox.centerWorld);
   }, Vector3.Zero()).scale(1 / Math.max(1, eyes.length));
+
+  // Động cơ phản lực sau lưng: tay góc nhìn thứ nhất và chân của mình (bodyView) không có, các khối của chúng bị ẩn riêng.
+  const jet = options.viewmodel || options.jetpack === false ? null : attachJetpack(scene, body);
 
   const view = options.viewmodel ? { root, group: VIEWMODEL.renderingGroup } : null;
   if (view) {
@@ -203,7 +223,10 @@ export function createModelAvatar(scene, id, look, options = {}) {
       L: createHand(createHandAnchor(scene, handMesh(CHARACTER.offHandMesh)), animator, 'L', root, view),
       R: createHand(createHandAnchor(scene, handMesh(CHARACTER.handMesh)), animator, 'R', root, view),
     },
-    update: (dt) => animator?.update(dt),
+    jet,
+    hitFlash: options.viewmodel ? null : createHitFlash(ownMaterials), // tay góc nhìn thứ nhất không bị chớp
+    update: (dt) => (animator?.update(dt), jet?.update(dt)),
+    hit: (power) => animator?.hit(power), // giật mình khi bị đánh (hoạt ảnh "beaten" chồng lên hoạt ảnh đang chạy)
     // Rời đất / chạm đất: chạy hoạt ảnh nhảy. `airTime` là thời gian bay dự kiến (giây).
     setAirborne: (airborne, airTime) => animator?.setAirborne(airborne, airTime),
     setRunning: (running) => animator?.setRunning(running),

@@ -28,6 +28,9 @@ function tntIntro(ev) {
 const intros = { dog: dogIntro, duel: duelIntro, tnt: tntIntro };
 export const introFor = (ev) => intros[ev.kind](ev);
 
+const warnNames = { dog: 'HOÁ CHÓ', duel: 'VÕ ĐÀI', tnt: 'TNT' };
+export const warnNameFor = (kind) => warnNames[kind] ?? 'SỰ KIỆN';
+
 export const tntStatus = (ev) => ev.targetId === state.myId
   ? `BẠN CẦM TNT! · Tốc độ +${Math.round((ev.tnt.speedMult - 1) * 100)}% · Đấm để chuyền!`
   : `TNT: ${ev.targetName} · Tránh người cầm TNT!`;

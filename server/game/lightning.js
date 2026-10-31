@@ -4,8 +4,9 @@ const { applyDamage } = require('./damage');
 const { stunPlayer } = require('./stun');
 
 // Sét trong lúc bão đánh theo đợt; chọn người bị nhắm theo trọng số:
-// đứng tụm lại, đứng giữa sông, đứng trên cao thì dễ bị nhắm hơn. Mỗi tia báo trước LIGHTNING.warnMs (client vẽ vòng sáng)
-// rồi mới đánh, nên chạy ra khỏi vòng là thoát. Đứng dưới gầm cầu thì không bị sét đánh. Sét không tính điểm cho ai.
+// đứng tụm lại, đứng giữa sông, đứng trên cao thì dễ bị nhắm hơn. Mỗi tia báo trước LIGHTNING.warnMs (chỉ nghe tiếng lách tách,
+// client không vẽ vòng cảnh báo) rồi mới đánh, nên chạy ra khỏi vùng là thoát. Đứng dưới gầm cầu thì không bị sét đánh. Sét không tính điểm cho ai.
+// Sự kiện solo ngưng hẳn sét qua `pauses: ['lightning']` (weather.js), tia đã báo cũng bị huỷ.
 
 // Độ cao tính là "trên cao" theo địa hình của bản đồ phòng đang chơi.
 const highGroundOf = (room) => room.terrain.minHeight + (room.terrain.maxHeight - room.terrain.minHeight) * LIGHTNING.highFraction;

@@ -16,7 +16,7 @@ function start(t) {
   room.phase = 'playing';
   room.endsAt = Date.now() + 300000;
   players.forEach((p, i) => { p.name = `Player ${i}`; });
-  room.eventPlan = [{ kind: 'tnt', at: Date.now() }];
+  room.eventPlan = [{ kind: 'tnt', at: Date.now(), warned: true }];
   tickEvents(room, Date.now(), applyDamage);
   const carrier = room.players.get(room.event.targetId);
   const others = players.filter((p) => p !== carrier);
@@ -74,10 +74,10 @@ test('Người cầm giữ túi, không đổi / nhặt vũ khí nhưng vẫn u�
   selectSlot(carrier, 0);
   assert.equal(carrier.activeSlot, FIST_SLOT);
   assert.equal(addToInventory(carrier, 'pistol', 4), false);
-  room.pickups.set(1, { id: 1, potion: 'grow', x: carrier.x, z: carrier.z, landsAt: 0 });
+  room.pickups.set(1, { id: 1, potion: 'grow3', x: carrier.x, z: carrier.z, landsAt: 0 });
   t.mock.timers.tick(EVENTS.introMs);
   tryPickup(room, carrier);
-  assert.equal(carrier.potion.id, 'grow');
+  assert.equal(carrier.potion.id, 'grow3');
   assert.equal(carrier.slots[0].ammo, 8);
 });
 
@@ -129,7 +129,7 @@ test('Thiếu người / hết trận: huỷ không thưởng phạt, phòng kh�
   assert.equal(carrier.score, 0);
   assert.equal(separate.players[0].messages.length, 0);
   others.forEach((p) => { p.dead = false; });
-  room.eventPlan = [{ kind: 'tnt', at: Date.now() }];
+  room.eventPlan = [{ kind: 'tnt', at: Date.now(), warned: true }];
   tickEvents(room, Date.now(), applyDamage);
   clearEvents(room);
   assert.equal(room.event, null);

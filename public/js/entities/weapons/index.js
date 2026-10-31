@@ -19,7 +19,7 @@ import { tnt } from './tnt.js';
 // Mỗi định nghĩa có `icon`, `firstPersonTilt` và MỘT trong hai cách có hình:
 //   - `url` (+ length, gripKind, colors, kindOf): nạp model .glb, xem sword.js
 //   - `build(side)`: dựng tạm bằng hình khối trong code, trả về node có gốc ở chỗ cầm và đầu vũ khí hướng +Y
-// Tuỳ chọn: `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1), `autoFire` (giữ chuột là tự đánh / tự bắn), `swingSound` (tên âm thanh vung).
+// Tuỳ chọn: `hand: 'L'` (cầm ở tay trái; mặc định mọi vũ khí cầm ở tay phải), `dual` (vũ khí hai tay: cầm cả tay trái, `side` = -1),`autoFire` (giữ chuột là tự đánh / tự bắn), `swingSound` (tên âm thanh vung).
 // Lựu đạn (kind 'throwable'): chỉ cần `build` như vũ khí cận chiến; cùng hình đó được dùng cho quả đang bay.
 // Súng / tên lửa (kind do server quyết định): `shotSound` (tên âm thanh bắn, có trong `kinds` của audio/gunSfx.js), `recoil` (camera hếch lên mỗi phát, radian),
 // `viewHold` (cách cầm ở góc nhìn thứ nhất, xem pistol.js; có nó thì người khác cũng thấy súng chĩa ra trước).
@@ -46,7 +46,7 @@ export function createWeaponModel(id, side = 1) {
     });
 }
 
-// Đưa vũ khí `id` vào tay `hand` (Arm, Fist hoặc tay của nhân vật model). 'fist' / vũ khí không model: chỉ bỏ vật đang cầm.
+// Đưa vũ khí `id` vào tay `hand` (Arm hoặc tay của nhân vật model). 'fist' / vũ khí không model: chỉ bỏ vật đang cầm.
 // `side`: +1 tay phải, -1 tay trái (cho vũ khí có hai bản đối xứng); `tilt`: góc nghiêng ở góc nhìn thứ nhất.
 export async function equipWeapon(hand, id, { side = 1, tilt } = {}) {
   hand.wanted = id;
@@ -58,11 +58,15 @@ export async function equipWeapon(hand, id, { side = 1, tilt } = {}) {
   else model.dispose(); // trong lúc nạp, tay đã đổi sang vũ khí khác hoặc bị huỷ
 }
 
-// Cầm vũ khí cho cả hai tay của một người: vũ khí hai tay (dual) cầm ở cả L và R, vũ khí thường chỉ ở R.
+// Cầm vũ khí cho cả hai tay của một người: vũ khí hai tay (dual) cầm ở cả L và R, vũ khí thường chỉ ở một tay
+// (R, hoặc L nếu định nghĩa có `hand: 'L'`); tay còn lại là nắm đấm. Tay không đấm luân phiên hai tay; cầm vũ khí thì đánh bằng tay phải.
 // `hands` là { L, R }; `tilt` là góc nghiêng ở góc nhìn thứ nhất.
 export function equipLoadout(hands, id, tilt) {
-  equipWeapon(hands.R, id, { side: 1, tilt });
-  equipWeapon(hands.L, WEAPON_MODELS[id]?.dual ? id : 'fist', { side: -1, tilt });
+  const def = WEAPON_MODELS[id];
+  const main = def?.hand === 'L' ? 'L' : 'R';
+  const off = main === 'L' ? 'R' : 'L';
+  equipWeapon(hands[main], id, { side: main === 'L' ? -1 : 1, tilt });
+  equipWeapon(hands[off], def?.dual ? id : 'fist', { side: main === 'L' ? 1 : -1, tilt });
 }
 
 // Góc nghiêng khi người khác cầm: súng chĩa thẳng ra trước theo hướng nhìn, vũ khí cận chiến kéo dài theo cẳng tay (undefined).

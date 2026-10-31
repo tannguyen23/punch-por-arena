@@ -4,6 +4,8 @@ const path = require('path');
 const { PUBLIC_DIR, VENDOR_FILES } = require('../config');
 const { mapOptions } = require('../maps');
 const { listRooms } = require('../game/rooms');
+const { weaponDropInfo } = require('../game/weapons');
+const { eventChoices } = require('../game/events');
 const { handleDebug } = require('./debugRoutes');
 
 const MIME = {
@@ -40,6 +42,14 @@ function createStaticServer() {
     }
     if (pathname === '/api/rooms') {
       res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }).end(JSON.stringify(listRooms()));
+      return;
+    }
+    if (pathname === '/api/weapons') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(weaponDropInfo()));
+      return;
+    }
+    if (pathname === '/api/events') {
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8' }).end(JSON.stringify(eventChoices()));
       return;
     }
     if (pathname === '/favicon.ico') {

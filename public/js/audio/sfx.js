@@ -5,6 +5,7 @@ import * as Grenades from './grenadeSfx.js';
 import * as Weather from './weatherSfx.js';
 import * as Ice from './iceSfx.js';
 import * as Poop from './poopSfx.js';
+import * as Dash from './dashSfx.js';
 
 export { init, toggleMute, levelsAt } from './core.js';
 export { pistolShot, rifleShot, rocketLaunch, explosion, dryFire } from './gunSfx.js';
@@ -157,7 +158,7 @@ export function splash(pan = 0, gain = 1) {
   note({ freq: 180, slideTo: 70, dur: 0.25, peak: 0.5, pan, gain });
 }
 
-const kinds = { whoosh, impact, ko, thud, pickup, zap, splash, ...Guns.kinds, ...Grenades.kinds, ...Weather.kinds, ...Ice.kinds, ...Poop.kinds };
+const kinds = { whoosh, impact, ko, thud, pickup, zap, splash, ...Guns.kinds, ...Grenades.kinds, ...Weather.kinds, ...Ice.kinds, ...Poop.kinds, ...Dash.kinds };
 
 // Phát âm tại (x, z) theo góc nhìn của người nghe (lx, lz, lyaw): lệch trái/phải và nhỏ dần theo khoảng cách.
 export function at(kind, x, z, lx, lz, lyaw) {

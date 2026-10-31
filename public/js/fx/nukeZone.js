@@ -4,9 +4,9 @@ import { NUKE } from '../config.js';
 
 const { Color3, Mesh, MeshBuilder, StandardMaterial, VertexData } = BABYLON;
 
-// Vùng cảnh báo đỏ của bom hạt nhân, hiện từ lúc còi báo động kêu tới lúc bom nổ: tường đỏ mờ hình trụ ở mép vùng nổ (`radius`,
-// ngoài đó an toàn) và mặt đỏ đậm hơn phủ lên đất trong vành chết (`killRadius`). Nhấp nháy để người chơi thấy là phải chạy.
-// Chỉ có một quả bom mỗi lúc nên chỉ có một vùng; material dùng chung, tạo một lần, không huỷ theo mesh.
+// Vùng cảnh báo đỏ của đợt oanh kích, hiện từ lúc còi báo động kêu tới lúc bom nổ: mỗi quả bom một tường đỏ mờ hình trụ ở mép vùng nổ
+// (`radius`, ngoài đó an toàn) và mặt đỏ đậm hơn phủ lên đất trong vành chết (`killRadius`). Nhấp nháy để người chơi thấy là phải chạy.
+// Material dùng chung, tạo một lần, không huỷ theo mesh.
 
 const RINGS = 10; // số vòng đồng tâm của mặt vành chết: đủ mịn để bám theo đồi
 const SEGMENTS = 48;
@@ -61,21 +61,25 @@ function killDisc(at, r) {
   return mesh;
 }
 
-// Dựng vùng đỏ quanh điểm rơi `at` = [x, y, z] (tin 'nuke' của server).
-export function showNukeZone({ at, radius, killRadius }) {
+// Dựng các vùng đỏ quanh từng điểm rơi trong `points` = [{ at: [x, y, z], radius, killRadius }] (tin 'nuke' của server).
+export function showNukeZones(points) {
   clearNukeZone();
   const { wall: wallMaterial, kill: killMaterial } = sharedMaterials();
-  root = new BABYLON.TransformNode('nukeZone', scene);
-  root.position.set(at[0], at[1], at[2]);
+  root = new BABYLON.TransformNode('nukeZones', scene);
   const { height } = NUKE.zone;
-  const wall = MeshBuilder.CreateCylinder('nukeZoneWall', { diameter: radius * 2, height, tessellation: SEGMENTS, cap: Mesh.NO_CAP, sideOrientation: Mesh.DOUBLESIDE }, scene);
-  wall.position.y = height / 2 - SINK;
-  wall.material = wallMaterial;
-  const kill = killDisc(at, killRadius);
-  kill.material = killMaterial;
-  for (const mesh of [wall, kill]) {
-    mesh.parent = root;
-    mesh.isPickable = false;
+  for (const { at, radius, killRadius } of points) {
+    const zone = new BABYLON.TransformNode('nukeZone', scene);
+    zone.parent = root;
+    zone.position.set(at[0], at[1], at[2]);
+    const wall = MeshBuilder.CreateCylinder('nukeZoneWall', { diameter: radius * 2, height, tessellation: SEGMENTS, cap: Mesh.NO_CAP, sideOrientation: Mesh.DOUBLESIDE }, scene);
+    wall.position.y = height / 2 - SINK;
+    wall.material = wallMaterial;
+    const kill = killDisc(at, killRadius);
+    kill.material = killMaterial;
+    for (const mesh of [wall, kill]) {
+      mesh.parent = zone;
+      mesh.isPickable = false;
+    }
   }
   clock = 0;
   updateNukeZone(0);

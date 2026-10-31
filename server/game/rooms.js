@@ -37,7 +37,10 @@ function listRooms() {
 function closeAllRooms() {
   const open = [...rooms.values()];
   rooms.clear();
-  for (const room of open) for (const p of room.players.values()) p.ws.close();
+  for (const room of open) {
+    for (const p of room.players.values()) p.ws.close();
+    for (const o of room.observers.values()) o.ws.close();
+  }
 }
 
 module.exports = { createRoom, getRoom, allRooms, removeIfEmpty, closeAllRooms, listRooms };

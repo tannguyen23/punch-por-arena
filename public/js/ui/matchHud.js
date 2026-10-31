@@ -1,8 +1,10 @@
 import { state } from '../state.js';
+import { warnNameFor } from './eventText.js';
 import * as Sfx from '../audio/sfx.js';
 
 const timerEl = document.getElementById('match-timer');
 const bannerEl = document.getElementById('banner');
+const eventCountEl = document.getElementById('event-countdown');
 const endEl = document.getElementById('match-end');
 
 const MESSAGE_MS = 2500; // thời gian hiện thông báo ngắn ("Hòm tiếp tế đã rơi!")
@@ -13,6 +15,7 @@ const WAVE_BEEP_S = 5; // bíp mỗi giây khi hòm tiếp tế chỉ còn ngầ
 let message = null; // { text, until }
 let lastTimeBeep = null;
 let lastWaveBeep = null;
+let lastWarnBeep = null;
 let lastEndSignature = null;
 
 // Thông báo ngắn giữa màn hình.
@@ -45,22 +48,43 @@ function updateTimer(now) {
 
 function updateBanner(now) {
   const { wave, phase } = state.match;
+  const warn = state.eventWarn;
   let text = '';
   let mode = '';
-  if (message && now < message.until) {
-    text = message.text;
-  } else if (phase === 'playing' && wave) {
-    const seconds = Math.ceil((wave.at - now) / 1000);
-    text = seconds > 0 ? `HÒM TIẾP TẾ CHẠM ĐẤT SAU ${seconds}s` : 'HÒM TIẾP TẾ ĐANG RƠI...';
-    mode = seconds <= WAVE_BEEP_S ? 'wave urgent' : 'wave';
-    if (seconds > 0 && seconds <= WAVE_BEEP_S && seconds !== lastWaveBeep) {
-      lastWaveBeep = seconds;
-      Sfx.beep(660 + (WAVE_BEEP_S - seconds) * 110, 0.8); // cao dần theo từng giây
+  let count = ''; // số đếm ngược to giữa màn hình khi báo trước sự kiện
+  if (warn && phase === 'playing' && now < warn.at) {
+    // Cảnh báo trước sự kiện quan trọng hơn thông báo ngắn / đếm ngược hòm: người chơi kịp giữ vũ khí xịn.
+    const seconds = Math.max(1, Math.ceil((warn.at - now) / 1000));
+    text = `SẮP CÓ SỰ KIỆN: ${warnNameFor(warn.kind)}`;
+    mode = 'event';
+    count = `${seconds}`;
+    if (seconds !== lastWarnBeep) {
+      lastWarnBeep = seconds;
+      eventCountEl.classList.remove('tick');
+      void eventCountEl.offsetWidth; // chạy lại hoạt ảnh mỗi giây
+      eventCountEl.classList.add('tick');
+      Sfx.beep(500 + (5 - seconds) * 100, 0.75);
+    }
+  } else {
+    if (warn) state.eventWarn = null;
+    lastWarnBeep = null;
+    if (message && now < message.until) {
+      text = message.text;
+    } else if (phase === 'playing' && wave) {
+      const seconds = Math.ceil((wave.at - now) / 1000);
+      text = seconds > 0 ? `HÒM TIẾP TẾ CHẠM ĐẤT SAU ${seconds}s` : 'HÒM TIẾP TẾ ĐANG RƠI...';
+      mode = seconds <= WAVE_BEEP_S ? 'wave urgent' : 'wave';
+      if (seconds > 0 && seconds <= WAVE_BEEP_S && seconds !== lastWaveBeep) {
+        lastWaveBeep = seconds;
+        Sfx.beep(660 + (WAVE_BEEP_S - seconds) * 110, 0.8); // cao dần theo từng giây
+      }
     }
   }
   if (!wave) lastWaveBeep = null;
   bannerEl.textContent = text;
   bannerEl.className = mode;
+  if (eventCountEl.textContent !== count) eventCountEl.textContent = count;
+  eventCountEl.classList.toggle('urgent', Boolean(count) && Number(count) <= 3);
 }
 
 function row(className, name, score) {

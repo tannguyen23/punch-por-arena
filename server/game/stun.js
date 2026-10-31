@@ -6,6 +6,7 @@ function stunPlayer(room, p, now) {
   p.stunnedUntil = now + LIGHTNING.stunMs;
   p.sprinting = false;
   send(p.ws, { t: 'setpos', x: p.x, y: p.y, z: p.z });
+  p.leap = null; // đang nhảy mà bị giật điện thì rơi xuống chỗ đó, không đấm
   if (p.bigChargeAt) {
     p.bigChargeAt = 0;
     broadcast(room, { t: 'bigcancel', id: p.id });

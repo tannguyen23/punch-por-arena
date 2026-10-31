@@ -1,6 +1,7 @@
 import { state } from '../state.js';
 import { STATE_SEND_MS } from '../config.js';
 import { showPause } from '../ui/hud.js';
+import { hideLoading } from '../ui/loadingScreen.js';
 import { handleMessage } from './handlers.js';
 import { applyTableGames } from './tableHandlers.js';
 
@@ -14,7 +15,7 @@ function startStateSync() {
   if (syncing) return;
   syncing = true;
   setInterval(() => {
-    if (state.myId === null || !state.alive) return;
+    if (state.myId === null || !state.alive || state.spectator) return; // khán giả không có nhân vật để báo vị trí
     const { me } = state;
     send({ t: 'state', x: me.x, z: me.z, yaw: state.yaw, y: me.y, c: state.crouching ? 1 : 0, s: state.sprinting ? 1 : 0 });
   }, STATE_SEND_MS);
@@ -27,8 +28,9 @@ export function connect(name, look, intent = {}) {
     ws.close();
   }
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}`);
-  ws.onopen = () => send({ t: 'join', name, look, ...intent });
+  ws.onopen = () => send({ t: 'join', name, look, ...(state.spectator ? { spectator: true } : {}), ...intent });
   ws.onclose = () => {
+    hideLoading(); // kết nối đứt khi đang loading: không kẹt ở màn loading
     applyTableGames([]);
     if (!state.kicked) showPause('Mất kết nối', 'Tải lại trang (F5) để vào lại');
   };
@@ -38,7 +40,7 @@ export function connect(name, look, intent = {}) {
 
 // Bấm F ở phòng chờ: sẵn sàng / huỷ sẵn sàng.
 export function toggleReady() {
-  if (state.tableGame) return;
+  if (state.tableGame || state.spectator) return; // khán giả không có lượt sẵn sàng
   const { phase } = state.match;
   if (phase === 'lobby' || phase === 'countdown') send({ t: 'ready', ready: !state.ready });
 }

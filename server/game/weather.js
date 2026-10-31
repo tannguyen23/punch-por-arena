@@ -1,6 +1,7 @@
 const { STORM } = require('../config');
 const { broadcast } = require('../net/messaging');
 const { runLightning, clearLightning } = require('./lightning');
+const { isPaused } = require('./events');
 
 // Bão của một phòng: chỉ có khi đang 'playing'. Tới hẹn thì tung xác suất có bão; bão kéo dài một lúc rồi tạnh,
 // trong lúc bão thì có sét (lightning.js). Mưa chỉ là hình ảnh/âm thanh phía client.
@@ -37,9 +38,18 @@ function stopWeather(room) {
 // Gọi mỗi nhịp của trận khi đang 'playing'.
 function tickWeather(room, now) {
   const { weather } = room;
+  if (weather.storm && now >= weather.endsAt) { // bão đang có vẫn tạnh tự nhiên, kể cả lúc sự kiện ngưng sét
+    setStorm(room, false, now);
+    return;
+  }
+  // Sự kiện solo ngưng sét: bỏ luôn tia đã báo (kể cả tia báo trước khi sự kiện bắt đầu) và không mở bão mới.
+  if (isPaused(room, 'lightning')) {
+    clearLightning(room);
+    if (!weather.storm && now >= weather.nextAt) weather.nextAt = now + STORM.retryMs;
+    return;
+  }
   if (weather.storm) {
-    if (now >= weather.endsAt) setStorm(room, false, now);
-    else runLightning(room, now);
+    runLightning(room, now);
     return;
   }
   if (now < weather.nextAt) return;

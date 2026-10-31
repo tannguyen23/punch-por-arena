@@ -14,7 +14,7 @@ export function duelIntro({ duel }) {
       title: duelTitle(duel),
       mission: `${teamName(side)} — hạ hết đội đối phương!`,
       reward: `Mỗi người đội thắng +${duel.prize}đ, kể cả đã gục`,
-      note: `Đồng đội: ${teamMembers(duel.teams[side])}. Nhặt dao tiếp tế để chém ${rules.knifeAmmo} lần. Không đánh đồng đội; gục nằm chờ.`,
+      note: `Đồng đội: ${teamMembers(duel.teams[side])}. Nhặt dao tiếp tế để chém ${rules.knifeAmmo} lần. Đồ trong túi được cất tạm, xong trả lại. Không đánh đồng đội; gục nằm chờ.`,
     };
   }
   return {

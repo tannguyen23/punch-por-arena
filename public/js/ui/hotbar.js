@@ -1,15 +1,14 @@
 import { state } from '../state.js';
-import { HOTBAR_SLOTS, FIST_SLOT } from '../config.js';
+import { HOTBAR_SLOTS } from '../config.js';
 import { weaponIcon } from './weaponIcon.js';
 import { rarityBadge, applyWeaponRarity } from './weaponRarity.js';
 
 const bar = document.getElementById('hotbar');
-const FIST_ICON = '👊';
 
-// Dựng sẵn các ô vũ khí cộng ô tay không ở cuối. Số trên mỗi ô là phím chọn ô đó.
-const slots = Array.from({ length: HOTBAR_SLOTS + 1 }, (_, index) => {
+// Dựng sẵn các ô vũ khí. Số trên mỗi ô là phím chọn ô đó. Tay không không phải một ô: không cầm gì thì không ô nào sáng.
+const slots = Array.from({ length: HOTBAR_SLOTS }, (_, index) => {
   const el = document.createElement('div');
-  el.className = index === FIST_SLOT ? 'slot fist' : 'slot';
+  el.className = 'slot';
   const key = document.createElement('span');
   key.className = 'slot-key';
   key.textContent = `${index + 1}`;
@@ -22,8 +21,6 @@ const slots = Array.from({ length: HOTBAR_SLOTS + 1 }, (_, index) => {
   bar.append(el);
   return { el, icon, ammo, rarity };
 });
-slots[FIST_SLOT].icon.textContent = FIST_ICON;
-slots[FIST_SLOT].el.title = 'Tay không';
 
 // Ô đang cầm lấy đạn từ state.ammo (trừ ngay khi bắn), các ô khác lấy từ túi đồ server gửi.
 const ammoOf = (index) => (index === state.activeSlot ? state.ammo : (state.inventory[index]?.ammo ?? null));

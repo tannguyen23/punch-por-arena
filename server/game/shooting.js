@@ -10,6 +10,7 @@ const { eyeOf, pointAt, aimDirection, obstacleDistance, firstBodyHit } = require
 const { launchRocket } = require('./rockets');
 const { startNuke } = require('./nuke');
 const { updateReload } = require('./magazines');
+const { gunDamageMultOf } = require('./potions');
 
 const pack = (p) => [p.x, p.y, p.z].map((v) => +v.toFixed(2));
 const wobble = (angle, spread) => angle + (Math.random() * 2 - 1) * spread;
@@ -25,7 +26,7 @@ function fireBullet(room, p, weapon, yaw, pitch) {
   const dist = hit ? hit.dist : reach;
   const impact = !hit && reach < weapon.range;
   broadcast(room, { t: 'shot', id: p.id, w: p.weapon, from: pack(origin), to: pack(pointAt(origin, dir, dist)), hit: hit?.target.id ?? null, impact });
-  if (hit) applyDamage(room, p, hit.target, weapon.damage);
+  if (hit) applyDamage(room, p, hit.target, weapon.damage * gunDamageMultOf(hit.target)); // khổng lồ chịu ít sát thương súng hơn (potions.js)
 }
 
 // Tin nhắn 'fire' { yaw, pitch }: bắn súng, bắn tên lửa hoặc gọi bom bằng radio đang cầm (lựu đạn đi bằng 'throw', xem grenades.js). Server kiểm tra pha, hồi chiêu và số đạn.
@@ -41,7 +42,7 @@ function handleFire(room, p, m) {
   p.yaw = m.yaw; // hướng lúc bóp cò mới hơn hướng trong tin nhắn 'state' gần nhất
   const pitch = clamp(m.pitch, -PITCH_LIMIT, PITCH_LIMIT);
   if (weapon.kind === 'nuke') {
-    if (startNuke(room, p, m.yaw, pitch)) useAmmo(p); // bom rơi chỗ đang ngắm; phòng đang có bom khác tới thì không trừ đạn
+    if (startNuke(room, p, m.yaw, pitch)) useAmmo(p); // đợt oanh kích quanh chỗ đang ngắm; phòng đang có đợt khác tới thì không trừ đạn
     return;
   }
   if (weapon.kind === 'rocket') launchRocket(room, p, weapon, aimDirection(m.yaw, pitch));

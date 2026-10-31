@@ -1,43 +1,11 @@
 const { DUEL_AUDIENCE } = require('../config');
-const { eyeOf, aimDirection, pointAt, obstacleDistance, bodyDistance } = require('./raycast');
+const { eyeOf, aimDirection, pointAt, bodyDistance } = require('./raycast');
+const { positionAt, segment, launch, fly } = require('./trajectory');
 
-function positionAt(flight, seconds) {
-  const at = pointAt(flight.from, flight.velocity, seconds);
-  at.y -= flight.gravity * seconds * seconds / 2;
-  return at;
-}
-
-function segment(a, b) {
-  const length = Math.hypot(b.x - a.x, b.y - a.y, b.z - a.z);
-  return { length, dir: { x: (b.x - a.x) / length, y: (b.y - a.y) / length, z: (b.z - a.z) / length } };
-}
-
+// Quỹ đạo quả ném của khán giả: bay từ mắt, dừng ở tường / đất đầu tiên (trúng người thì xét riêng ở tomatoTarget).
 function planThrow(room, p, yaw, pitch) {
-  const rules = DUEL_AUDIENCE;
-  const dir = aimDirection(yaw, pitch);
-  const flight = {
-    from: eyeOf(p), velocity: { x: dir.x * rules.speed, y: dir.y * rules.speed + rules.lift, z: dir.z * rules.speed },
-    gravity: rules.gravity, duration: rules.maxFlightMs, landed: false,
-  };
-  let previous = flight.from;
-  for (let ms = rules.stepMs; ms <= rules.maxFlightMs; ms += rules.stepMs) {
-    const at = positionAt(flight, ms / 1000);
-    const step = segment(previous, at);
-    const obstacle = obstacleDistance(room, previous, step.dir, step.length);
-    const ground = room.terrain.groundAt(at.x, at.z, previous.y);
-    if (obstacle <= step.length || at.y <= ground) {
-      const ratio = obstacle <= step.length ? obstacle / step.length
-        : Math.max(0, Math.min(1, (previous.y - ground) / (previous.y - at.y)));
-      const hit = pointAt(previous, step.dir, step.length * ratio);
-      flight.duration = ms - rules.stepMs + rules.stepMs * ratio;
-      flight.landing = { x: hit.x, y: room.terrain.groundAt(hit.x, hit.z, previous.y), z: hit.z };
-      flight.landed = true;
-      return flight;
-    }
-    previous = at;
-  }
-  flight.landing = positionAt(flight, flight.duration / 1000);
-  return flight;
+  const flight = launch(eyeOf(p), aimDirection(yaw, pitch), DUEL_AUDIENCE);
+  return Object.assign(flight, fly(room, flight, DUEL_AUDIENCE));
 }
 
 function inRing(room, at) {

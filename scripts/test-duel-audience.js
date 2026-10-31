@@ -10,6 +10,7 @@ const { handlePunch } = require('../server/game/combat');
 const { handleDrop } = require('../server/game/drops');
 const { clearEvents } = require('../server/game/events');
 const { createPlayer } = require('../server/game/players');
+const { WEAPONS } = require('../server/game/weapons');
 
 function fixture(t) {
   t.mock.timers.enable({ apis: ['Date', 'setTimeout'], now: 1000000 });
@@ -52,8 +53,11 @@ test('Dao bay có dấu chỗ rơi, chạm đất mới nhặt; chỉ võ sĩ nh
     handlePunch(room, a, 'R');
     t.mock.timers.tick(500);
   }
-  assert.equal(a.ammo, 0);
-  assert.equal(b.hp, 25);
+  // Chém đúng 3 lần rồi dao gãy: ô trống, về tay không; lần thứ tư chỉ còn cú đấm tay không.
+  assert.equal(a.weapon, 'fist');
+  assert.equal(a.ammo, null);
+  assert.equal(a.slots.some((slot) => slot?.weapon === 'knife'), false);
+  assert.equal(b.hp, Math.max(0, 100 - 3 * WEAPONS.knife.damage));
   assert.equal(JSON.stringify(spectator.slots), slots);
 });
 
